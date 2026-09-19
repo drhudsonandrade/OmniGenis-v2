@@ -27,3 +27,4 @@ temp/
 .coverage.*
 htmlcov/
 coverage.xml
+coverage.json
