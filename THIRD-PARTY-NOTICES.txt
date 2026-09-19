@@ -1,0 +1,6 @@
+THIRD-PARTY NOTICES
+
+No third-party source code is incorporated in this repository baseline.
+
+Required notices and attributions for third-party components will be added
+before such components are distributed.
