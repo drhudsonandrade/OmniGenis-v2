@@ -22,3 +22,7 @@ dist/
 build/
 tmp/
 temp/
+
+.coverage
+.coverage.*
+htmlcov/
