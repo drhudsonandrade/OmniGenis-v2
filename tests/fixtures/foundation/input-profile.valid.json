@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "input_id": "input-001",
+  "input_kind": "GENERIC_FILE",
+  "media_type": "application/octet-stream",
+  "content_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "size_bytes": 128
+}

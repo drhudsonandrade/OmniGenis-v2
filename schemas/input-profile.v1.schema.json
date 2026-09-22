@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:input-profile:1.0.0",
+  "title": "InputProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "input_id", "input_kind", "media_type", "content_sha256", "size_bytes"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "input_id": {"type": "string", "minLength": 1},
+    "input_kind": {"type": "string", "minLength": 1},
+    "media_type": {"type": "string", "minLength": 1},
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "size_bytes": {"type": "integer", "minimum": 0}
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:execution-profile:1.0.0",
+  "title": "ExecutionProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "execution_profile_id", "executor_id", "executor_version", "deterministic"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "execution_profile_id": {"type": "string", "minLength": 1},
+    "executor_id": {"type": "string", "minLength": 1},
+    "executor_version": {"type": "string", "minLength": 1},
+    "deterministic": {"type": "boolean"}
+  }
+}
