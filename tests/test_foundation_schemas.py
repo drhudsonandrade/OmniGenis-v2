@@ -15,6 +15,7 @@ CASES = (
     ("execution-profile.v1.schema.json", "execution-profile.valid.json", "execution-profile.invalid.json"),
     ("artifact-manifest.v1.schema.json", "artifact-manifest.valid.json", "artifact-manifest.invalid.json"),
     ("capability-pack-manifest.v1.schema.json", "capability-pack-manifest.valid.json", "capability-pack-manifest.invalid.json"),
+    ("evidence-snapshot-metadata.v1.schema.json", "evidence-snapshot-metadata.valid.json", "evidence-snapshot-metadata.invalid.json"),
 )
 
 
@@ -119,6 +120,15 @@ class FoundationSchemaTests(unittest.TestCase):
             "real_use_case", "owner_priority", "upstream_status", "license",
             "supported_profile", "resource_budget", "input_fixture", "output_contract",
             "known_issues", "security", "disable_path",
+        }
+        self.assertTrue(expected.issubset(required))
+
+    def test_evidence_snapshot_metadata_requires_traceability_identity(self) -> None:
+        schema = load_json(SCHEMAS / "evidence-snapshot-metadata.v1.schema.json")
+        required = set(schema["required"])
+        expected = {
+            "snapshot_id", "source_registry_id", "source_version", "version_kind",
+            "checked_at", "locator", "retrieval_method", "result_sha256", "mutable",
         }
         self.assertTrue(expected.issubset(required))
 

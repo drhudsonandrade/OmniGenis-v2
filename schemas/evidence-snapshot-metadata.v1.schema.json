@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:evidence-snapshot-metadata:1.0.0",
+  "title": "EvidenceSnapshotMetadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "snapshot_id", "source_registry_id", "source_version", "version_kind", "checked_at", "locator", "retrieval_method", "result_sha256", "mutable"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "source_registry_id": {"type": "string", "minLength": 1},
+    "source_version": {"type": "string", "minLength": 1},
+    "version_kind": {"type": "string", "minLength": 1},
+    "checked_at": {"type": "string", "minLength": 1},
+    "locator": {"type": "string", "minLength": 1},
+    "retrieval_method": {"type": "string", "minLength": 1},
+    "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mutable": {"type": "boolean"}
+  }
+}

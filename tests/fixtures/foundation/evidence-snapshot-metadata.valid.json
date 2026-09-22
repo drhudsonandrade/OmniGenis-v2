@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "snapshot_id": "snapshot-001",
+  "source_registry_id": "source-example",
+  "source_version": "release-001",
+  "version_kind": "release",
+  "checked_at": "2026-09-22T00:00:00Z",
+  "locator": "https://example.invalid/source",
+  "retrieval_method": "HTTPS",
+  "result_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "mutable": true
+}
