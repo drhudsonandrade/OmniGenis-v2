@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "capability-example",
+  "capability_version": "1.0.0",
+  "real_use_case": "documented-use-case",
+  "owner_priority": "defined-priority",
+  "upstream_status": "reviewed",
+  "license": "reviewed-license",
+  "supported_profile": "profile-example",
+  "resource_budget": "budget-example",
+  "input_fixture": "fixture-input",
+  "output_contract": "contract-output",
+  "known_issues": "review-complete",
+  "security": "review-complete"
+}

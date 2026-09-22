@@ -14,6 +14,7 @@ CASES = (
     ("input-profile.v1.schema.json", "input-profile.valid.json", "input-profile.invalid.json"),
     ("execution-profile.v1.schema.json", "execution-profile.valid.json", "execution-profile.invalid.json"),
     ("artifact-manifest.v1.schema.json", "artifact-manifest.valid.json", "artifact-manifest.invalid.json"),
+    ("capability-pack-manifest.v1.schema.json", "capability-pack-manifest.valid.json", "capability-pack-manifest.invalid.json"),
 )
 
 
@@ -110,6 +111,16 @@ class FoundationSchemaTests(unittest.TestCase):
         fixture = load_json(FIXTURES / "artifact-manifest.duplicate-parents.invalid.json")
         errors = validate_subset(schema, fixture)
         self.assertIn("$.parent_artifact_ids: duplicate items", errors)
+
+    def test_capability_pack_manifest_requires_activation_contract(self) -> None:
+        schema = load_json(SCHEMAS / "capability-pack-manifest.v1.schema.json")
+        required = set(schema["required"])
+        expected = {
+            "real_use_case", "owner_priority", "upstream_status", "license",
+            "supported_profile", "resource_budget", "input_fixture", "output_contract",
+            "known_issues", "security", "disable_path",
+        }
+        self.assertTrue(expected.issubset(required))
 
     def test_foundation_contracts_do_not_embed_scientific_semantics(self) -> None:
         forbidden = ("grch", "variant", "genomic", "pharmacogen", "pgx", "prs", "hla")
