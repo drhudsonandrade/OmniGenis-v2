@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0.0",
+  "execution_profile_id": "exec-local-001",
+  "executor_id": "local-direct",
+  "executor_version": "1.0.0",
+  "deterministic": true
+}
