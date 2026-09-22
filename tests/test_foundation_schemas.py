@@ -17,6 +17,7 @@ CASES = (
     ("capability-pack-manifest.v1.schema.json", "capability-pack-manifest.valid.json", "capability-pack-manifest.invalid.json"),
     ("evidence-snapshot-metadata.v1.schema.json", "evidence-snapshot-metadata.valid.json", "evidence-snapshot-metadata.invalid.json"),
     ("release-bundle-metadata.v1.schema.json", "release-bundle-metadata.valid.json", "release-bundle-metadata.invalid.json"),
+    ("report-catalog-entry.v1.schema.json", "report-catalog-entry.valid.json", "report-catalog-entry.invalid.json"),
 )
 
 
@@ -148,6 +149,15 @@ class FoundationSchemaTests(unittest.TestCase):
         )
         errors = validate_subset(schema, fixture)
         self.assertIn("$.artifact_ids: duplicate items", errors)
+
+    def test_report_catalog_entry_requires_editorial_identity(self) -> None:
+        schema = load_json(SCHEMAS / "report-catalog-entry.v1.schema.json")
+        required = set(schema["required"])
+        expected = {
+            "report_id", "code", "accent", "slug", "title",
+            "tagline", "purpose", "audience", "sections",
+        }
+        self.assertTrue(expected.issubset(required))
 
     def test_foundation_contracts_do_not_embed_scientific_semantics(self) -> None:
         forbidden = ("grch", "variant", "genomic", "pharmacogen", "pgx", "prs", "hla")

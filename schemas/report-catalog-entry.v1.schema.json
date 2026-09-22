@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-catalog-entry:1.0.0",
+  "title": "ReportCatalogEntry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "code", "accent", "slug", "title", "tagline", "purpose", "audience", "sections"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "report_id": {"type": "string", "minLength": 1},
+    "code": {"type": "string", "minLength": 1},
+    "accent": {"type": "string", "minLength": 1},
+    "slug": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "tagline": {"type": "string", "minLength": 1},
+    "purpose": {"type": "string", "minLength": 1},
+    "audience": {"type": "string", "minLength": 1},
+    "sections": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}

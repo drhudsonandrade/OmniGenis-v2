@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "report_id": "report-001",
+  "code": "RPT",
+  "accent": "123456",
+  "slug": "example-report",
+  "title": "Example Report",
+  "tagline": "Synthetic catalog fixture",
+  "purpose": "Exercise the structural catalog contract.",
+  "audience": "Test readers",
+  "sections": ["Overview", "Details"]
+}
