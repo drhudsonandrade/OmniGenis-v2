@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:release-bundle-metadata:1.0.0",
+  "title": "ReleaseBundleMetadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_bundle_id", "bundle_sha256", "release_status", "artifact_ids"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "release_bundle_id": {"type": "string", "minLength": 1},
+    "bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "release_status": {"type": "string", "minLength": 1},
+    "artifact_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}

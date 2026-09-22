@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0.0",
+  "release_bundle_id": "release-bundle-001",
+  "bundle_sha256": "invalid-digest",
+  "release_status": "READY",
+  "artifact_ids": ["artifact-001", "artifact-002"]
+}
