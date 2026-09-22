@@ -16,6 +16,7 @@ CASES = (
     ("artifact-manifest.v1.schema.json", "artifact-manifest.valid.json", "artifact-manifest.invalid.json"),
     ("capability-pack-manifest.v1.schema.json", "capability-pack-manifest.valid.json", "capability-pack-manifest.invalid.json"),
     ("evidence-snapshot-metadata.v1.schema.json", "evidence-snapshot-metadata.valid.json", "evidence-snapshot-metadata.invalid.json"),
+    ("release-bundle-metadata.v1.schema.json", "release-bundle-metadata.valid.json", "release-bundle-metadata.invalid.json"),
 )
 
 
@@ -131,6 +132,22 @@ class FoundationSchemaTests(unittest.TestCase):
             "checked_at", "locator", "retrieval_method", "result_sha256", "mutable",
         }
         self.assertTrue(expected.issubset(required))
+
+    def test_release_bundle_metadata_requires_bundle_identity(self) -> None:
+        schema = load_json(SCHEMAS / "release-bundle-metadata.v1.schema.json")
+        required = set(schema["required"])
+        expected = {
+            "release_bundle_id", "bundle_sha256", "release_status", "artifact_ids",
+        }
+        self.assertTrue(expected.issubset(required))
+
+    def test_release_bundle_artifact_ids_must_be_unique(self) -> None:
+        schema = load_json(SCHEMAS / "release-bundle-metadata.v1.schema.json")
+        fixture = load_json(
+            FIXTURES / "release-bundle-metadata.duplicate-artifacts.invalid.json"
+        )
+        errors = validate_subset(schema, fixture)
+        self.assertIn("$.artifact_ids: duplicate items", errors)
 
     def test_foundation_contracts_do_not_embed_scientific_semantics(self) -> None:
         forbidden = ("grch", "variant", "genomic", "pharmacogen", "pgx", "prs", "hla")
