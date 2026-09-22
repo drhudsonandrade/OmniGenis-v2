@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-capability-manifest:1.0.0",
+  "title": "ReportCapabilityManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "required_capability_ids", "evaluated_analysis_class_ids"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "report_id": {"type": "string", "minLength": 1},
+    "required_capability_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "evaluated_analysis_class_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}

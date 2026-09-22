@@ -18,6 +18,7 @@ CASES = (
     ("evidence-snapshot-metadata.v1.schema.json", "evidence-snapshot-metadata.valid.json", "evidence-snapshot-metadata.invalid.json"),
     ("release-bundle-metadata.v1.schema.json", "release-bundle-metadata.valid.json", "release-bundle-metadata.invalid.json"),
     ("report-catalog-entry.v1.schema.json", "report-catalog-entry.valid.json", "report-catalog-entry.invalid.json"),
+    ("report-capability-manifest.v1.schema.json", "report-capability-manifest.valid.json", "report-capability-manifest.invalid.json"),
 )
 
 
@@ -158,6 +159,30 @@ class FoundationSchemaTests(unittest.TestCase):
             "tagline", "purpose", "audience", "sections",
         }
         self.assertTrue(expected.issubset(required))
+
+    def test_report_capability_manifest_requires_report_capability_binding(self) -> None:
+        schema = load_json(SCHEMAS / "report-capability-manifest.v1.schema.json")
+        required = set(schema["required"])
+        expected = {
+            "report_id", "required_capability_ids", "evaluated_analysis_class_ids",
+        }
+        self.assertTrue(expected.issubset(required))
+
+    def test_report_capability_ids_must_be_unique(self) -> None:
+        schema = load_json(SCHEMAS / "report-capability-manifest.v1.schema.json")
+        fixture = load_json(
+            FIXTURES / "report-capability-manifest.duplicate-capabilities.invalid.json"
+        )
+        errors = validate_subset(schema, fixture)
+        self.assertIn("$.required_capability_ids: duplicate items", errors)
+
+    def test_evaluated_analysis_class_ids_must_be_unique(self) -> None:
+        schema = load_json(SCHEMAS / "report-capability-manifest.v1.schema.json")
+        fixture = load_json(
+            FIXTURES / "report-capability-manifest.duplicate-analysis-classes.invalid.json"
+        )
+        errors = validate_subset(schema, fixture)
+        self.assertIn("$.evaluated_analysis_class_ids: duplicate items", errors)
 
     def test_foundation_contracts_do_not_embed_scientific_semantics(self) -> None:
         forbidden = ("grch", "variant", "genomic", "pharmacogen", "pgx", "prs", "hla")
