@@ -4,7 +4,7 @@
   "artifact_kind": "GENERIC_OUTPUT",
   "media_type": "application/octet-stream",
   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "size_bytes": -1,
+  "size_bytes": 256,
   "producer_execution_profile_id": "exec-local-001",
-  "parent_artifact_ids": ["input-001"]
+  "parent_artifact_ids": ["input-001", "input-001"]
 }

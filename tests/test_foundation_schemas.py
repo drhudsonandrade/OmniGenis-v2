@@ -105,6 +105,12 @@ class FoundationSchemaTests(unittest.TestCase):
                 fixture = load_json(FIXTURES / invalid_name)
                 self.assertTrue(validate_subset(schema, fixture))
 
+    def test_artifact_parent_ids_must_be_unique(self) -> None:
+        schema = load_json(SCHEMAS / "artifact-manifest.v1.schema.json")
+        fixture = load_json(FIXTURES / "artifact-manifest.duplicate-parents.invalid.json")
+        errors = validate_subset(schema, fixture)
+        self.assertIn("$.parent_artifact_ids: duplicate items", errors)
+
     def test_foundation_contracts_do_not_embed_scientific_semantics(self) -> None:
         forbidden = ("grch", "variant", "genomic", "pharmacogen", "pgx", "prs", "hla")
         for schema_name, _, _ in CASES:
