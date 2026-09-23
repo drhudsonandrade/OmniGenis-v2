@@ -38,6 +38,30 @@ REFERENCE_FASTA_CONTENT_SHA256 = (
     "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0"
 )
 REFERENCE_FASTA_CONTENT_SIZE_BYTES = 3_339_739_109
+REFERENCE_AUTOSOMAL_REFSEQ_ACCESSIONS = (
+    "NC_000001.11",
+    "NC_000002.12",
+    "NC_000003.12",
+    "NC_000004.12",
+    "NC_000005.10",
+    "NC_000006.12",
+    "NC_000007.14",
+    "NC_000008.11",
+    "NC_000009.12",
+    "NC_000010.11",
+    "NC_000011.10",
+    "NC_000012.12",
+    "NC_000013.11",
+    "NC_000014.9",
+    "NC_000015.10",
+    "NC_000016.10",
+    "NC_000017.11",
+    "NC_000018.10",
+    "NC_000019.10",
+    "NC_000020.11",
+    "NC_000021.9",
+    "NC_000022.11",
+)
 ORIGINAL_RECORD_TAG = "OMNIGENIS_ORIGINAL"
 SORT_MEMORY = "256M"
 
@@ -547,11 +571,25 @@ def normalize_small_variants(
             errors=errors,
         )
 
-    allowed_contigs = (
-        frozenset(reference_identity.autosomal_refseq_accessions)
+    accessions = (
+        reference_identity.autosomal_refseq_accessions
         if isinstance(reference_identity, ReferenceIdentityResult)
-        else frozenset()
+        else None
     )
+    if (
+        type(accessions) is not tuple
+        or not all(type(accession) is str for accession in accessions)
+        or accessions != REFERENCE_AUTOSOMAL_REFSEQ_ACCESSIONS
+    ):
+        states[RULE_REFERENCE] = ("FAIL", "reference_identity_not_verified")
+        errors.append("reference_identity_not_verified")
+        return _result(
+            data=data,
+            input_record_count=len(source_records),
+            states=states,
+            errors=errors,
+        )
+    allowed_contigs = frozenset(accessions)
     domain_errors = _supported_domain_errors(data, source_records, allowed_contigs)
     if domain_errors:
         states[RULE_INPUT] = ("FAIL", "unsupported_or_ambiguous_variant_domain")
@@ -688,12 +726,8 @@ def normalize_small_variants(
                 reference_identity.fasta_content_sha256 == REFERENCE_FASTA_CONTENT_SHA256,
                 type(reference_identity.fasta_content_size_bytes) is int
                 and reference_identity.fasta_content_size_bytes == REFERENCE_FASTA_CONTENT_SIZE_BYTES,
-                len(reference_identity.autosomal_refseq_accessions) == 22,
-                len(set(reference_identity.autosomal_refseq_accessions)) == 22,
-                all(
-                    isinstance(accession, str) and bool(accession)
-                    for accession in reference_identity.autosomal_refseq_accessions
-                ),
+                reference_identity.autosomal_refseq_accessions
+                == REFERENCE_AUTOSOMAL_REFSEQ_ACCESSIONS,
             )
         )
     if not reference_identity_valid:

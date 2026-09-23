@@ -1,3 +1,4 @@
+from dataclasses import replace
 import hashlib
 import json
 import os
@@ -103,6 +104,13 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         self.synthetic_reference_size = REFERENCE.stat().st_size
         sha_patch = patch("omnigenis.capabilities.variant_normalization.REFERENCE_FASTA_CONTENT_SHA256", self.synthetic_reference_sha256)
         size_patch = patch("omnigenis.capabilities.variant_normalization.REFERENCE_FASTA_CONTENT_SIZE_BYTES", self.synthetic_reference_size)
+        # Only this synthetic adapter harness substitutes the production reference pins.
+        contig_patch = patch(
+            "omnigenis.capabilities.variant_normalization.REFERENCE_AUTOSOMAL_REFSEQ_ACCESSIONS",
+            self.identity.autosomal_refseq_accessions,
+        )
+        contig_patch.start()
+        self.addCleanup(contig_patch.stop)
         sha_patch.start()
         size_patch.start()
         self.addCleanup(size_patch.stop)
@@ -475,6 +483,38 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("executor_sort_output_missing", result.errors)
 
+    def test_malformed_autosomal_identity_fails_closed_before_executor(self) -> None:
+        malformed_values = (
+            None, False, "chr1", (), (["chr1"],), ({"id": "chr1"},),
+            ("chr1",) * 22,
+        )
+        for accessions in malformed_values:
+            with self.subTest(accessions=accessions):
+                invalid = replace(self.identity, autosomal_refseq_accessions=accessions)
+                with patch("omnigenis.capabilities.variant_normalization._run") as runner:
+                    try:
+                        result = normalize_small_variants(
+                            self.data,
+                            reference_fasta=REFERENCE,
+                            reference_identity=invalid,
+                            bcftools_executable="/does/not/matter",
+                            expected_executor_sha256="0" * 64,
+                        )
+                    except (TypeError, ValueError, AttributeError) as exc:
+                        self.fail(f"Invalid contig identity escaped as {type(exc).__name__}")
+                    runner.assert_not_called()
+                self.assertFalse(result.passed)
+                self.assertIn("reference_identity_not_verified", result.errors)
+
+    def test_forged_autosomal_identity_cannot_admit_present_chr_x(self) -> None:
+        forged = replace(
+            self.identity,
+            autosomal_refseq_accessions=("chrX",) + self.identity.autosomal_refseq_accessions[1:],
+        )
+        result = self.run_actual(self.data.replace(b"chr1", b"chrX"), identity=forged)
+        self.assertFalse(result.passed, "A caller-supplied contig set widened the pinned profile")
+        self.assertIn("reference_identity_not_verified", result.errors)
+
     def test_capability_manifest_and_executor_profile_are_closed(self) -> None:
         schema = json.loads(CAPABILITY_SCHEMA.read_text(encoding="utf-8"))
         manifest = json.loads(CAPABILITY_MANIFEST.read_text(encoding="utf-8"))
@@ -507,6 +547,20 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         self.assertEqual(
             profile["reference_binding"]["fasta_content_size_bytes"],
             PRODUCTION_REFERENCE_FASTA_CONTENT_SIZE_BYTES,
+        )
+
+
+class AutosomalReferencePinTests(unittest.TestCase):
+    def test_production_autosome_pin_matches_the_reference_profile(self) -> None:
+        from omnigenis.capabilities import variant_normalization
+
+        profile_path = ROOT / "resources/reference-profiles/grch38-p14-ncbi-refseq-autosomal-v1.json"
+        profile = json.loads(profile_path.read_text(encoding="utf-8"))
+        expected = tuple(row["refseq_accession"] for row in profile["contig_alias_profile"]["contigs"])
+        self.assertEqual(len(expected), 22)
+        self.assertEqual(
+            getattr(variant_normalization, "REFERENCE_AUTOSOMAL_REFSEQ_ACCESSIONS", None),
+            expected,
         )
 
 
