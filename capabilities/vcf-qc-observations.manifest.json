@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "vcf-qc-observations",
+  "capability_version": "1.0.0",
+  "real_use_case": "Record technical QC observations available in a validated single-sample VCF without inferring absent coverage or clinical meaning.",
+  "owner_priority": "foundation",
+  "upstream_status": "VCF 4.5 reserved GT/DP/GQ/AD semantics; checked 2026-09-22.",
+  "license": "Independent project implementation; no third-party implementation or fixture bytes copied.",
+  "supported_profile": "Output of vcf-intake-envelope for VCF 4.5 text, UTF-8, exactly one sample, uncompressed bytes.",
+  "resource_budget": "O(n) time and O(n) auxiliary memory for decoded text and observations; no network or subprocess.",
+  "input_fixture": "tests/fixtures/vcf_qc/valid-qc-rich.vcf",
+  "output_contract": "Tool-neutral CapabilityResult mapping emitted by omnigenis.capabilities.vcf_qc.VcfQcObservationResult.to_dict",
+  "known_issues": "Variant-only VCF cannot establish whole-genome/exome callability or missing-position coverage; no quality thresholds, reference concordance, normalization, classification, interpretation, or full general FORMAT grammar validation beyond the observed GT/DP/GQ/AD checks.",
+  "security": "Pure bytes processing with no filesystem, network, or subprocess access.",
+  "disable_path": "Not wired to any default execution pipeline."
+}

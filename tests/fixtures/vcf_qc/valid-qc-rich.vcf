@@ -1,0 +1,10 @@
+##fileformat=VCFv4.5
+##reference=urn:example:synthetic-reference
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Read depth for each allele">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SYNTHETIC
+1	100	.	A	C	.	PASS	.	GT:DP:GQ:AD	0/1:30:60:15,15
+1	200	.	A	G	.	q10	.	GT:DP:GQ:AD	1/0:20:10:18,2
+1	300	.	C	T	.	.	.	GT:DP:GQ:AD	./.:.:.:.

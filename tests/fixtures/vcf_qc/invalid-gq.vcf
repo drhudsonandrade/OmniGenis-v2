@@ -1,0 +1,5 @@
+##fileformat=VCFv4.5
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SYNTHETIC
+1	100	.	A	C	.	PASS	.	GT:GQ	0/1:-1
