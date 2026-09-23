@@ -95,6 +95,18 @@ def _is_sha256(value: object) -> bool:
         and len(value) == 64
         and all(character in _HEX for character in value)
     )
+
+
+def _is_nonnegative_json_integer(value: object) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value >= 0
+    if isinstance(value, float):
+        return value >= 0 and value.is_integer()
+    return False
+
+
 def _manifest_errors(manifest: Mapping[str, object]) -> tuple[str, ...]:
     errors: list[str] = []
     keys = set(manifest)
@@ -121,7 +133,7 @@ def _manifest_errors(manifest: Mapping[str, object]) -> tuple[str, ...]:
         errors.append("sha256")
 
     size = manifest.get("size_bytes")
-    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+    if not _is_nonnegative_json_integer(size):
         errors.append("size_bytes")
 
     parents = manifest.get("parent_artifact_ids")
@@ -172,11 +184,7 @@ def verify_artifact_bytes(
     )
 
     expected_size = safe_manifest.get("size_bytes")
-    size_type_ok = (
-        not isinstance(expected_size, bool)
-        and isinstance(expected_size, int)
-        and expected_size >= 0
-    )
+    size_type_ok = _is_nonnegative_json_integer(expected_size)
     size_ok = size_type_ok and expected_size == actual_size
     size_rule = _rule(
         RULE_SIZE,

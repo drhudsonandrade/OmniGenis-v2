@@ -104,18 +104,36 @@ class ArtifactIntegrityGateTests(unittest.TestCase):
         bool_size = dict(self.valid_manifest)
         bool_size["size_bytes"] = True
 
+        fractional_size = dict(self.valid_manifest)
+        fractional_size["size_bytes"] = 25.5
+
+        negative_size = dict(self.valid_manifest)
+        negative_size["size_bytes"] = -1.0
+
         extra_property = dict(self.valid_manifest)
         extra_property["path"] = "must-not-be-trusted"
 
         non_string_key = dict(self.valid_manifest)
         non_string_key[7] = "invalid-json-object-key"  # type: ignore[index]
 
-        for manifest in (bool_size, extra_property, non_string_key):
+        for manifest in (
+            bool_size,
+            fractional_size,
+            negative_size,
+            extra_property,
+            non_string_key,
+        ):
             with self.subTest(manifest=manifest):
                 result = verify_artifact_bytes(manifest, self.data)
                 self.assertEqual(rule_statuses(result)[RULE_MANIFEST], "FAIL")
 
         self.assertEqual(rule_statuses(verify_artifact_bytes(bool_size, self.data))[RULE_SIZE], "FAIL")
+
+        integer_valued_float = dict(self.valid_manifest)
+        integer_valued_float["size_bytes"] = 25.0
+        result = verify_artifact_bytes(integer_valued_float, self.data)
+        self.assertEqual(rule_statuses(result)[RULE_MANIFEST], "PASS")
+        self.assertEqual(rule_statuses(result)[RULE_SIZE], "PASS")
 
     def test_manifest_contract_tracks_artifact_json_schema(self) -> None:
         schema = json.loads(ARTIFACT_SCHEMA.read_text(encoding="utf-8"))
@@ -132,6 +150,12 @@ class ArtifactIntegrityGateTests(unittest.TestCase):
         bool_size = dict(self.valid_manifest)
         bool_size["size_bytes"] = True
         cases.append(bool_size)
+        integer_valued_float = dict(self.valid_manifest)
+        integer_valued_float["size_bytes"] = 25.0
+        cases.append(integer_valued_float)
+        fractional_size = dict(self.valid_manifest)
+        fractional_size["size_bytes"] = 25.5
+        cases.append(fractional_size)
 
         for manifest in cases:
             with self.subTest(manifest=manifest):
