@@ -1,0 +1,10 @@
+{
+  "schema_version": "2.0.0",
+  "artifact_id": "artifact-synthetic-001",
+  "artifact_kind": "synthetic-test-artifact",
+  "media_type": "application/octet-stream",
+  "sha256": "91f6a1f8192c4fcbe810d51149109fbc22256486f55c20376f4638dff2dc4b07",
+  "size_bytes": 25,
+  "producer_execution_profile_id": "synthetic-profile-v1",
+  "parent_artifact_ids": ["parent-001"]
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "artifact-integrity-gate",
+  "capability_version": "1.0.0",
+  "real_use_case": "Verify artifact manifest shape, exact SHA-256 content identity, and exact byte size before downstream model construction.",
+  "owner_priority": "foundation",
+  "upstream_status": "Project-owned deterministic gate over ArtifactManifest v1.0.0.",
+  "license": "Project-owned implementation; no third-party runtime or resource.",
+  "supported_profile": "ArtifactManifest v1.0.0 mapping plus exact artifact bytes.",
+  "resource_budget": "O(n) time for SHA-256 and O(1) auxiliary state beyond the supplied input bytes.",
+  "input_fixture": "tests/fixtures/artifact_gate/artifact.bin",
+  "output_contract": "Tool-neutral ArtifactGateResult emitted by omnigenis.capabilities.artifact_gate.verify_artifact_bytes",
+  "known_issues": "Does not trust filenames, promote artifacts, attest caches, resolve reference identity, or interpret scientific content.",
+  "security": "Pure mapping and bytes processing with no filesystem, network, subprocess, or dynamic code execution.",
+  "disable_path": "Not wired to any default execution pipeline."
+}
