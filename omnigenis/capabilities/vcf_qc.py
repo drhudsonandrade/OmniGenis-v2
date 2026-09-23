@@ -60,6 +60,7 @@ class VcfQcObservationResult:
     filter_not_applied_records: int
     called_genotype_records: int
     missing_genotype_records: int
+    genotype_not_present_records: int
     depth: NumericObservation
     genotype_quality: NumericObservation
     allele_depth_observed_records: int
@@ -90,6 +91,7 @@ class VcfQcObservationResult:
                 "genotype_counts": {
                     "called": self.called_genotype_records,
                     "missing": self.missing_genotype_records,
+                    "not_present": self.genotype_not_present_records,
                 },
                 "depth": self.depth.to_dict(),
                 "genotype_quality": self.genotype_quality.to_dict(),
@@ -184,6 +186,7 @@ def observe_vcf_qc(data: bytes) -> VcfQcObservationResult:
             filter_not_applied_records=0,
             called_genotype_records=0,
             missing_genotype_records=0,
+            genotype_not_present_records=0,
             depth=_numeric_summary([]),
             genotype_quality=_numeric_summary([]),
             allele_depth_observed_records=0,
@@ -215,6 +218,7 @@ def observe_vcf_qc(data: bytes) -> VcfQcObservationResult:
     not_applied_records = 0
     called_genotypes = 0
     missing_genotypes = 0
+    genotype_not_present = 0
     dp_values: list[int] = []
     gq_values: list[int] = []
     ad_observed = 0
@@ -241,12 +245,15 @@ def observe_vcf_qc(data: bytes) -> VcfQcObservationResult:
         format_values = dict(zip(format_keys, sample_values, strict=False))
 
         gt = format_values.get("GT")
-        if gt == "":
-            errors.append(f"line_{line_number}:gt_empty")
-        if _is_missing_genotype(gt):
-            missing_genotypes += 1
+        if "GT" not in format_keys:
+            genotype_not_present += 1
         else:
-            called_genotypes += 1
+            if gt == "":
+                errors.append(f"line_{line_number}:gt_empty")
+            if _is_missing_genotype(gt):
+                missing_genotypes += 1
+            else:
+                called_genotypes += 1
 
         dp = _parse_nonnegative_int(format_values.get("DP", "."), "DP", line_number, errors)
         if dp is not None:
@@ -270,6 +277,7 @@ def observe_vcf_qc(data: bytes) -> VcfQcObservationResult:
         filter_not_applied_records=not_applied_records,
         called_genotype_records=called_genotypes,
         missing_genotype_records=missing_genotypes,
+        genotype_not_present_records=genotype_not_present,
         depth=_numeric_summary(dp_values),
         genotype_quality=_numeric_summary(gq_values),
         allele_depth_observed_records=ad_observed,

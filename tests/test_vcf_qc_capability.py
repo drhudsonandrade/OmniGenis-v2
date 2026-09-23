@@ -33,6 +33,7 @@ class VcfQcCapabilityTests(unittest.TestCase):
         self.assertEqual(result.filter_not_applied_records, 1)
         self.assertEqual(result.called_genotype_records, 2)
         self.assertEqual(result.missing_genotype_records, 1)
+        self.assertEqual(result.genotype_not_present_records, 0)
         self.assertEqual(result.depth.to_dict(), {"observed_records": 2, "minimum": 20, "maximum": 30})
         self.assertEqual(
             result.genotype_quality.to_dict(),
@@ -58,6 +59,22 @@ class VcfQcCapabilityTests(unittest.TestCase):
         self.assertEqual(result.allele_balance.observed_records, 0)
         self.assertIn("reference_not_declared", result.warnings)
         self.assertEqual(result.to_dict()["canonical_status"], "OBSERVED")
+
+    def test_absent_gt_is_distinct_from_missing_gt(self) -> None:
+        data = (
+            b"##fileformat=VCFv4.5\n"
+            b"##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read Depth\">\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            b"1\t100\t.\tA\tC\t.\tPASS\t.\tDP\t10\n"
+        )
+        result = observe_vcf_qc(data)
+        self.assertEqual(result.called_genotype_records, 0)
+        self.assertEqual(result.missing_genotype_records, 0)
+        self.assertEqual(result.genotype_not_present_records, 1)
+        self.assertEqual(
+            result.to_dict()["canonical_payload"]["genotype_counts"],
+            {"called": 0, "missing": 0, "not_present": 1},
+        )
 
     def test_invalid_intake_is_propagated_fail_closed(self) -> None:
         result = observe_vcf_qc(fixture("vcf_intake", "multiple-samples.vcf"))
