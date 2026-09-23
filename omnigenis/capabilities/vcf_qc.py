@@ -210,8 +210,11 @@ def observe_vcf_qc(data: bytes) -> VcfQcObservationResult:
 
     errors: list[str] = []
     warnings = list(base_warnings)
-    if not declared_references:
+    unique_references = tuple(dict.fromkeys(declared_references))
+    if not unique_references:
         warnings.append("reference_not_declared")
+    elif len(unique_references) > 1:
+        warnings.append("multiple_reference_declarations")
 
     pass_records = 0
     filtered_records = 0
@@ -271,7 +274,7 @@ def observe_vcf_qc(data: bytes) -> VcfQcObservationResult:
         input_valid=True,
         sample_id=intake.sample_id,
         record_count=intake.record_count,
-        declared_references=tuple(dict.fromkeys(declared_references)),
+        declared_references=unique_references,
         filter_pass_records=pass_records,
         filter_filtered_records=filtered_records,
         filter_not_applied_records=not_applied_records,

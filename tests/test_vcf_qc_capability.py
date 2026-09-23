@@ -60,6 +60,21 @@ class VcfQcCapabilityTests(unittest.TestCase):
         self.assertIn("reference_not_declared", result.warnings)
         self.assertEqual(result.to_dict()["canonical_status"], "OBSERVED")
 
+    def test_multiple_reference_declarations_are_not_silently_collapsed(self) -> None:
+        data = (
+            b"##fileformat=VCFv4.5\n"
+            b"##reference=urn:example:reference-a\n"
+            b"##reference=urn:example:reference-b\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            b"1\t100\t.\tA\tC\t.\tPASS\t.\tGT\t0/1\n"
+        )
+        result = observe_vcf_qc(data)
+        self.assertEqual(
+            result.declared_references,
+            ("urn:example:reference-a", "urn:example:reference-b"),
+        )
+        self.assertIn("multiple_reference_declarations", result.warnings)
+
     def test_absent_gt_is_distinct_from_missing_gt(self) -> None:
         data = (
             b"##fileformat=VCFv4.5\n"
