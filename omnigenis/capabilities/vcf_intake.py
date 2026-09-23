@@ -23,7 +23,7 @@ HEADER_PREFIX = (
 LIMITATIONS = (
     "No reference concordance or contig-build validation.",
     "No variant normalization or scientific interpretation.",
-    "No full structured meta-information grammar validation.",
+    "No full structured meta-information, INFO, FORMAT, or allele grammar validation.",
     "No BGZF, BCF, gVCF, indexing, SV/CNV/STR semantic validation.",
 )
 @dataclass(frozen=True)
@@ -106,8 +106,13 @@ def validate_vcf_bytes(data: bytes) -> VcfIntakeResult:
         errors.append("disallowed_control_character")
     if _has_lone_carriage_return(text):
         errors.append("invalid_line_separator")
+    if any(separator in text for separator in ("\u0085", "\u2028", "\u2029")):
+        errors.append("invalid_line_separator")
 
-    lines = text.splitlines()
+    normalized_text = text.replace("\r\n", "\n")
+    lines = normalized_text.split("\n")
+    if normalized_text.endswith("\n"):
+        lines.pop()
     if not lines:
         errors.append("missing_fileformat")
         return VcfIntakeResult(False, None, 0, len(data), digest, tuple(errors))
@@ -137,7 +142,15 @@ def validate_vcf_bytes(data: bytes) -> VcfIntakeResult:
     else:
         sample_id = header[9]
 
-    for line_number, line in enumerate(lines[header_index + 1 :], start=header_index + 2):
+    seen_chroms: set[str] = set()
+    active_chrom: str | None = None
+    previous_position: int | None = None
+
+    data_lines = lines[header_index + 1 :]
+    if data_lines and not normalized_text.endswith("\n"):
+        errors.append("unterminated_final_data_line")
+
+    for line_number, line in enumerate(data_lines, start=header_index + 2):
         if not line:
             errors.append(f"line_{line_number}:blank_line")
             continue
@@ -151,15 +164,36 @@ def validate_vcf_bytes(data: bytes) -> VcfIntakeResult:
             continue
         if any(field == "" for field in fields):
             errors.append(f"line_{line_number}:zero_length_field")
+
+        chrom = fields[0]
+        if not chrom:
+            errors.append(f"line_{line_number}:chrom_required")
+        elif any(character.isspace() for character in chrom):
+            errors.append(f"line_{line_number}:invalid_chrom")
+
+        position: int | None = None
         try:
             position = int(fields[1])
         except ValueError:
             errors.append(f"line_{line_number}:invalid_pos")
         else:
-            if position <= 0:
+            if position < 0:
                 errors.append(f"line_{line_number}:invalid_pos")
-        if fields[0] == "":
-            errors.append(f"line_{line_number}:chrom_required")
+                position = None
+
+        if chrom and not any(character.isspace() for character in chrom):
+            if active_chrom != chrom:
+                if active_chrom is not None:
+                    seen_chroms.add(active_chrom)
+                if chrom in seen_chroms:
+                    errors.append(f"line_{line_number}:non_contiguous_chrom")
+                active_chrom = chrom
+                previous_position = None
+            if position is not None:
+                if previous_position is not None and position < previous_position:
+                    errors.append(f"line_{line_number}:decreasing_pos")
+                previous_position = position
+
         if fields[3] in {"", "."}:
             errors.append(f"line_{line_number}:ref_required")
         if fields[4] == "":

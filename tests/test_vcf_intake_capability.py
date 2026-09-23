@@ -98,6 +98,52 @@ class VcfIntakeCapabilityTests(unittest.TestCase):
         self.assertFalse(result.is_valid)
         self.assertIn("invalid_line_separator", result.errors)
 
+    def test_unicode_line_separators_are_rejected(self) -> None:
+        good = fixture("valid-single-sample.vcf").decode("utf-8")
+        for separator in ("\u0085", "\u2028", "\u2029"):
+            with self.subTest(separator=hex(ord(separator))):
+                data = good.replace("\n", separator, 1).encode("utf-8")
+                result = validate_vcf_bytes(data)
+                self.assertFalse(result.is_valid)
+                self.assertIn("invalid_line_separator", result.errors)
+
+    def test_final_data_record_requires_line_separator(self) -> None:
+        data = fixture("valid-single-sample.vcf").rstrip(b"\n")
+        result = validate_vcf_bytes(data)
+        self.assertFalse(result.is_valid)
+        self.assertIn("unterminated_final_data_line", result.errors)
+
+    def test_positions_are_nondecreasing_within_chrom(self) -> None:
+        data = (
+            b"##fileformat=VCFv4.5\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            b"1\t200\t.\tA\tC\t.\tPASS\t.\tGT\t0/1\n"
+            b"1\t100\t.\tA\tG\t.\tPASS\t.\tGT\t0/1\n"
+        )
+        result = validate_vcf_bytes(data)
+        self.assertFalse(result.is_valid)
+        self.assertTrue(any(error.endswith(":decreasing_pos") for error in result.errors))
+
+    def test_chrom_blocks_must_be_contiguous(self) -> None:
+        data = (
+            b"##fileformat=VCFv4.5\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            b"1\t100\t.\tA\tC\t.\tPASS\t.\tGT\t0/1\n"
+            b"2\t100\t.\tA\tC\t.\tPASS\t.\tGT\t0/1\n"
+            b"1\t200\t.\tA\tG\t.\tPASS\t.\tGT\t0/1\n"
+        )
+        result = validate_vcf_bytes(data)
+        self.assertFalse(result.is_valid)
+        self.assertTrue(any(error.endswith(":non_contiguous_chrom") for error in result.errors))
+
+    def test_telomere_zero_position_is_structurally_allowed(self) -> None:
+        data = (
+            b"##fileformat=VCFv4.5\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            b"1\t0\t.\tA\tC\t.\tPASS\t.\tGT\t0/1\n"
+        )
+        self.assertTrue(validate_vcf_bytes(data).is_valid)
+
     def test_capability_manifest_is_complete_and_disabled_by_default(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         required = {
