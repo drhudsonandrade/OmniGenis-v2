@@ -9,6 +9,7 @@ from .vcf_intake import validate_vcf_bytes
 CAPABILITY_ID = "vcf-qc-observations"
 CAPABILITY_VERSION = "1.0.0"
 CALLABILITY_STATUS = "NOT_AVAILABLE_FROM_VARIANT_ONLY_VCF"
+MAX_VCF_INTEGER = 2_147_483_647
 LIMITATIONS = (
     "Whole-genome or exome callability cannot be inferred from absent positions in a variant-only VCF.",
     "Coverage outside observed variant records is not inferred.",
@@ -125,25 +126,36 @@ def _float_summary(values: list[float]) -> FloatObservation:
     return FloatObservation(len(values), min(values), max(values))
 
 
-def _parse_nonnegative_int(value: str, field: str, line_number: int, errors: list[str]) -> int | None:
+def _parse_nonnegative_int(
+    value: str,
+    field: str,
+    line_number: int,
+    errors: list[str],
+) -> int | None:
     if value == ".":
         return None
     if value == "":
         errors.append(f"line_{line_number}:{field.lower()}_empty")
         return None
-    try:
-        parsed = int(value)
-    except ValueError:
+    unsigned = value[1:] if value.startswith("-") else value
+    if not unsigned or not unsigned.isascii() or not unsigned.isdecimal():
         errors.append(f"line_{line_number}:{field.lower()}_not_integer")
         return None
+    parsed = int(value)
     if parsed < 0:
         errors.append(f"line_{line_number}:{field.lower()}_negative")
+        return None
+    if parsed > MAX_VCF_INTEGER:
+        errors.append(f"line_{line_number}:{field.lower()}_out_of_range")
         return None
     return parsed
 
 
 def _parse_ad(value: str, line_number: int, errors: list[str]) -> list[int] | None:
-    if value in {"", "."}:
+    if value == ".":
+        return None
+    if value == "":
+        errors.append(f"line_{line_number}:ad_empty")
         return None
     parsed: list[int] = []
     for token in value.split(","):
@@ -152,11 +164,33 @@ def _parse_ad(value: str, line_number: int, errors: list[str]) -> list[int] | No
             return None
         parsed.append(item)
     return parsed
+
+
+def _is_valid_genotype(value: str, alt: str) -> bool:
+    if value == "":
+        return False
+    if "/" in value and "|" in value:
+        return False
+    separator = "/" if "/" in value else "|" if "|" in value else None
+    alleles = value.split(separator) if separator is not None else [value]
+    if any(allele == "" for allele in alleles):
+        return False
+    alternate_count = 0 if alt == "." else len(alt.split(","))
+    for allele in alleles:
+        if allele == ".":
+            continue
+        if not allele.isascii() or not allele.isdecimal():
+            return False
+        if int(allele) > alternate_count:
+            return False
+    return True
+
+
 def _is_missing_genotype(value: str | None) -> bool:
     if value is None or value in {"", "."}:
         return True
-    alleles = value.replace("|", "/").split("/")
-    return any(allele == "." for allele in alleles)
+    separator_normalized = value.replace("|", "/")
+    return any(allele == "." for allele in separator_normalized.split("/"))
 
 
 def _biallelic_heterozygous_balance(gt: str | None, alt: str, ad: list[int] | None) -> float | None:
@@ -253,7 +287,9 @@ def observe_vcf_qc(data: bytes) -> VcfQcObservationResult:
         else:
             if gt == "":
                 errors.append(f"line_{line_number}:gt_empty")
-            if _is_missing_genotype(gt):
+            elif gt is None or not _is_valid_genotype(gt, fields[4]):
+                errors.append(f"line_{line_number}:invalid_gt")
+            elif _is_missing_genotype(gt):
                 missing_genotypes += 1
             else:
                 called_genotypes += 1
@@ -265,9 +301,15 @@ def observe_vcf_qc(data: bytes) -> VcfQcObservationResult:
         if gq is not None:
             gq_values.append(gq)
         ad = _parse_ad(format_values.get("AD", "."), line_number, errors)
+        valid_ad: list[int] | None = None
         if ad is not None:
-            ad_observed += 1
-        balance = _biallelic_heterozygous_balance(gt, fields[4], ad)
+            alternate_count = 0 if fields[4] == "." else len(fields[4].split(","))
+            if len(ad) != 1 + alternate_count:
+                errors.append(f"line_{line_number}:ad_cardinality")
+            else:
+                ad_observed += 1
+                valid_ad = ad
+        balance = _biallelic_heterozygous_balance(gt, fields[4], valid_ad)
         if balance is not None:
             allele_balances.append(balance)
     return VcfQcObservationResult(

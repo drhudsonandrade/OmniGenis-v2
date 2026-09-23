@@ -109,6 +109,31 @@ class VcfQcCapabilityTests(unittest.TestCase):
                 self.assertEqual(result.to_dict()["canonical_status"], "INVALID_QC_FIELDS")
                 self.assertTrue(any(error.endswith(suffix) for error in result.errors))
 
+    def test_reserved_integer_lexical_form_and_range_are_enforced(self) -> None:
+        cases = (
+            ("١٢", ":dp_not_integer"),
+            (" 12 ", ":dp_not_integer"),
+            ("2147483648", ":dp_out_of_range"),
+        )
+        for value, suffix in cases:
+            with self.subTest(value=value):
+                data = (
+                    b"##fileformat=VCFv4.5\n"
+                    b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+                    + f"1\t100\t.\tA\tC\t.\tPASS\t.\tGT:DP\t0/1:{value}\n".encode("utf-8")
+                )
+                result = observe_vcf_qc(data)
+                self.assertTrue(any(error.endswith(suffix) for error in result.errors))
+
+        maximum = (
+            b"##fileformat=VCFv4.5\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            b"1\t100\t.\tA\tC\t.\tPASS\t.\tGT:DP\t0/1:2147483647\n"
+        )
+        result = observe_vcf_qc(maximum)
+        self.assertEqual(result.errors, ())
+        self.assertEqual(result.depth.maximum, 2147483647)
+
     def test_zero_values_do_not_create_an_invented_quality_failure(self) -> None:
         data = (
             b"##fileformat=VCFv4.5\n"
@@ -152,10 +177,44 @@ class VcfQcCapabilityTests(unittest.TestCase):
             any(error.endswith(":sample_value_count_exceeds_format") for error in result.errors)
         )
 
+    def test_invalid_genotypes_are_not_counted_as_called(self) -> None:
+        cases = ("0//1", "0/2", "A/1", "0/1|1", "./x")
+        for gt in cases:
+            with self.subTest(gt=gt):
+                data = (
+                    b"##fileformat=VCFv4.5\n"
+                    b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+                    + f"1\t100\t.\tA\tC\t.\tPASS\t.\tGT\t{gt}\n".encode("utf-8")
+                )
+                result = observe_vcf_qc(data)
+                self.assertTrue(any(error.endswith(":invalid_gt") for error in result.errors))
+                self.assertEqual(result.called_genotype_records, 0)
+
+    def test_ad_cardinality_matches_ref_plus_alt(self) -> None:
+        invalid = (
+            b"##fileformat=VCFv4.5\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            b"1\t100\t.\tA\tC,G\t.\tPASS\t.\tGT:AD\t1/2:10,5\n"
+        )
+        result = observe_vcf_qc(invalid)
+        self.assertTrue(any(error.endswith(":ad_cardinality") for error in result.errors))
+        self.assertEqual(result.allele_depth_observed_records, 0)
+
+        valid = (
+            b"##fileformat=VCFv4.5\n"
+            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            b"1\t100\t.\tA\tC,G\t.\tPASS\t.\tGT:AD\t1/2:10,5,3\n"
+        )
+        result = observe_vcf_qc(valid)
+        self.assertEqual(result.errors, ())
+        self.assertEqual(result.allele_depth_observed_records, 1)
+        self.assertEqual(result.allele_balance.observed_records, 0)
+
     def test_explicit_empty_format_values_are_rejected(self) -> None:
         cases = (
             ("GT:DP", "0/1:", ":dp_empty"),
             ("GT:GQ", "0/1:", ":gq_empty"),
+            ("GT:AD", "0/1:", ":ad_empty"),
             ("GT:AD", "0/1:10,", ":ad_empty"),
             ("GT:DP", ":10", ":gt_empty"),
         )
