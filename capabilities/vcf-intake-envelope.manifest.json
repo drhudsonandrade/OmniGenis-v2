@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "vcf-intake-envelope",
+  "capability_version": "1.0.0",
+  "real_use_case": "Validate the structural envelope of a single-sample VCF before downstream processing.",
+  "owner_priority": "foundation",
+  "upstream_status": "GA4GH HTS VCF 4.5 canonical specification; checked 2026-09-22.",
+  "license": "Independent project implementation; no third-party implementation or fixture bytes copied.",
+  "supported_profile": "VCF 4.5 text, UTF-8, exactly one sample, uncompressed bytes.",
+  "resource_budget": "O(n) time and O(n) auxiliary memory for decoded text and materialized lines; no network or subprocess.",
+  "input_fixture": "tests/fixtures/vcf_intake/valid-single-sample.vcf",
+  "output_contract": "Tool-neutral CapabilityResult mapping emitted by omnigenis.capabilities.vcf_intake.VcfIntakeResult.to_dict",
+  "known_issues": "No reference concordance, normalization, interpretation, full structured meta-information/INFO/FORMAT/allele grammar validation, BGZF, BCF, gVCF, or structural-variant semantic validation.",
+  "security": "Pure bytes parser with no filesystem, network, or subprocess access.",
+  "disable_path": "Not wired to any default execution pipeline."
+}
