@@ -1,0 +1,9 @@
+##fileformat=VCFv4.5
+##contig=<ID=chr1,length=100>
+##INFO=<ID=SRC,Number=1,Type=String,Description="Synthetic provenance token">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+chr1	8	leftshift	AAA	A	50	PASS	SRC=L	GT:AD	0/1:20,10
+chr1	15	multi	G	C,T	60	PASS	SRC=M	GT:AD	1|2:10,6,4
+chr1	25	snv	C	T	70	PASS	SRC=S	GT:AD	0/1:12,8

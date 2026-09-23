@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "reference-bound-small-variant-normalization",
+  "capability_version": "1.0.0",
+  "real_use_case": "Normalize E1A single-sample sequence-resolved SNV and indel VCF records against the exact verified reference before canonical variant modeling.",
+  "owner_priority": "foundation",
+  "upstream_status": "BCFtools 1.24 with HTSlib 1.24, release/tag identity pinned in the executor profile.",
+  "license": "Project-owned adapter. External BCFtools/HTSlib bytes are not redistributed; the supported build profile uses the MIT/Expat license choice with GSL and Perl filters disabled.",
+  "supported_profile": "Validated single-sample VCF 4.5; verified NCBI RefSeq GCF_000001405.40 / GRCh38.p14 reference; primary autosomes 1-22; sequence-resolved SNV and indel records.",
+  "resource_budget": "Streams and hashes the reference before execution; BCFtools sort is capped at 256M memory and uses an isolated temporary workspace; no network access is required.",
+  "input_fixture": "tests/fixtures/variant_normalization/input.vcf with synthetic-reference.fa; full GRCh38.p14 conformance remains private.",
+  "output_contract": "VariantNormalizationResult with normalized VCF digest, VariantTransformationLedger, and explicit post-transform rule results.",
+  "known_issues": "No numeric small-indel cutoff is invented here; upstream E1A profile governance owns that boundary. Multiallelic decomposition explicitly invalidates native multiallelic genotype/phase semantics while preserving the source genotype in the ledger. Contig alias rewriting is not performed.",
+  "security": "Pinned executable digest and version, verified reference digest, argv-only subprocess execution with shell disabled, bounded sort memory, timeout, isolated temporary workspace, no network, and no private path emitted into normalized VCF.",
+  "disable_path": "Do not invoke unless ReferenceIdentityResult is VERIFIED and the exact reference and executor digests match; this capability is not wired to a default execution pipeline."
+}

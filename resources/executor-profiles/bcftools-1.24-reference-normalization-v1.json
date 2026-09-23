@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "bcftools-1.24-reference-normalization-v1",
+  "executor_id": "bcftools",
+  "executor_version": "1.24",
+  "bundled_htslib_version": "1.24",
+  "release": {
+    "tag": "1.24",
+    "tag_commit": "fb9f0f783e0f67d734f6fa7fe4df9d230522f196",
+    "annotated_tag_signature": "VERIFIED",
+    "published_at": "2026-07-09T15:03:48Z",
+    "asset_name": "bcftools-1.24.tar.bz2",
+    "asset_size_bytes": 8272861,
+    "asset_sha256": "8caddc22610ee2851666047c859bb91da0c1e32d0c2ec553db6f153ad130e46f"
+  },
+  "license_profile": {
+    "selected_license": "MIT/Expat",
+    "gsl": "DISABLED",
+    "perl_filters": "DISABLED",
+    "redistribution": "EXECUTOR_NOT_REDISTRIBUTED_BY_OMNIGENIS"
+  },
+  "build_profile": {
+    "bcftools_plugins": "DISABLED",
+    "htslib_bz2": "DISABLED",
+    "htslib_lzma": "DISABLED",
+    "reason": "CRAM and optional plugin capabilities are outside the E1A normalization scope."
+  },
+  "normalization_profile": {
+    "reference_check": "-c e",
+    "multiallelic_split": "-m -any",
+    "multi_overlaps": ".",
+    "original_record_tag": "OMNIGENIS_ORIGINAL",
+    "sort_memory": "256M",
+    "norm_command_header": "SUPPRESSED_WITH_NO_VERSION",
+    "network": "NOT_REQUIRED"
+  },
+  "runtime_attestation": {
+    "binary_sha256": "DEPLOYMENT_SPECIFIC_REQUIRED_INPUT",
+    "version_probe": "bcftools 1.24 / Using htslib 1.24"
+  },
+  "known_issues": [
+    "Native multiallelic genotype and phase semantics are explicitly invalidated after decomposition and retained in the transformation ledger.",
+    "Contig alias rewriting is outside this capability.",
+    "CRAM support is outside this build profile."
+  ],
+  "disable_path": "Reject execution when binary digest/version, verified reference identity, or reference content digest do not match."
+}

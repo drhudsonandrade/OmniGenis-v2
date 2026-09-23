@@ -110,6 +110,14 @@ class ReferenceIdentityCapabilityTests(unittest.TestCase):
             "GCF_000001405.40",
         )
         self.assertEqual(
+            payload["canonical_payload"]["fasta_content_sha256"],
+            "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
+        )
+        self.assertEqual(
+            payload["canonical_payload"]["fasta_content_size_bytes"],
+            3339739109,
+        )
+        self.assertEqual(
             payload["reference_bundle"],
             "1c34b839e1ae36102d003a217f76f1dd57cd1d10b0310cbd9e1d8078c8e88672",
         )
@@ -342,6 +350,32 @@ class ReferenceIdentityCapabilityTests(unittest.TestCase):
                     if item.rule_id == case["expected_rule"]
                 )
                 self.assertEqual(rule.status, "FAIL")
+
+    def test_partial_manual_result_cannot_claim_verified(self) -> None:
+        from omnigenis.capabilities.reference_identity import (
+            ReferenceIdentityResult,
+            ReferenceRuleResult,
+        )
+
+        partial = ReferenceIdentityResult(
+            profile_id="grch38-p14-ncbi-refseq-autosomal-v1",
+            assembly_accession="GCF_000001405.40",
+            bundle_sha256="1c34b839e1ae36102d003a217f76f1dd57cd1d10b0310cbd9e1d8078c8e88672",
+            fasta_content_sha256="df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
+            fasta_content_size_bytes=3339739109,
+            rules=(
+                ReferenceRuleResult(
+                    RULE_PROFILE,
+                    "PASS",
+                    "incomplete_manual_result",
+                ),
+            ),
+        )
+        self.assertFalse(partial.passed)
+        self.assertEqual(
+            partial.to_dict()["canonical_payload"]["verification_status"],
+            "NOT_VERIFIED",
+        )
 
     def test_capability_manifest_conforms_and_is_disabled_by_default(self) -> None:
         schema = load_json(CAPABILITY_SCHEMA)
