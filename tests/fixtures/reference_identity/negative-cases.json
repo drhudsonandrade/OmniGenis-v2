@@ -1,0 +1,46 @@
+{
+  "cases": [
+    {
+      "case_id": "wrong-fasta-transport-sha",
+      "expected_rule": "REFERENCE_FASTA_IDENTITY",
+      "path": ["fasta_transport_sha256"],
+      "target": "observation",
+      "value": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "case_id": "wrong-assembly-report-sha",
+      "expected_rule": "REFERENCE_ASSEMBLY_REPORT_IDENTITY",
+      "path": ["assembly_report_sha256"],
+      "target": "observation",
+      "value": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "case_id": "wrong-assembly-accession",
+      "expected_rule": "REFERENCE_ASSEMBLY_IDENTITY",
+      "path": ["assembly_refseq_accession"],
+      "target": "observation",
+      "value": "GCF_000001405.39"
+    },
+    {
+      "case_id": "unclosed-rights-state",
+      "expected_rule": "REFERENCE_USE_RIGHTS",
+      "path": ["sources", 0, "rights_status"],
+      "target": "registry",
+      "value": "REVIEW_REQUIRED"
+    },
+    {
+      "case_id": "missing-resource-license",
+      "expected_rule": "REFERENCE_BUNDLE_IDENTITY",
+      "path": ["resources", 0, "license"],
+      "target": "bom",
+      "value": ""
+    },
+    {
+      "case_id": "changed-contig-length",
+      "expected_rule": "REFERENCE_CONTIG_COMPATIBILITY",
+      "path": ["autosomal_contigs", 0, "sequence_length"],
+      "target": "observation",
+      "value": 248956423
+    }
+  ]
+}

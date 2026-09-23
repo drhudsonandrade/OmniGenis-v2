@@ -1,0 +1,58 @@
+{
+  "bom_id": "scientific-resource-bom-grch38-p14-ncbi-refseq-autosomal-v1",
+  "bundle_descriptor": {
+    "assembly_accession": "GCF_000001405.40",
+    "assembly_report_sha256": "64318ddff470b69b261a667d813210044f60d4ce654253a547db80ff73638d38",
+    "autosomal_contig_profile_sha256": "e1f5e6be843cc30e05a0e8d714f10e11a352b09a955b7925069225621aeae68a",
+    "fasta_content_sha256": "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
+    "fasta_transport_sha256": "11912a45a545bf01a10b2a7f10eb7a42924436b4d19b476b1899834fb7ba74a3",
+    "profile_id": "grch38-p14-ncbi-refseq-autosomal-v1"
+  },
+  "bundle_sha256": "1c34b839e1ae36102d003a217f76f1dd57cd1d10b0310cbd9e1d8078c8e88672",
+  "profile_id": "grch38-p14-ncbi-refseq-autosomal-v1",
+  "resources": [
+    {
+      "content_sha256": "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
+      "content_size_bytes": 3339739109,
+      "known_issues": "The upstream FASTA contains sequences outside the initial autosomal E1A profile; scope is controlled by the pinned contig profile.",
+      "license": "NCBI molecular-data policy with third-party rights caveat",
+      "lifecycle": "PINNED",
+      "replacement_path": "Create a new versioned profile and BOM; never use mutable latest identity.",
+      "resource_id": "grch38-p14-genomic-fasta-gz",
+      "role": "reference_fasta_transport",
+      "sha256": "11912a45a545bf01a10b2a7f10eb7a42924436b4d19b476b1899834fb7ba74a3",
+      "size_bytes": 972898531,
+      "source_id": "ncbi-refseq-grch38-p14",
+      "source_url": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.fna.gz",
+      "storage_mode": "EXTERNAL_PRIVATE_CACHE_NOT_REPOSITORY",
+      "upstream_md5": "c30471567037b2b2389d43c908c653e1",
+      "use_rights": "DOCUMENTED_WITH_OBLIGATIONS",
+      "version_release": "GCF_000001405.40 / GRCh38.p14"
+    },
+    {
+      "known_issues": "The assembly report describes the full assembly; the initial E1A profile selects only primary autosomes 1-22.",
+      "license": "NCBI molecular-data policy with third-party rights caveat",
+      "lifecycle": "PINNED",
+      "replacement_path": "Create a new versioned profile and BOM; never use mutable latest identity.",
+      "resource_id": "grch38-p14-assembly-report",
+      "role": "assembly_report",
+      "sha256": "64318ddff470b69b261a667d813210044f60d4ce654253a547db80ff73638d38",
+      "size_bytes": 80454,
+      "source_id": "ncbi-refseq-grch38-p14",
+      "source_url": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_assembly_report.txt",
+      "storage_mode": "EXTERNAL_PRIVATE_CACHE_NOT_REPOSITORY",
+      "use_rights": "DOCUMENTED_WITH_OBLIGATIONS",
+      "version_release": "GCF_000001405.40 / GRCh38.p14"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "source_id": "ncbi-refseq-grch38-p14",
+  "source_registry_id": "source-registry-minimal-e1a-v1",
+  "validation": {
+    "assembly_report_refseq_count": 705,
+    "autosomal_contig_count": 22,
+    "autosomal_contig_profile_sha256": "e1f5e6be843cc30e05a0e8d714f10e11a352b09a955b7925069225621aeae68a",
+    "fasta_sequence_count": 705,
+    "upstream_md5_match": true
+  }
+}
