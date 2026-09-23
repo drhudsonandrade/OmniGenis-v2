@@ -104,6 +104,14 @@ def _is_sha256(value: object) -> bool:
     )
 
 
+def _is_md5(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 32
+        and all(character in _HEX for character in value)
+    )
+
+
 def _all_unique_nonempty_strings(values: tuple[object, ...]) -> bool:
     if not all(_is_nonempty_string(value) for value in values):
         return False
@@ -242,11 +250,19 @@ def verify_reference_identity(
     fasta_ok = all(
         (
             _is_sha256(fasta.get("sha256")),
+            _is_sha256(observation.get("fasta_transport_sha256")),
             fasta.get("sha256") == observation.get("fasta_transport_sha256"),
+            _is_positive_json_integer(fasta.get("size_bytes")),
+            _is_positive_json_integer(observation.get("fasta_transport_size_bytes")),
             fasta.get("size_bytes") == observation.get("fasta_transport_size_bytes"),
             _is_sha256(fasta.get("content_sha256")),
+            _is_sha256(observation.get("fasta_content_sha256")),
             fasta.get("content_sha256") == observation.get("fasta_content_sha256"),
+            _is_positive_json_integer(fasta.get("content_size_bytes")),
+            _is_positive_json_integer(observation.get("fasta_content_size_bytes")),
             fasta.get("content_size_bytes") == observation.get("fasta_content_size_bytes"),
+            _is_md5(fasta.get("upstream_md5")),
+            _is_md5(observation.get("fasta_upstream_md5")),
             fasta.get("upstream_md5") == observation.get("fasta_upstream_md5"),
             observation.get("upstream_md5_match") is True,
             validation.get("upstream_md5_match") is True,
@@ -264,10 +280,17 @@ def verify_reference_identity(
     report_ok = all(
         (
             _is_sha256(report.get("sha256")),
+            _is_sha256(observation.get("assembly_report_sha256")),
             report.get("sha256") == observation.get("assembly_report_sha256"),
+            _is_positive_json_integer(report.get("size_bytes")),
+            _is_positive_json_integer(observation.get("assembly_report_size_bytes")),
             report.get("size_bytes") == observation.get("assembly_report_size_bytes"),
+            _is_positive_json_integer(validation.get("assembly_report_refseq_count")),
+            _is_positive_json_integer(observation.get("assembly_report_refseq_count")),
             validation.get("assembly_report_refseq_count")
             == observation.get("assembly_report_refseq_count"),
+            _is_positive_json_integer(validation.get("fasta_sequence_count")),
+            _is_positive_json_integer(observation.get("fasta_sequence_count")),
             validation.get("fasta_sequence_count")
             == observation.get("fasta_sequence_count"),
             observation.get("assembly_report_refseq_count")

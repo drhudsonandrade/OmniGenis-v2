@@ -163,6 +163,57 @@ class ReferenceIdentityCapabilityTests(unittest.TestCase):
             next(rule for rule in result.rules if rule.rule_id == RULE_REPORT).status,
             "FAIL",
         )
+
+    def test_missing_paired_evidence_never_passes_via_none_equality(self) -> None:
+        cases = (
+            (RULE_FASTA, "bom", ("resources", 0, "size_bytes"), "observation", ("fasta_transport_size_bytes",)),
+            (RULE_FASTA, "bom", ("resources", 0, "content_size_bytes"), "observation", ("fasta_content_size_bytes",)),
+            (RULE_FASTA, "bom", ("resources", 0, "upstream_md5"), "observation", ("fasta_upstream_md5",)),
+            (RULE_REPORT, "bom", ("resources", 1, "size_bytes"), "observation", ("assembly_report_size_bytes",)),
+            (RULE_REPORT, "bom", ("validation", "assembly_report_refseq_count"), "observation", ("assembly_report_refseq_count",)),
+            (RULE_REPORT, "bom", ("validation", "fasta_sequence_count"), "observation", ("fasta_sequence_count",)),
+        )
+        for expected_rule, left_name, left_path, right_name, right_path in cases:
+            with self.subTest(left_path=left_path, right_path=right_path):
+                payloads = {
+                    "bom": copy.deepcopy(self.bom),
+                    "observation": copy.deepcopy(self.observation),
+                }
+                for name, path in ((left_name, left_path), (right_name, right_path)):
+                    cursor = payloads[name]
+                    for part in path[:-1]:
+                        cursor = cursor[part]
+                    del cursor[path[-1]]
+                result = self.verify(
+                    bom=payloads["bom"],
+                    observation=payloads["observation"],
+                )
+                self.assertFalse(result.passed)
+                self.assertEqual(
+                    next(
+                        rule for rule in result.rules
+                        if rule.rule_id == expected_rule
+                    ).status,
+                    "FAIL",
+                )
+
+    def test_wrong_evidence_types_fail_closed(self) -> None:
+        bom = copy.deepcopy(self.bom)
+        observation = copy.deepcopy(self.observation)
+        bom["resources"][0]["upstream_md5"] = []
+        observation["fasta_upstream_md5"] = []
+        bom["validation"]["fasta_sequence_count"] = True
+        observation["fasta_sequence_count"] = True
+        result = self.verify(bom=bom, observation=observation)
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            next(rule for rule in result.rules if rule.rule_id == RULE_FASTA).status,
+            "FAIL",
+        )
+        self.assertEqual(
+            next(rule for rule in result.rules if rule.rule_id == RULE_REPORT).status,
+            "FAIL",
+        )
     def test_wrong_assembly_accession_fails(self) -> None:
         observation = copy.deepcopy(self.observation)
         observation["assembly_refseq_accession"] = "GCF_000001405.39"
