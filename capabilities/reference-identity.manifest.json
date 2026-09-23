@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "reference-identity",
+  "capability_version": "1.0.0",
+  "real_use_case": "Verify the exact reference assembly, reference bytes, source, rights state, bundle identity, and primary-autosome contig aliases before E1A normalization.",
+  "owner_priority": "foundation",
+  "upstream_status": "Project-owned deterministic verifier over a pinned NCBI RefSeq GRCh38.p14 resource contract.",
+  "license": "Project-owned implementation; reference bytes are not redistributed in this repository. NCBI source-use caveats remain explicit in the Source Registry.",
+  "supported_profile": "NCBI RefSeq GCF_000001405.40 / GRCh38.p14, primary autosomes 1-22, single-sample germline VCF E1A scope.",
+  "resource_budget": "O(r+c) time over resource and contig metadata; no reference sequence is loaded by this verifier.",
+  "input_fixture": "tests/fixtures/reference_identity/ncbi-grch38-p14.observation.json",
+  "output_contract": "Tool-neutral ReferenceIdentityResult emitted by omnigenis.capabilities.reference_identity.verify_reference_identity",
+  "known_issues": "Identity verification only. It does not normalize variants, perform calling, validate clinical interpretation, or activate sex chromosomes, mitochondrial DNA, alternate loci, or patches for E1A.",
+  "security": "Pure mapping and metadata processing with no filesystem, network, subprocess, dynamic code execution, or reference-byte parsing.",
+  "disable_path": "Do not select this reference profile in an execution profile; no silent fallback to a human-readable reference name is permitted."
+}

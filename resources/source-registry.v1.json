@@ -1,0 +1,26 @@
+{
+  "registry_id": "source-registry-minimal-e1a-v1",
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "assembly_name": "GRCh38.p14",
+      "attribution": "NCBI_ACKNOWLEDGMENT_REQUESTED",
+      "genbank_assembly_accession": "GCA_000001405.29",
+      "known_issues": "The assembly includes sex chromosomes, mitochondrial sequence, alternate loci, patches, and unlocalized/unplaced sequences outside the initial E1A autosomal profile.",
+      "license": "NCBI molecular-data policy; no NCBI restriction on use/distribution, with explicit third-party rights caveat.",
+      "lifecycle": "PINNED",
+      "limitations": "NCBI places no restriction on molecular-data use or distribution, but NCBI cannot transfer rights that may be asserted by original submitters.",
+      "local_reference_use": "ALLOWED_WITH_NCBI_CAVEAT",
+      "provider": "NCBI / National Library of Medicine and Genome Reference Consortium",
+      "redistribution": "NCBI_NO_RESTRICTION_WITH_THIRD_PARTY_RIGHTS_CAVEAT",
+      "refseq_assembly_accession": "GCF_000001405.40",
+      "retrieval_date": "2026-09-23",
+      "rights_status": "DOCUMENTED_WITH_OBLIGATIONS",
+      "replacement_path": "Create a new versioned reference profile and Scientific Resource BOM; never mutate this pinned identity in place.",
+      "source_id": "ncbi-refseq-grch38-p14",
+      "source_url": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/",
+      "terms_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+      "version_release": "GCF_000001405.40 / GRCh38.p14"
+    }
+  ]
+}
