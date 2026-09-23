@@ -24,6 +24,8 @@ from omnigenis.capabilities.reference_identity import (
 from omnigenis.capabilities.variant_normalization import (
     REFERENCE_ASSEMBLY,
     REFERENCE_BUNDLE_SHA256,
+    REFERENCE_FASTA_CONTENT_SHA256 as PRODUCTION_REFERENCE_FASTA_CONTENT_SHA256,
+    REFERENCE_FASTA_CONTENT_SIZE_BYTES as PRODUCTION_REFERENCE_FASTA_CONTENT_SIZE_BYTES,
     REFERENCE_PROFILE_ID,
     RULE_CARDINALITY,
     RULE_EXECUTOR,
@@ -170,11 +172,11 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         with (
             patch(
                 "omnigenis.capabilities.variant_normalization.REFERENCE_FASTA_CONTENT_SHA256",
-                "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
+                PRODUCTION_REFERENCE_FASTA_CONTENT_SHA256,
             ),
             patch(
                 "omnigenis.capabilities.variant_normalization.REFERENCE_FASTA_CONTENT_SIZE_BYTES",
-                3339739109,
+                PRODUCTION_REFERENCE_FASTA_CONTENT_SIZE_BYTES,
             ),
         ):
             result = normalize_small_variants(
@@ -248,7 +250,7 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         self.assertIn("mnv_out_of_scope_record_3", result.errors)
 
     def test_non_autosomal_contig_is_out_of_scope(self) -> None:
-        outside = self.data.replace(b"chr1", b"chr2")
+        outside = self.data.replace(b"chr1", b"chrX")
         result = normalize_small_variants(
             outside,
             reference_fasta=REFERENCE,
@@ -500,11 +502,11 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         )
         self.assertEqual(
             profile["reference_binding"]["fasta_content_sha256"],
-            "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
+            PRODUCTION_REFERENCE_FASTA_CONTENT_SHA256,
         )
         self.assertEqual(
             profile["reference_binding"]["fasta_content_size_bytes"],
-            3339739109,
+            PRODUCTION_REFERENCE_FASTA_CONTENT_SIZE_BYTES,
         )
 
 
