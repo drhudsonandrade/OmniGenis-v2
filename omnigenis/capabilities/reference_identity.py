@@ -104,6 +104,16 @@ def _is_sha256(value: object) -> bool:
     )
 
 
+def _all_unique_nonempty_strings(values: tuple[object, ...]) -> bool:
+    if not all(_is_nonempty_string(value) for value in values):
+        return False
+    return len(values) == len(set(values))
+
+
+def _is_positive_json_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 def _canonical_sha256(value: object) -> str:
     encoded = json.dumps(
         value,
@@ -270,14 +280,42 @@ def verify_reference_identity(
         "assembly_report_identity_match" if report_ok else "assembly_report_mismatch",
     )
 
-    descriptor = resource_bom.get("bundle_descriptor")
+    descriptor = _mapping(resource_bom.get("bundle_descriptor"))
     computed_bundle_sha = _canonical_sha256(descriptor)
     declared_bundle_sha = resource_bom.get("bundle_sha256")
     resources = resource_bom.get("resources")
-    resource_metadata_ok = (
-        isinstance(resources, list)
-        and len(resources) == 2
-        and all(_resource_metadata_closed(_mapping(item)) for item in resources)
+    resource_items = (
+        tuple(_mapping(item) for item in resources)
+        if isinstance(resources, list)
+        else ()
+    )
+    resource_ids = tuple(item.get("resource_id") for item in resource_items)
+    resource_roles = tuple(item.get("role") for item in resource_items)
+    resource_metadata_ok = all(
+        (
+            len(resource_items) == 2,
+            all(_resource_metadata_closed(item) for item in resource_items),
+            all(
+                item.get("source_id") == resource_bom.get("source_id")
+                for item in resource_items
+            ),
+            _all_unique_nonempty_strings(resource_ids),
+            _all_unique_nonempty_strings(resource_roles),
+            set(resource_roles) == {"reference_fasta_transport", "assembly_report"}
+            if _all_unique_nonempty_strings(resource_roles)
+            else False,
+        )
+    )
+    descriptor_bound = all(
+        (
+            descriptor.get("profile_id") == PROFILE_ID,
+            descriptor.get("assembly_accession") == ASSEMBLY_ACCESSION,
+            descriptor.get("fasta_transport_sha256") == fasta.get("sha256"),
+            descriptor.get("fasta_content_sha256") == fasta.get("content_sha256"),
+            descriptor.get("assembly_report_sha256") == report.get("sha256"),
+            descriptor.get("autosomal_contig_profile_sha256")
+            == contig_profile.get("sha256"),
+        )
     )
     bundle_ok = all(
         (
@@ -288,6 +326,7 @@ def verify_reference_identity(
             bom_ref.get("bundle_sha256") == declared_bundle_sha,
             bom_ref.get("bom_id") == resource_bom.get("bom_id"),
             resource_metadata_ok,
+            descriptor_bound,
         )
     )
     bundle_rule = _rule(
@@ -369,11 +408,10 @@ def verify_reference_identity(
             configured_contigs == observed_contigs,
             len(configured_contigs) == 22 if isinstance(configured_contigs, list) else False,
             molecules == _EXPECTED_AUTOSOMES,
-            len(refseq_accessions) == len(set(refseq_accessions)),
+            _all_unique_nonempty_strings(refseq_accessions),
             all(
                 _mapping(item).get("sequence_role") == "assembled-molecule"
-                and isinstance(_mapping(item).get("sequence_length"), int)
-                and _mapping(item).get("sequence_length", 0) > 0
+                and _is_positive_json_integer(_mapping(item).get("sequence_length"))
                 and _is_nonempty_string(_mapping(item).get("ucsc_style_name"))
                 for item in configured_contigs
             )

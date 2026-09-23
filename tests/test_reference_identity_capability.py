@@ -212,6 +212,59 @@ class ReferenceIdentityCapabilityTests(unittest.TestCase):
             "FAIL",
         )
 
+    def test_bundle_descriptor_must_bind_verified_resources(self) -> None:
+        bom = copy.deepcopy(self.bom)
+        bom["bundle_descriptor"]["fasta_content_sha256"] = "4" * 64
+        bom["bundle_sha256"] = canonical_sha256(bom["bundle_descriptor"])
+        profile = copy.deepcopy(self.profile)
+        profile["resource_bom_ref"]["bundle_sha256"] = bom["bundle_sha256"]
+        result = self.verify(profile=profile, bom=bom)
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            next(rule for rule in result.rules if rule.rule_id == RULE_BUNDLE).status,
+            "FAIL",
+        )
+
+    def test_bundle_resources_must_bind_declared_source(self) -> None:
+        bom = copy.deepcopy(self.bom)
+        bom["resources"][0]["source_id"] = "different-source"
+        result = self.verify(bom=bom)
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            next(rule for rule in result.rules if rule.rule_id == RULE_BUNDLE).status,
+            "FAIL",
+        )
+
+    def test_unhashable_resource_role_fails_closed(self) -> None:
+        bom = copy.deepcopy(self.bom)
+        bom["resources"][0]["role"] = []
+        result = self.verify(bom=bom)
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            next(rule for rule in result.rules if rule.rule_id == RULE_BUNDLE).status,
+            "FAIL",
+        )
+
+    def test_unhashable_contig_accession_fails_closed(self) -> None:
+        profile = copy.deepcopy(self.profile)
+        profile["contig_alias_profile"]["contigs"][0]["refseq_accession"] = []
+        result = self.verify(profile=profile)
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            next(rule for rule in result.rules if rule.rule_id == RULE_CONTIGS).status,
+            "FAIL",
+        )
+
+    def test_boolean_contig_length_fails_closed(self) -> None:
+        profile = copy.deepcopy(self.profile)
+        profile["contig_alias_profile"]["contigs"][0]["sequence_length"] = True
+        result = self.verify(profile=profile)
+        self.assertFalse(result.passed)
+        self.assertEqual(
+            next(rule for rule in result.rules if rule.rule_id == RULE_CONTIGS).status,
+            "FAIL",
+        )
+
     def test_negative_fixture_cases_fail_expected_rule(self) -> None:
         cases = load_json(NEGATIVE_CASES_PATH)["cases"]
         for case in cases:
