@@ -317,7 +317,11 @@ def _parse_records(data: bytes) -> tuple[_ParsedRecord, ...]:
     return tuple(records)
 
 
-def _supported_domain_errors(data: bytes, records: Iterable[_ParsedRecord]) -> list[str]:
+def _supported_domain_errors(
+    data: bytes,
+    records: Iterable[_ParsedRecord],
+    allowed_contigs: frozenset[str],
+) -> list[str]:
     text = data.decode("utf-8").replace("\r\n", "\n")
     errors: list[str] = []
     if any(
@@ -327,6 +331,8 @@ def _supported_domain_errors(data: bytes, records: Iterable[_ParsedRecord]) -> l
         errors.append("reserved_original_record_tag_declared")
     seen: set[str] = set()
     for record in records:
+        if record.chrom not in allowed_contigs:
+            errors.append(f"unsupported_contig_record_{record.ordinal}")
         if record.key in seen:
             errors.append(f"duplicate_provenance_key_record_{record.ordinal}")
         seen.add(record.key)
@@ -541,7 +547,12 @@ def normalize_small_variants(
             errors=errors,
         )
 
-    domain_errors = _supported_domain_errors(data, source_records)
+    allowed_contigs = (
+        frozenset(reference_identity.autosomal_refseq_accessions)
+        if isinstance(reference_identity, ReferenceIdentityResult)
+        else frozenset()
+    )
+    domain_errors = _supported_domain_errors(data, source_records, allowed_contigs)
     if domain_errors:
         states[RULE_INPUT] = ("FAIL", "unsupported_or_ambiguous_variant_domain")
         errors.extend(domain_errors)
@@ -677,6 +688,12 @@ def normalize_small_variants(
                 reference_identity.fasta_content_sha256 == REFERENCE_FASTA_CONTENT_SHA256,
                 type(reference_identity.fasta_content_size_bytes) is int
                 and reference_identity.fasta_content_size_bytes == REFERENCE_FASTA_CONTENT_SIZE_BYTES,
+                len(reference_identity.autosomal_refseq_accessions) == 22,
+                len(set(reference_identity.autosomal_refseq_accessions)) == 22,
+                all(
+                    isinstance(accession, str) and bool(accession)
+                    for accession in reference_identity.autosomal_refseq_accessions
+                ),
             )
         )
     if not reference_identity_valid:

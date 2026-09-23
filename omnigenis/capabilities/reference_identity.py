@@ -62,6 +62,7 @@ class ReferenceIdentityResult:
     bundle_sha256: str | None
     fasta_content_sha256: str | None
     fasta_content_size_bytes: int | None
+    autosomal_refseq_accessions: tuple[str, ...]
     rules: tuple[ReferenceRuleResult, ...]
 
     @property
@@ -86,6 +87,7 @@ class ReferenceIdentityResult:
                 "bundle_sha256": self.bundle_sha256,
                 "fasta_content_sha256": self.fasta_content_sha256,
                 "fasta_content_size_bytes": self.fasta_content_size_bytes,
+                "autosomal_refseq_accessions": list(self.autosomal_refseq_accessions),
                 "rules": [rule.to_dict() for rule in self.rules],
             },
             "availability": "AVAILABLE" if self.passed else "BLOCKED",
@@ -478,6 +480,11 @@ def verify_reference_identity(
 
     bundle_value = declared_bundle_sha if _is_sha256(declared_bundle_sha) else None
     assembly_value = assembly.get("refseq_accession")
+    verified_autosomal_accessions = (
+        tuple(refseq_accessions)
+        if contigs_ok and _all_unique_nonempty_strings(refseq_accessions)
+        else ()
+    )
     return ReferenceIdentityResult(
         profile_id=profile.get("profile_id")
         if _is_nonempty_string(profile.get("profile_id"))
@@ -492,6 +499,7 @@ def verify_reference_identity(
         fasta_content_size_bytes=observation.get("fasta_content_size_bytes")
         if _is_positive_json_integer(observation.get("fasta_content_size_bytes"))
         else None,
+        autosomal_refseq_accessions=verified_autosomal_accessions,
         rules=(
             profile_rule,
             assembly_rule,

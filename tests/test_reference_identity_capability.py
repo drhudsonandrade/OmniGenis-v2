@@ -118,6 +118,18 @@ class ReferenceIdentityCapabilityTests(unittest.TestCase):
             3339739109,
         )
         self.assertEqual(
+            len(payload["canonical_payload"]["autosomal_refseq_accessions"]),
+            22,
+        )
+        self.assertEqual(
+            payload["canonical_payload"]["autosomal_refseq_accessions"][0],
+            "NC_000001.11",
+        )
+        self.assertEqual(
+            payload["canonical_payload"]["autosomal_refseq_accessions"][-1],
+            "NC_000022.11",
+        )
+        self.assertEqual(
             payload["reference_bundle"],
             "1c34b839e1ae36102d003a217f76f1dd57cd1d10b0310cbd9e1d8078c8e88672",
         )
@@ -363,6 +375,7 @@ class ReferenceIdentityCapabilityTests(unittest.TestCase):
             bundle_sha256="1c34b839e1ae36102d003a217f76f1dd57cd1d10b0310cbd9e1d8078c8e88672",
             fasta_content_sha256="df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
             fasta_content_size_bytes=3339739109,
+            autosomal_refseq_accessions=(),
             rules=(
                 ReferenceRuleResult(
                     RULE_PROFILE,

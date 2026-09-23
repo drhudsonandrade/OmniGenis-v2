@@ -70,6 +70,7 @@ def synthetic_reference_identity(reference: Path = REFERENCE) -> ReferenceIdenti
         bundle_sha256=REFERENCE_BUNDLE_SHA256,
         fasta_content_sha256=sha256_file(reference),
         fasta_content_size_bytes=reference.stat().st_size,
+        autosomal_refseq_accessions=("chr1",) + tuple(f"synthetic{i}" for i in range(2, 23)),
         rules=tuple(
             ReferenceRuleResult(
                 rule_id,
@@ -246,6 +247,18 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("mnv_out_of_scope_record_3", result.errors)
 
+    def test_non_autosomal_contig_is_out_of_scope(self) -> None:
+        outside = self.data.replace(b"chr1", b"chr2")
+        result = normalize_small_variants(
+            outside,
+            reference_fasta=REFERENCE,
+            reference_identity=self.identity,
+            bcftools_executable="/does/not/matter",
+            expected_executor_sha256="0" * 64,
+        )
+        self.assertFalse(result.passed)
+        self.assertIn("unsupported_contig_record_1", result.errors)
+
     def test_symbolic_alt_is_out_of_scope(self) -> None:
         symbolic = self.data.replace(
             b"chr1\t25\tsnv\tC\tT",
@@ -283,12 +296,37 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
             bundle_sha256=REFERENCE_BUNDLE_SHA256,
             fasta_content_sha256=sha256_file(REFERENCE),
             fasta_content_size_bytes=REFERENCE.stat().st_size,
+            autosomal_refseq_accessions=("chr1",) + tuple(f"synthetic{i}" for i in range(2, 23)),
             rules=(),
         )
         result = self.run_actual(identity=incomplete)
         self.assertFalse(result.passed)
         states = {rule.rule_id: rule.status for rule in result.rules}
         self.assertEqual(states[RULE_REFERENCE], "FAIL")
+        self.assertIn("reference_identity_not_verified", result.errors)
+
+    def test_missing_reference_content_size_fails_closed(self) -> None:
+        incomplete = ReferenceIdentityResult(
+            profile_id=REFERENCE_PROFILE_ID,
+            assembly_accession=REFERENCE_ASSEMBLY,
+            bundle_sha256=REFERENCE_BUNDLE_SHA256,
+            fasta_content_sha256=self.synthetic_reference_sha256,
+            fasta_content_size_bytes=None,
+            autosomal_refseq_accessions=("chr1",) + tuple(
+                f"synthetic{i}" for i in range(2, 23)
+            ),
+            rules=self.identity.rules,
+        )
+        executable, digest = self.require_bcftools()
+        result = normalize_small_variants(
+            self.data,
+            reference_fasta=REFERENCE,
+            reference_identity=incomplete,
+            bcftools_executable=executable,
+            expected_executor_sha256=digest,
+            timeout_seconds=30,
+        )
+        self.assertFalse(result.passed)
         self.assertIn("reference_identity_not_verified", result.errors)
 
     def test_executor_digest_mismatch_fails_closed(self) -> None:
