@@ -137,18 +137,22 @@ def _parse_nonnegative_int(
     if value == "":
         errors.append(f"line_{line_number}:{field.lower()}_empty")
         return None
-    unsigned = value[1:] if value.startswith("-") else value
+    negative = value.startswith("-")
+    unsigned = value[1:] if negative else value
     if not unsigned or not unsigned.isascii() or not unsigned.isdecimal():
         errors.append(f"line_{line_number}:{field.lower()}_not_integer")
         return None
-    parsed = int(value)
-    if parsed < 0:
+    if negative:
         errors.append(f"line_{line_number}:{field.lower()}_negative")
         return None
-    if parsed > MAX_VCF_INTEGER:
+    normalized = unsigned.lstrip("0") or "0"
+    maximum = str(MAX_VCF_INTEGER)
+    if len(normalized) > len(maximum) or (
+        len(normalized) == len(maximum) and normalized > maximum
+    ):
         errors.append(f"line_{line_number}:{field.lower()}_out_of_range")
         return None
-    return parsed
+    return int(normalized)
 
 
 def _parse_ad(value: str, line_number: int, errors: list[str]) -> list[int] | None:

@@ -134,6 +134,26 @@ class VcfQcCapabilityTests(unittest.TestCase):
         self.assertEqual(result.errors, ())
         self.assertEqual(result.depth.maximum, 2147483647)
 
+    def test_oversized_reserved_integers_fail_closed_before_conversion(self) -> None:
+        huge = "9" * 5000
+        cases = (
+            ("GT:DP", f"0/1:{huge}", ":dp_out_of_range"),
+            ("GT:GQ", f"0/1:{huge}", ":gq_out_of_range"),
+            ("GT:AD", f"0/1:{huge},0", ":ad_out_of_range"),
+        )
+        for format_value, sample_value, suffix in cases:
+            with self.subTest(format_value=format_value):
+                data = (
+                    b"##fileformat=VCFv4.5\n"
+                    b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+                    + (
+                        f"1\t100\t.\tA\tC\t.\tPASS\t.\t{format_value}\t{sample_value}\n"
+                    ).encode("ascii")
+                )
+                result = observe_vcf_qc(data)
+                self.assertTrue(any(error.endswith(suffix) for error in result.errors))
+                self.assertEqual(result.to_dict()["canonical_status"], "INVALID_QC_FIELDS")
+
     def test_zero_values_do_not_create_an_invented_quality_failure(self) -> None:
         data = (
             b"##fileformat=VCFv4.5\n"
