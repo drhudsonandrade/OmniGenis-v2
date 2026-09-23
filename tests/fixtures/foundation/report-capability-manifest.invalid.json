@@ -1,0 +1,5 @@
+{
+  "schema_version": "1.0.0",
+  "required_capability_ids": ["capability-a", "capability-b"],
+  "evaluated_analysis_class_ids": ["analysis-class-a", "analysis-class-b"]
+}
