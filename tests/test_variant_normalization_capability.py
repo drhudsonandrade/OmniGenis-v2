@@ -5,6 +5,7 @@ from pathlib import Path
 import stat
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from jsonschema import Draft202012Validator
 
@@ -95,6 +96,14 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         self.identity = synthetic_reference_identity()
         self.bcftools = os.environ.get("OMNIGENIS_BCFTOOLS")
         self.bcftools_sha256 = os.environ.get("OMNIGENIS_BCFTOOLS_SHA256")
+        self.synthetic_reference_sha256 = sha256_file(REFERENCE)
+        self.synthetic_reference_size = REFERENCE.stat().st_size
+        sha_patch = patch("omnigenis.capabilities.variant_normalization.REFERENCE_FASTA_CONTENT_SHA256", self.synthetic_reference_sha256)
+        size_patch = patch("omnigenis.capabilities.variant_normalization.REFERENCE_FASTA_CONTENT_SIZE_BYTES", self.synthetic_reference_size)
+        sha_patch.start()
+        size_patch.start()
+        self.addCleanup(size_patch.stop)
+        self.addCleanup(sha_patch.stop)
 
     def require_bcftools(self) -> tuple[str, str]:
         if not self.bcftools or not self.bcftools_sha256:
@@ -154,6 +163,31 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         )
         self.assertNotIn(str(REFERENCE.resolve()).encode("utf-8"), result.normalized_vcf)
         self.assertNotIn(b"##bcftools_", result.normalized_vcf)
+
+    def test_synthetic_identity_cannot_satisfy_production_reference_binding(self) -> None:
+        executable, digest = self.require_bcftools()
+        with (
+            patch(
+                "omnigenis.capabilities.variant_normalization.REFERENCE_FASTA_CONTENT_SHA256",
+                "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
+            ),
+            patch(
+                "omnigenis.capabilities.variant_normalization.REFERENCE_FASTA_CONTENT_SIZE_BYTES",
+                3339739109,
+            ),
+        ):
+            result = normalize_small_variants(
+                self.data,
+                reference_fasta=REFERENCE,
+                reference_identity=self.identity,
+                bcftools_executable=executable,
+                expected_executor_sha256=digest,
+                timeout_seconds=30,
+            )
+        self.assertFalse(result.passed)
+        states = {rule.rule_id: rule.status for rule in result.rules}
+        self.assertEqual(states[RULE_REFERENCE], "FAIL")
+        self.assertIn("reference_identity_not_verified", result.errors)
 
     def test_reference_digest_mismatch_fails_before_normalization(self) -> None:
         self.require_bcftools()
@@ -418,6 +452,22 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
         )
         self.assertEqual(profile["license_profile"]["gsl"], "DISABLED")
         self.assertEqual(profile["license_profile"]["perl_filters"], "DISABLED")
+        self.assertEqual(
+            profile["reference_binding"]["profile_id"],
+            "grch38-p14-ncbi-refseq-autosomal-v1",
+        )
+        self.assertEqual(
+            profile["reference_binding"]["bundle_sha256"],
+            "1c34b839e1ae36102d003a217f76f1dd57cd1d10b0310cbd9e1d8078c8e88672",
+        )
+        self.assertEqual(
+            profile["reference_binding"]["fasta_content_sha256"],
+            "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0",
+        )
+        self.assertEqual(
+            profile["reference_binding"]["fasta_content_size_bytes"],
+            3339739109,
+        )
 
 
 if __name__ == "__main__":

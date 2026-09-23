@@ -34,6 +34,10 @@ REFERENCE_ASSEMBLY = "GCF_000001405.40"
 REFERENCE_BUNDLE_SHA256 = (
     "1c34b839e1ae36102d003a217f76f1dd57cd1d10b0310cbd9e1d8078c8e88672"
 )
+REFERENCE_FASTA_CONTENT_SHA256 = (
+    "df6e4918316e05a9cc1fd29c352841d3678b607d7a436819cd43371b52c814c0"
+)
+REFERENCE_FASTA_CONTENT_SIZE_BYTES = 3_339_739_109
 ORIGINAL_RECORD_TAG = "OMNIGENIS_ORIGINAL"
 SORT_MEMORY = "256M"
 
@@ -670,9 +674,9 @@ def normalize_small_variants(
                 reference_identity.profile_id == REFERENCE_PROFILE_ID,
                 reference_identity.assembly_accession == REFERENCE_ASSEMBLY,
                 reference_identity.bundle_sha256 == REFERENCE_BUNDLE_SHA256,
-                _is_sha256(reference_identity.fasta_content_sha256),
-                type(reference_identity.fasta_content_size_bytes) is int,
-                reference_identity.fasta_content_size_bytes > 0,
+                reference_identity.fasta_content_sha256 == REFERENCE_FASTA_CONTENT_SHA256,
+                type(reference_identity.fasta_content_size_bytes) is int
+                and reference_identity.fasta_content_size_bytes == REFERENCE_FASTA_CONTENT_SIZE_BYTES,
             )
         )
     if not reference_identity_valid:
@@ -697,7 +701,7 @@ def normalize_small_variants(
             executor_sha256=executor_sha256,
             executor_version=executor_version,
         )
-    expected_reference_size = reference_identity.fasta_content_size_bytes
+    expected_reference_size = REFERENCE_FASTA_CONTENT_SIZE_BYTES
     reference_stat_before = reference.stat()
     if reference_stat_before.st_size != expected_reference_size:
         states[RULE_REFERENCE] = ("FAIL", "reference_size_mismatch")
@@ -723,7 +727,7 @@ def normalize_small_variants(
             executor_sha256=executor_sha256,
             executor_version=executor_version,
         )
-    if reference_sha256 != reference_identity.fasta_content_sha256:
+    if reference_sha256 != REFERENCE_FASTA_CONTENT_SHA256:
         states[RULE_REFERENCE] = ("FAIL", "reference_content_digest_mismatch")
         errors.append("reference_content_digest_mismatch")
         return _result(
@@ -973,7 +977,7 @@ def normalize_small_variants(
         or reference_stat_after.st_ino != reference_stat_before.st_ino
         or reference_stat_after.st_size != reference_stat_before.st_size
         or reference_stat_after.st_mtime_ns != reference_stat_before.st_mtime_ns
-        or reference_sha256_after != reference_identity.fasta_content_sha256
+        or reference_sha256_after != REFERENCE_FASTA_CONTENT_SHA256
     ):
         states[RULE_REFERENCE] = ("FAIL", "reference_changed_during_execution")
         errors.append("reference_changed_during_execution")
