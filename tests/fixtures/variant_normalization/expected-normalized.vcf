@@ -1,0 +1,12 @@
+##fileformat=VCFv4.5
+##FILTER=<ID=PASS,Description="All filters passed">
+##contig=<ID=chr1,length=100>
+##INFO=<ID=SRC,Number=1,Type=String,Description="Synthetic provenance token">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths">
+##INFO=<ID=OMNIGENIS_ORIGINAL,Number=1,Type=String,Description="Original variant. Format: CHR|POS|REF|ALT|USED_ALT_IDX">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+chr1	5	leftshift	CAA	C	50	PASS	SRC=L;OMNIGENIS_ORIGINAL=chr1|8|AAA|A	GT:AD	0/1:20,10
+chr1	15	multi	G	C	60	PASS	SRC=M;OMNIGENIS_ORIGINAL=chr1|15|G|C,T|1	GT:AD	1|.:10,6
+chr1	15	multi	G	T	60	PASS	SRC=M;OMNIGENIS_ORIGINAL=chr1|15|G|C,T|2	GT:AD	.|1:10,4
+chr1	25	snv	C	T	70	PASS	SRC=S	GT:AD	0/1:12,8
