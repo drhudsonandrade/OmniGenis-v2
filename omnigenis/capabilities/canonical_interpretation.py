@@ -249,6 +249,13 @@ def _result(
     )
 
 
+def _fullmatch(
+    pattern: re.Pattern[str],
+    value: object,
+) -> bool:
+    return isinstance(value, str) and pattern.fullmatch(value) is not None
+
+
 def _canonical_model_verified(value: object) -> bool:
     if not isinstance(value, CanonicalGenomicModelResult):
         return False
@@ -265,10 +272,11 @@ def _canonical_model_verified(value: object) -> bool:
         )
     ):
         return False
-    if any(
-        _CANONICAL_VARIANT_ID.fullmatch(
-            variant.canonical_variant_id
-        ) is None
+    if not all(
+        _fullmatch(
+            _CANONICAL_VARIANT_ID,
+            variant.canonical_variant_id,
+        )
         for variant in value.variants
     ):
         return False
@@ -294,9 +302,10 @@ def _evidence_snapshot_verified(value: object) -> bool:
         return False
     for item in value.items:
         if (
-            _CANONICAL_VARIANT_ID.fullmatch(
-                item.canonical_variant_id
-            ) is None
+            not _fullmatch(
+                _CANONICAL_VARIANT_ID,
+                item.canonical_variant_id,
+            )
             or not isinstance(item.metadata, EvidenceSnapshotMetadataRecord)
             or item.metadata.source_registry_id != SOURCE_REGISTRY_ID
             or type(item.submissions) is not tuple
@@ -352,11 +361,11 @@ def _evidence_item_valid(item: ClinVarEvidenceItem) -> bool:
         (
             bool(item.aggregate_classification),
             bool(item.aggregate_review_status),
-            _VCV.fullmatch(item.vcv_accession) is not None,
+            _fullmatch(_VCV, item.vcv_accession),
             type(item.vcv_version) is int and item.vcv_version > 0,
             type(item.variation_id) is int and item.variation_id > 0,
             bool(item.metadata.snapshot_id),
-            _SHA256.fullmatch(item.metadata.result_sha256) is not None,
+            _fullmatch(_SHA256, item.metadata.result_sha256),
             bool(item.metadata.checked_at),
             item.metadata.source_version
             == f"{item.vcv_accession}.{item.vcv_version}",

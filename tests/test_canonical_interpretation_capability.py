@@ -408,6 +408,63 @@ class CanonicalInterpretationObjectCapabilityTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("canonical_model_not_verified", result.errors)
 
+    def test_non_string_identity_fields_fail_closed_without_exception(self) -> None:
+        bad_model = replace(
+            self.model,
+            variants=(
+                replace(
+                    self.model.variants[0],
+                    canonical_variant_id=None,
+                ),
+            ),
+        )
+        bad_item_id = replace(
+            self.snapshot,
+            items=(
+                replace(
+                    self.snapshot.items[0],
+                    canonical_variant_id=None,
+                ),
+            ),
+        )
+        bad_vcv = replace(
+            self.snapshot,
+            items=(
+                replace(
+                    self.snapshot.items[0],
+                    vcv_accession=None,
+                ),
+            ),
+        )
+        bad_sha = replace(
+            self.snapshot,
+            items=(
+                replace(
+                    self.snapshot.items[0],
+                    metadata=replace(
+                        self.snapshot.items[0].metadata,
+                        result_sha256=None,
+                    ),
+                ),
+            ),
+        )
+        cases = (
+            ({"canonical_model": bad_model}, "canonical_model_not_verified"),
+            ({"evidence_snapshot": bad_item_id}, "evidence_snapshot_not_verified"),
+            ({"evidence_snapshot": bad_vcv}, "interpretation_source_invalid"),
+            ({"evidence_snapshot": bad_sha}, "interpretation_source_invalid"),
+        )
+        for overrides, expected_error in cases:
+            with self.subTest(expected_error=expected_error):
+                try:
+                    result = self.build(**overrides)
+                except (TypeError, ValueError, AttributeError) as exc:
+                    self.fail(
+                        f"Non-string identity field escaped as {type(exc).__name__}"
+                    )
+                self.assertFalse(result.passed)
+                self.assertIn(expected_error, result.errors)
+
     def test_malformed_upstream_objects_fail_closed_without_exception(self) -> None:
         cases = (
             (
