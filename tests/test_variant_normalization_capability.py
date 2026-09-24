@@ -509,9 +509,17 @@ class VariantNormalizationCapabilityTests(unittest.TestCase):
     def test_forged_autosomal_identity_cannot_admit_present_chr_x(self) -> None:
         forged = replace(
             self.identity,
-            autosomal_refseq_accessions=("chrX",) + self.identity.autosomal_refseq_accessions[1:],
+            autosomal_refseq_accessions=("chrX", *self.identity.autosomal_refseq_accessions[1:]),
         )
-        result = self.run_actual(self.data.replace(b"chr1", b"chrX"), identity=forged)
+        with patch("omnigenis.capabilities.variant_normalization._run") as runner:
+            result = normalize_small_variants(
+                self.data.replace(b"chr1", b"chrX"),
+                reference_fasta=REFERENCE,
+                reference_identity=forged,
+                bcftools_executable="/does/not/matter",
+                expected_executor_sha256="0" * 64,
+            )
+            runner.assert_not_called()
         self.assertFalse(result.passed, "A caller-supplied contig set widened the pinned profile")
         self.assertIn("reference_identity_not_verified", result.errors)
 
