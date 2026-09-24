@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "canonical-small-variant-identity",
+  "capability_version": "1.0.0",
+  "real_use_case": "Create the CANONICAL_VARIANTS re-entry artifact by assigning deterministic reference-bound identities to successfully normalized E1A SNV and indel records.",
+  "owner_priority": "foundation",
+  "upstream_status": "Project-owned deterministic identity contract over the verified GRCh38.p14 normalization output; no external executor or mutable nomenclature standard defines the identifier.",
+  "license": "Independent project-owned implementation; no third-party implementation or data bytes are copied or redistributed.",
+  "supported_profile": "Successful reference-bound normalization output for the pinned NCBI RefSeq GCF_000001405.40 / GRCh38.p14 primary-autosome E1A SNV and small-indel profile.",
+  "resource_budget": "O(n) time and O(n) output memory over normalized records; no network, subprocess, external database, or reference-byte loading.",
+  "input_fixture": "tests/fixtures/canonical_variant_identity/normalized-synthetic.vcf",
+  "output_contract": "CanonicalVariantIdentityResult containing a CANONICAL_VARIANTS artifact, deterministic reference-bound variant IDs, and normalization/source provenance links.",
+  "known_issues": "HGVS, rsID and gene identifiers are deliberately excluded from canonical variant identity; HGVS remains a later versioned projection, while gene identity and evidence annotation are separate capabilities.",
+  "security": "Pure deterministic in-memory processing of already validated normalized VCF bytes; no filesystem reads, subprocess, network, dynamic code execution, or external mutable identifier lookup.",
+  "disable_path": "This capability is not wired to a default execution pipeline; reject any input whose normalization attestation, pinned reference binding, record domain, uniqueness, or provenance contract is not exact."
+}
