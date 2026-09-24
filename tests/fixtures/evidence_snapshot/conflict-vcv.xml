@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ClinVarResult-Set>
+  <VariationArchive VariationID="2002" VariationName="synthetic-conflict" VariationType="single nucleotide variant" Accession="VCV000002002" Version="4" RecordType="classified" NumberOfSubmissions="2" NumberOfSubmitters="2" DateLastUpdated="2026-09-22" DateCreated="2026-09-22" MostRecentSubmission="2026-09-22">
+    <RecordStatus>current</RecordStatus>
+    <Species>Homo sapiens</Species>
+    <ClassifiedRecord>
+      <SimpleAllele AlleleID="3002" VariationID="2002">
+        <CanonicalSPDI>NC_000016.10:88738561:G:C</CanonicalSPDI>
+        <Location>
+          <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="16" Accession="NC_000016.10" start="88738561" stop="88738561" display_start="88738562" display_stop="88738562" variantLength="1" positionVCF="88738562" referenceAlleleVCF="G" alternateAlleleVCF="C"/>
+        </Location>
+      </SimpleAllele>
+      <GermlineClassification DateLastEvaluated="2026-02-13" DateCreated="2026-09-22">
+        <ReviewStatus>criteria provided, conflicting classifications</ReviewStatus>
+        <Description>Conflicting classifications of pathogenicity</Description>
+      </GermlineClassification>
+      <TraitSet Type="Disease">
+        <Trait Type="Disease"><Name><ElementValue Type="Preferred">Synthetic condition B</ElementValue></Name></Trait>
+      </TraitSet>
+      <ClinicalAssertion DateLastUpdated="2026-09-22" DateCreated="2026-09-22">
+        <ClinVarAccession Accession="SCV000002001" DateUpdated="2026-09-22" DateCreated="2026-09-22" Type="SCV" Version="1" SubmitterName="Synthetic Lab One" OrgID="2" OrganizationCategory="laboratory"/>
+        <Classification DateLastEvaluated="2021-07-27">
+          <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+          <GermlineClassification>Likely benign</GermlineClassification>
+        </Classification>
+        <TraitSet Type="Disease"><Trait Type="Disease"><Name><ElementValue Type="Preferred">Not specified</ElementValue></Name></Trait></TraitSet>
+      </ClinicalAssertion>
+      <ClinicalAssertion DateLastUpdated="2026-09-22" DateCreated="2026-09-22">
+        <ClinVarAccession Accession="SCV000002002" DateUpdated="2026-09-22" DateCreated="2026-09-22" Type="SCV" Version="1" SubmitterName="Synthetic Lab Two" OrgID="3" OrganizationCategory="laboratory"/>
+        <Classification DateLastEvaluated="2026-02-13">
+          <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+          <GermlineClassification>Uncertain significance</GermlineClassification>
+        </Classification>
+        <TraitSet Type="Disease"><Trait Type="Disease"><Name><ElementValue Type="Preferred">Synthetic condition B</ElementValue></Name></Trait></TraitSet>
+      </ClinicalAssertion>
+    </ClassifiedRecord>
+  </VariationArchive>
+</ClinVarResult-Set>

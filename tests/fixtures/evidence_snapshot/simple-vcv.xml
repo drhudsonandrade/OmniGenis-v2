@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ClinVarResult-Set>
+  <VariationArchive VariationID="1001" VariationName="synthetic-simple" VariationType="single nucleotide variant" Accession="VCV000001001" Version="3" RecordType="classified" NumberOfSubmissions="1" NumberOfSubmitters="1" DateLastUpdated="2026-09-20" DateCreated="2026-09-01" MostRecentSubmission="2026-09-20">
+    <RecordStatus>current</RecordStatus>
+    <Species>Homo sapiens</Species>
+    <ClassifiedRecord>
+      <SimpleAllele AlleleID="2001" VariationID="1001">
+        <CanonicalSPDI>NC_000001.11:10470:C:G</CanonicalSPDI>
+        <Location>
+          <SequenceLocation Assembly="GRCh38" AssemblyAccessionVersion="GCF_000001405.38" forDisplay="true" AssemblyStatus="current" Chr="1" Accession="NC_000001.11" start="10470" stop="10470" display_start="10471" display_stop="10471" variantLength="1" positionVCF="10471" referenceAlleleVCF="C" alternateAlleleVCF="G"/>
+        </Location>
+      </SimpleAllele>
+      <GermlineClassification DateLastEvaluated="2026-09-15" DateCreated="2026-09-20">
+        <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+        <Description SubmissionCount="1">Likely pathogenic</Description>
+      </GermlineClassification>
+      <TraitSet Type="Disease">
+        <Trait Type="Disease"><Name><ElementValue Type="Preferred">Synthetic condition A</ElementValue></Name></Trait>
+      </TraitSet>
+      <ClinicalAssertion DateLastUpdated="2026-09-20" DateCreated="2026-09-20">
+        <ClinVarAccession Accession="SCV000001001" DateUpdated="2026-09-20" DateCreated="2026-09-20" Type="SCV" Version="2" SubmitterName="Synthetic Laboratory" OrgID="1" OrganizationCategory="laboratory"/>
+        <Classification DateLastEvaluated="2026-09-15">
+          <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+          <GermlineClassification>Likely pathogenic</GermlineClassification>
+        </Classification>
+        <TraitSet Type="Disease">
+          <Trait Type="Disease"><Name><ElementValue Type="Preferred">Synthetic condition A</ElementValue></Name></Trait>
+        </TraitSet>
+      </ClinicalAssertion>
+    </ClassifiedRecord>
+  </VariationArchive>
+</ClinVarResult-Set>

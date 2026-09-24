@@ -5,6 +5,10 @@ from .canonical_genomic_model import (
     CanonicalGenomicModelResult,
     build_canonical_genomic_model,
 )
+from .evidence_snapshot import (
+    MinimumEvidenceSnapshotResult,
+    build_minimum_evidence_snapshot,
+)
 from .canonical_variant_identity import (
     CanonicalVariantIdentityResult,
     canonicalize_normalized_variants,
@@ -19,12 +23,14 @@ __all__ = [
     "ArtifactGateResult",
     "CanonicalGenomicModelResult",
     "CanonicalVariantIdentityResult",
+    "MinimumEvidenceSnapshotResult",
     "GeneIdentityResult",
     "ReferenceIdentityResult",
     "VariantNormalizationResult",
     "VcfIntakeResult",
     "VcfQcObservationResult",
     "build_canonical_genomic_model",
+    "build_minimum_evidence_snapshot",
     "canonicalize_normalized_variants",
     "normalize_small_variants",
     "resolve_gene_identity",

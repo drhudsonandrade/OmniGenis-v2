@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "minimum-evidence-snapshot",
+  "capability_version": "1.0.0",
+  "real_use_case": "Create the minimum E1A EvidenceSnapshot after CanonicalGenomicModel by preserving exact versioned ClinVar VCV aggregate and submission-level evidence for each canonical variant.",
+  "owner_priority": "foundation",
+  "upstream_status": "NCBI ClinVar is continuously updated; each evidence item is pinned by VCV accession.version, retrieval timestamp, exact locator, SHA-256, and byte size external to the repository.",
+  "license": "ClinVar data are freely available for any use and NCBI requests attribution to ClinVar; real ClinVar XML remains a private runtime fixture and only synthetic XML is stored in the repository.",
+  "supported_profile": "One exact ClinVar VCV XML snapshot per canonical E1A small variant, bound to GRCh38 display coordinates/alleles and preserving aggregate review/classification plus SCV submissions.",
+  "resource_budget": "O(total supplied XML bytes plus submissions) time and memory, with a 5 MiB per-record input cap; no network, subprocess, external database, or new dependency inside the capability.",
+  "input_fixture": "tests/fixtures/evidence_snapshot/simple-vcv.xml and conflict-vcv.xml",
+  "output_contract": "MinimumEvidenceSnapshotResult containing ordered per-variant ClinVar evidence items, EvidenceSnapshotMetadata, aggregate classification/review status, condition names, SCVs, conflict state, and exact provenance.",
+  "known_issues": "ClinVar conflicts are preserved without voting or local consensus. ClinGen/VCEP, ACMG/AMP, gene-disease validity, actionability, population/functional/computational evidence, phenotype matching, and clinical interpretation remain downstream.",
+  "security": "Rejects unsafe DTD/entity XML, malformed or oversized XML, forged metadata/digests/locators, unverified source-registry metadata, VCV/version mismatches, canonical-variant coordinate/allele mismatches, duplicates, missing evidence, and unexpected cardinality.",
+  "disable_path": "This capability is not wired to a default pipeline; reject snapshot construction unless every canonical variant has exactly one byte-bound, versioned, variant-matched evidence record and the source contract validates."
+}

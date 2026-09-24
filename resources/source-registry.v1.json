@@ -38,6 +38,23 @@
       "source_url": "https://storage.googleapis.com/public-download-files/hgnc/",
       "terms_url": "https://www.genenames.org/about/license/",
       "version_release": "HGNC snapshot 2026-09-18"
+    },
+    {
+      "attribution": "CLINVAR_ATTRIBUTION_REQUESTED",
+      "known_issues": "ClinVar is continuously updated and classifications may conflict; every EvidenceSnapshot must pin accession.version, retrieval time, and content digest.",
+      "license": "ClinVar data are freely available for any use; attribution to ClinVar requested.",
+      "lifecycle": "MUTABLE_PER_RECORD_SNAPSHOT",
+      "limitations": "NIH does not independently verify submitted information; not intended for direct diagnostic use without genetics professional review.",
+      "local_reference_use": "ALLOWED",
+      "provider": "NCBI ClinVar",
+      "redistribution": "ALLOWED_WITH_ATTRIBUTION_REQUESTED",
+      "replacement_path": "Retrieve the required VCV accession.version, record retrieval time and SHA-256, and create a new EvidenceSnapshot rather than mutating an existing one.",
+      "retrieval_date": "2026-09-24",
+      "rights_status": "UNRESTRICTED_USE_WITH_ATTRIBUTION_REQUESTED",
+      "source_id": "ncbi-clinvar-vcv",
+      "source_url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
+      "terms_url": "https://www.ncbi.nlm.nih.gov/clinvar/docs/maintenance_use/",
+      "version_release": "Per-record VCV accession.version snapshots"
     }
   ]
 }
