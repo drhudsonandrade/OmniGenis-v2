@@ -93,18 +93,22 @@ def normalization_result(
 ) -> VariantNormalizationResult:
     normalized_bytes = source if normalized is None else normalized
     records = parse_records(normalized_bytes)
+    source_records = parse_records(source)
     transformations = transformations or tuple("UNCHANGED" for _ in records)
     if len(transformations) != len(records):
         raise AssertionError("test fixture transformation count mismatch")
+    if len(source_records) != len(records):
+        raise AssertionError("test fixture source/output count mismatch")
     ledger = []
     for ordinal, ((chrom, pos, ref, alt, genotype, _line), transformation) in enumerate(
         zip(records, transformations, strict=True),
         start=1,
     ):
+        source_line = source_records[ordinal - 1][-1]
         ledger.append(
             VariantTransformationLedgerEntry(
                 source_record_ordinal=ordinal,
-                source_record_sha256=sha256_bytes(f"source:{ordinal}".encode("ascii")),
+                source_record_sha256=sha256_bytes(source_line.encode("utf-8")),
                 chrom=chrom,
                 pos=pos,
                 record_id=f"source-{ordinal}",
@@ -349,6 +353,56 @@ class CanonicalGenomicModelCapabilityTests(unittest.TestCase):
                     )
                 self.assertFalse(result.passed)
                 self.assertIn(expected_error, result.errors)
+
+    def test_source_ledger_is_bound_to_reverified_source_records(self) -> None:
+        first = self.normalization.transformation_ledger[0]
+        cases = (
+            replace(
+                self.normalization,
+                transformation_ledger=(
+                    replace(first, source_record_sha256="0" * 64),
+                    *self.normalization.transformation_ledger[1:],
+                ),
+            ),
+            replace(
+                self.normalization,
+                transformation_ledger=(
+                    replace(first, source_record_ordinal=99),
+                    *self.normalization.transformation_ledger[1:],
+                ),
+            ),
+            replace(
+                self.normalization,
+                input_record_count=self.normalization.input_record_count + 1,
+            ),
+        )
+        for forged_norm in cases:
+            with self.subTest(
+                input_record_count=forged_norm.input_record_count,
+                source_record_ordinal=(
+                    forged_norm.transformation_ledger[0].source_record_ordinal
+                ),
+                source_record_sha256=(
+                    forged_norm.transformation_ledger[0].source_record_sha256
+                ),
+            ):
+                forged_canonical = canonicalize_normalized_variants(
+                    forged_norm,
+                    self.identity,
+                )
+                self.assertTrue(
+                    forged_canonical.passed,
+                    forged_canonical.errors,
+                )
+                result = self.build(
+                    normalization=forged_norm,
+                    canonical_variants=forged_canonical,
+                )
+                self.assertFalse(result.passed)
+                self.assertIn(
+                    "normalization_source_provenance_mismatch",
+                    result.errors,
+                )
 
     def test_unknown_normalization_transformation_fails_closed(self) -> None:
         forged_entry = replace(

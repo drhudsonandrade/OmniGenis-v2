@@ -268,6 +268,15 @@ def _parse_allele_depths(value: str | None) -> tuple[int, ...] | None:
     return tuple(int(item) for item in value.split(","))
 
 
+def _source_record_lines(data: bytes) -> tuple[str, ...]:
+    text = data.decode("utf-8").replace("\r\n", "\n")
+    return tuple(
+        line
+        for line in text.splitlines()
+        if line and not line.startswith("#")
+    )
+
+
 def _parse_normalized_records(data: bytes) -> tuple[_NormalizedRecord, ...]:
     text = data.decode("utf-8").replace("\r\n", "\n")
     records: list[_NormalizedRecord] = []
@@ -503,7 +512,50 @@ def build_canonical_genomic_model(
             reference_identity=reference_identity,
             normalization_output_sha256=normalization.output_sha256,
         )
-    states[RULE_NORMALIZATION] = (True, "normalization_input_bound")
+
+    source_lines = _source_record_lines(source_vcf)
+    ledger = normalization.transformation_ledger
+    source_provenance_ok = all(
+        (
+            normalization.input_record_count == recomputed_qc.record_count,
+            normalization.input_record_count == len(source_lines),
+            type(ledger) is tuple,
+            len(ledger) == len(source_lines) if type(ledger) is tuple else False,
+        )
+    )
+    if source_provenance_ok:
+        for ordinal, (entry, source_line) in enumerate(
+            zip(ledger, source_lines, strict=True),
+            start=1,
+        ):
+            if (
+                not isinstance(entry, VariantTransformationLedgerEntry)
+                or entry.source_record_ordinal != ordinal
+                or entry.source_record_sha256
+                != _sha256_bytes(source_line.encode("utf-8"))
+            ):
+                source_provenance_ok = False
+                break
+    if not source_provenance_ok:
+        states[RULE_NORMALIZATION] = (
+            False,
+            "normalization_source_provenance_mismatch",
+        )
+        errors.append("normalization_source_provenance_mismatch")
+        return _result(
+            states=states,
+            errors=errors,
+            source_artifact_id=recomputed_artifact.artifact_id,
+            source_vcf_sha256=source_sha256,
+            source_vcf_size_bytes=len(source_vcf),
+            sample_id=recomputed_qc.sample_id,
+            reference_identity=reference_identity,
+            normalization_output_sha256=normalization.output_sha256,
+        )
+    states[RULE_NORMALIZATION] = (
+        True,
+        "normalization_input_and_source_provenance_bound",
+    )
 
     recomputed_canonical = canonicalize_normalized_variants(
         normalization,
