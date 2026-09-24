@@ -465,6 +465,31 @@ class CanonicalInterpretationObjectCapabilityTests(unittest.TestCase):
                 self.assertFalse(result.passed)
                 self.assertIn(expected_error, result.errors)
 
+    def test_malformed_projected_evidence_fields_fail_closed(self) -> None:
+        base = self.snapshot.items[0]
+        cases = (
+            replace(base, aggregate_classification=1),
+            replace(base, aggregate_review_status=1),
+            replace(base, conflict="false"),
+            replace(
+                base,
+                metadata=replace(base.metadata, snapshot_id=1),
+            ),
+            replace(base, condition_names=("Synthetic condition A", 1)),
+            replace(base, condition_references=("MedGen:C123456", 1)),
+        )
+        for malformed_item in cases:
+            with self.subTest(item=malformed_item):
+                forged = replace(self.snapshot, items=(malformed_item,))
+                try:
+                    result = self.build(evidence_snapshot=forged)
+                except (AttributeError, TypeError, ValueError) as exc:
+                    self.fail(
+                        f"Malformed projected evidence escaped as {type(exc).__name__}"
+                    )
+                self.assertFalse(result.passed)
+                self.assertIn("interpretation_source_invalid", result.errors)
+
     def test_malformed_upstream_objects_fail_closed_without_exception(self) -> None:
         cases = (
             (

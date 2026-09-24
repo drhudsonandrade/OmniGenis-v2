@@ -359,16 +359,25 @@ def _freshness_status(
 def _evidence_item_valid(item: ClinVarEvidenceItem) -> bool:
     return all(
         (
-            bool(item.aggregate_classification),
-            bool(item.aggregate_review_status),
+            type(item.aggregate_classification) is str
+            and bool(item.aggregate_classification),
+            type(item.aggregate_review_status) is str
+            and bool(item.aggregate_review_status),
+            type(item.conflict) is bool,
             _fullmatch(_VCV, item.vcv_accession),
             type(item.vcv_version) is int and item.vcv_version > 0,
             type(item.variation_id) is int and item.variation_id > 0,
-            bool(item.metadata.snapshot_id),
+            type(item.metadata.snapshot_id) is str
+            and bool(item.metadata.snapshot_id),
             _fullmatch(_SHA256, item.metadata.result_sha256),
-            bool(item.metadata.checked_at),
+            type(item.metadata.checked_at) is str
+            and bool(item.metadata.checked_at),
             item.metadata.source_version
             == f"{item.vcv_accession}.{item.vcv_version}",
+            type(item.condition_names) is tuple
+            and all(type(value) is str for value in item.condition_names),
+            type(item.condition_references) is tuple
+            and all(type(value) is str for value in item.condition_references),
             type(item.submissions) is tuple,
         )
     )
