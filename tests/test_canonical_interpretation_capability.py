@@ -334,6 +334,37 @@ class CanonicalInterpretationObjectCapabilityTests(unittest.TestCase):
         result = self.build(evidence_snapshot=forged)
         self.assertFalse(result.passed)
         self.assertIn("model_snapshot_provenance_mismatch", result.errors)
+
+        malformed_model = replace(
+            self.model,
+            source_vcf_sha256=1,
+        )
+        malformed_snapshot = replace(
+            self.snapshot,
+            canonical_model_source_vcf_sha256=1,
+        )
+        result = self.build(
+            canonical_model=malformed_model,
+            evidence_snapshot=malformed_snapshot,
+        )
+        self.assertFalse(result.passed)
+        self.assertIn("canonical_model_not_verified", result.errors)
+
+        malformed_model = replace(
+            self.model,
+            normalization_output_sha256=1,
+        )
+        malformed_snapshot = replace(
+            self.snapshot,
+            canonical_model_normalization_output_sha256=1,
+        )
+        result = self.build(
+            canonical_model=malformed_model,
+            evidence_snapshot=malformed_snapshot,
+        )
+        self.assertFalse(result.passed)
+        self.assertIn("canonical_model_not_verified", result.errors)
+
     def test_variant_identity_and_cardinality_mismatch_fail_closed(self) -> None:
         forged = evidence_snapshot(
             self.model,
@@ -477,6 +508,14 @@ class CanonicalInterpretationObjectCapabilityTests(unittest.TestCase):
             ),
             replace(base, condition_names=("Synthetic condition A", 1)),
             replace(base, condition_references=("MedGen:C123456", 1)),
+            replace(base, aggregate_classification="   "),
+            replace(base, aggregate_review_status="\t"),
+            replace(
+                base,
+                metadata=replace(base.metadata, snapshot_id="   "),
+            ),
+            replace(base, condition_names=("   ",)),
+            replace(base, condition_references=("\t",)),
         )
         for malformed_item in cases:
             with self.subTest(item=malformed_item):

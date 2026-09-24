@@ -272,6 +272,10 @@ def _canonical_model_verified(value: object) -> bool:
         )
     ):
         return False
+    if not _fullmatch(_SHA256, value.source_vcf_sha256):
+        return False
+    if not _fullmatch(_SHA256, value.normalization_output_sha256):
+        return False
     if not all(
         _fullmatch(
             _CANONICAL_VARIANT_ID,
@@ -288,6 +292,14 @@ def _evidence_snapshot_verified(value: object) -> bool:
         return False
     if (
         value.source_registry_id != SOURCE_REGISTRY_ID
+        or not _fullmatch(
+            _SHA256,
+            value.canonical_model_source_vcf_sha256,
+        )
+        or not _fullmatch(
+            _SHA256,
+            value.canonical_model_normalization_output_sha256,
+        )
         or type(value.rules) is not tuple
         or not all(
             isinstance(rule, EvidenceSnapshotRuleResult)
@@ -360,24 +372,30 @@ def _evidence_item_valid(item: ClinVarEvidenceItem) -> bool:
     return all(
         (
             type(item.aggregate_classification) is str
-            and bool(item.aggregate_classification),
+            and bool(item.aggregate_classification.strip()),
             type(item.aggregate_review_status) is str
-            and bool(item.aggregate_review_status),
+            and bool(item.aggregate_review_status.strip()),
             type(item.conflict) is bool,
             _fullmatch(_VCV, item.vcv_accession),
             type(item.vcv_version) is int and item.vcv_version > 0,
             type(item.variation_id) is int and item.variation_id > 0,
             type(item.metadata.snapshot_id) is str
-            and bool(item.metadata.snapshot_id),
+            and bool(item.metadata.snapshot_id.strip()),
             _fullmatch(_SHA256, item.metadata.result_sha256),
             type(item.metadata.checked_at) is str
             and bool(item.metadata.checked_at),
             item.metadata.source_version
             == f"{item.vcv_accession}.{item.vcv_version}",
             type(item.condition_names) is tuple
-            and all(type(value) is str for value in item.condition_names),
+            and all(
+                type(value) is str and bool(value.strip())
+                for value in item.condition_names
+            ),
             type(item.condition_references) is tuple
-            and all(type(value) is str for value in item.condition_references),
+            and all(
+                type(value) is str and bool(value.strip())
+                for value in item.condition_references
+            ),
             type(item.submissions) is tuple,
         )
     )
