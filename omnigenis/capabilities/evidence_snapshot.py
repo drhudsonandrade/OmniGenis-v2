@@ -8,6 +8,7 @@ from datetime import datetime
 import hashlib
 import re
 import xml.etree.ElementTree as ET
+from xml.parsers import expat
 
 from .canonical_genomic_model import (
     CanonicalGenomicModelResult,
@@ -47,6 +48,8 @@ _RULE_ORDER = (
 _VCV = re.compile(r"^VCV[0-9]{9}$")
 _VCV_VERSION = re.compile(r"^(VCV[0-9]{9})\.([1-9][0-9]*)$")
 _SCV = re.compile(r"^SCV[0-9]{9}$")
+_POSITIVE_INT = re.compile(r"^[1-9][0-9]*$")
+_NON_NEGATIVE_INT = re.compile(r"^(?:0|[1-9][0-9]*)$")
 _HEX = frozenset("0123456789abcdef")
 _METADATA_KEYS = frozenset(
     {
@@ -505,6 +508,24 @@ def _exactly_one(
     return elements[0] if len(elements) == 1 else None
 
 
+class _UnsafeXml(ValueError):
+    """Raised when XML declares a DTD or entity."""
+
+
+def _reject_unsafe_xml(xml_bytes: bytes) -> None:
+    """Reject DTD/entity declarations with encoding-aware Expat handlers."""
+
+    parser = expat.ParserCreate()
+
+    def deny(*_args: object) -> None:
+        raise _UnsafeXml
+
+    parser.StartDoctypeDeclHandler = deny
+    parser.EntityDeclHandler = deny
+    parser.ExternalEntityRefHandler = deny
+    parser.Parse(xml_bytes, True)
+
+
 def _parse_submission(
     assertion: ET.Element,
 ) -> tuple[ClinVarSubmissionEvidence | None, str | None]:
@@ -514,7 +535,10 @@ def _parse_submission(
         return None, "clinvar_submission_invalid"
     scv = accession.attrib.get("Accession", "")
     version_raw = accession.attrib.get("Version", "")
-    if _SCV.fullmatch(scv) is None or not version_raw.isdigit() or int(version_raw) <= 0:
+    if (
+        _SCV.fullmatch(scv) is None
+        or _POSITIVE_INT.fullmatch(version_raw) is None
+    ):
         return None, "clinvar_submission_invalid"
     submitter = accession.attrib.get("SubmitterName", "").strip()
     date_updated = accession.attrib.get("DateUpdated", "").strip()
@@ -562,9 +586,12 @@ def _parse_clinvar_xml(
 ) -> tuple[ClinVarEvidenceItem | None, str | None]:
     if not isinstance(xml_bytes, bytes) or not xml_bytes or len(xml_bytes) > MAX_XML_BYTES:
         return None, "clinvar_xml_invalid"
-    upper = xml_bytes.upper()
-    if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
+    try:
+        _reject_unsafe_xml(xml_bytes)
+    except _UnsafeXml:
         return None, "clinvar_xml_unsafe"
+    except expat.ExpatError:
+        return None, "clinvar_xml_invalid"
     try:
         root = ET.fromstring(xml_bytes)
     except (ET.ParseError, ValueError):
@@ -582,10 +609,8 @@ def _parse_clinvar_xml(
     variation_id_raw = archive.attrib.get("VariationID", "")
     if (
         _VCV.fullmatch(accession) is None
-        or not version_raw.isdigit()
-        or int(version_raw) <= 0
-        or not variation_id_raw.isdigit()
-        or int(variation_id_raw) <= 0
+        or _POSITIVE_INT.fullmatch(version_raw) is None
+        or _POSITIVE_INT.fullmatch(variation_id_raw) is None
         or archive.attrib.get("RecordType") != "classified"
     ):
         return None, "clinvar_archive_invalid"
@@ -694,21 +719,16 @@ def _parse_clinvar_xml(
 
     declared_submissions = archive.attrib.get("NumberOfSubmissions", "")
     if (
-        not declared_submissions.isdigit()
+        _NON_NEGATIVE_INT.fullmatch(declared_submissions) is None
         or int(declared_submissions) != len(submissions)
     ):
         return None, "clinvar_submission_count_mismatch"
 
-    submission_classes = {
-        submission.classification
-        for submission in submissions
-    }
     review_lower = aggregate_review.lower()
     classification_lower = aggregate_classification.lower()
     conflict = (
         "conflicting" in review_lower
         or "conflicting" in classification_lower
-        or len(submission_classes) > 1
     )
     return (
         ClinVarEvidenceItem(

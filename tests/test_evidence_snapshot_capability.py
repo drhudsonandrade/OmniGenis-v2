@@ -329,12 +329,18 @@ class MinimumEvidenceSnapshotCapabilityTests(unittest.TestCase):
         self.assertEqual(result.items, ())
         self.assertEqual(result.to_dict()["canonical_payload"]["evidence_item_count"], 0)
     def test_malformed_unsafe_and_wrong_root_xml_fail_closed(self) -> None:
+        utf16_unsafe = (
+            '<?xml version="1.0" encoding="UTF-16"?>'
+            '<!DOCTYPE x [<!ENTITY a "x">]>'
+            '<ClinVarResult-Set>&a;</ClinVarResult-Set>'
+        ).encode("utf-16")
         cases = (
             (b"<not-xml", "clinvar_xml_invalid"),
             (
                 b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "x">]><ClinVarResult-Set>&a;</ClinVarResult-Set>',
                 "clinvar_xml_unsafe",
             ),
+            (utf16_unsafe, "clinvar_xml_unsafe"),
             (b'<?xml version="1.0"?><Other/>', "clinvar_root_invalid"),
         )
         for xml_bytes, expected_error in cases:
@@ -392,6 +398,72 @@ class MinimumEvidenceSnapshotCapabilityTests(unittest.TestCase):
         )
         self.assertFalse(result.passed)
         self.assertIn("clinvar_source_contract_not_verified", result.errors)
+
+    def test_non_ascii_integer_attributes_fail_closed_without_exception(self) -> None:
+        cases = (
+            (
+                self.simple_xml.replace(b'Version="3"', 'Version="²"'.encode("utf-8"), 1),
+                "clinvar_archive_invalid",
+            ),
+            (
+                self.simple_xml.replace(b'VariationID="1001"', 'VariationID="²"'.encode("utf-8"), 1),
+                "clinvar_archive_invalid",
+            ),
+            (
+                self.simple_xml.replace(b'Version="2"', 'Version="²"'.encode("utf-8"), 1),
+                "clinvar_submission_invalid",
+            ),
+            (
+                self.simple_xml.replace(
+                    b'NumberOfSubmissions="1"',
+                    'NumberOfSubmissions="²"'.encode("utf-8"),
+                    1,
+                ),
+                "clinvar_submission_count_mismatch",
+            ),
+        )
+        for xml_bytes, expected_error in cases:
+            with self.subTest(expected_error=expected_error):
+                try:
+                    result = self.build(
+                        self.simple_model,
+                        [item(self.simple_model, xml_bytes, "VCV000001001.3")],
+                    )
+                except (TypeError, ValueError) as exc:
+                    self.fail(
+                        f"Unicode numeric attribute escaped as {type(exc).__name__}"
+                    )
+                self.assertFalse(result.passed)
+                self.assertIn(expected_error, result.errors)
+
+    def test_clinvar_no_conflicts_aggregate_is_authoritative_over_differing_scvs(self) -> None:
+        xml_bytes = self.conflict_xml
+        xml_bytes = xml_bytes.replace(
+            b"criteria provided, conflicting classifications",
+            b"criteria provided, multiple submitters, no conflicts",
+            1,
+        )
+        xml_bytes = xml_bytes.replace(
+            b"Conflicting classifications of pathogenicity",
+            b"Pathogenic/Likely pathogenic",
+            1,
+        )
+        xml_bytes = xml_bytes.replace(b"Likely benign", b"Pathogenic", 1)
+        xml_bytes = xml_bytes.replace(
+            b"Uncertain significance",
+            b"Likely pathogenic",
+            1,
+        )
+        result = self.build(
+            self.conflict_model,
+            [item(self.conflict_model, xml_bytes, "VCV000002002.4")],
+        )
+        self.assertTrue(result.passed, result.errors)
+        self.assertFalse(result.items[0].conflict)
+        self.assertEqual(
+            {submission.classification for submission in result.items[0].submissions},
+            {"Pathogenic", "Likely pathogenic"},
+        )
 
     def test_metadata_schema_manifest_and_public_source_registry_contract(self) -> None:
         metadata_value = metadata(self.simple_xml, "VCV000001001.3")
