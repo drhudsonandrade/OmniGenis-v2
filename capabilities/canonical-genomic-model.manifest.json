@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "canonical-genomic-model",
+  "capability_version": "1.0.0",
+  "real_use_case": "Assemble the minimum E1A canonical genomic model from exact artifact/QC/reference/normalization/canonical-variant attestations before EvidenceSnapshot construction.",
+  "owner_priority": "foundation",
+  "upstream_status": "Project-owned composition layer over already promoted E1A contracts; no new external scientific executor or mutable upstream dataset is introduced.",
+  "license": "Independent project-owned implementation; no third-party implementation or data bytes are copied into the repository.",
+  "supported_profile": "One valid single-sample germline VCF in the pinned GRCh38.p14 primary-autosome SNV/small-indel profile with passed artifact, QC, normalization, and canonical-variant identity contracts.",
+  "resource_budget": "O(n) parse and output memory over the normalized callset; no network, subprocess, external database, or new dependency.",
+  "input_fixture": "tests/fixtures/canonical_genomic_model/source-normalized.vcf",
+  "output_contract": "CanonicalGenomicModelResult containing exact sample/reference/source bindings and ordered canonical variant observations with available technical and provenance fields.",
+  "known_issues": "Gene mapping, transcript/consequence selection, nomenclature projection, evidence federation, and interpretation are not performed by this capability; unavailable fields are not inferred.",
+  "security": "Recomputes source artifact and QC attestations from exact input bytes, revalidates canonical variant identity from normalization plus reference identity, enforces sample/count/order/provenance bindings, and performs no network, subprocess, or dynamic execution.",
+  "disable_path": "This capability is not wired to a default pipeline; refuse construction unless every upstream attestation and cross-binding re-verifies against the exact bytes."
+}

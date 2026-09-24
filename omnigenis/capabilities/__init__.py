@@ -1,6 +1,10 @@
 """Capability implementations exposed by the clean target."""
 
 from .artifact_gate import ArtifactGateResult, verify_artifact_bytes
+from .canonical_genomic_model import (
+    CanonicalGenomicModelResult,
+    build_canonical_genomic_model,
+)
 from .canonical_variant_identity import (
     CanonicalVariantIdentityResult,
     canonicalize_normalized_variants,
@@ -13,12 +17,14 @@ from .vcf_qc import VcfQcObservationResult, observe_vcf_qc
 
 __all__ = [
     "ArtifactGateResult",
+    "CanonicalGenomicModelResult",
     "CanonicalVariantIdentityResult",
     "GeneIdentityResult",
     "ReferenceIdentityResult",
     "VariantNormalizationResult",
     "VcfIntakeResult",
     "VcfQcObservationResult",
+    "build_canonical_genomic_model",
     "canonicalize_normalized_variants",
     "normalize_small_variants",
     "resolve_gene_identity",
