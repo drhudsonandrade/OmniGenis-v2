@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "hgnc-gene-identity",
+  "capability_version": "1.0.0",
+  "real_use_case": "Establish stable human-gene identity for E1A using HGNC IDs while treating approved symbols and names as mutable display/search metadata.",
+  "owner_priority": "foundation",
+  "upstream_status": "HGNC approved and withdrawn datasets pinned from the 2026-09-18 upstream snapshot by exact SHA-256 and size.",
+  "license": "HGNC data are published under Creative Commons Zero (CC0); the project implementation is independent and no HGNC data bytes are redistributed in the repository.",
+  "supported_profile": "Human gene identity resolution by exact HGNC ID, exact approved symbol, unique previous symbol, or unique alias symbol against the pinned HGNC snapshot.",
+  "resource_budget": "Approximately 16.9 MB approved TSV plus 0.26 MB withdrawn TSV; deterministic in-memory parse/index with no network or subprocess during trusted execution.",
+  "input_fixture": "tests/fixtures/gene_identity/hgnc-approved-mini.tsv and hgnc-withdrawn-mini.tsv.",
+  "output_contract": "GeneIdentityResult with canonical HGNC ID, approved symbol/name metadata, resolution basis, pinned resource identity, and withdrawn/replacement lifecycle provenance.",
+  "known_issues": "No variant-to-gene interval mapping, transcript/MANE selection, molecular consequence, HGVS projection, evidence federation, or clinical interpretation is performed. Ambiguous aliases fail closed.",
+  "security": "Pinned resource digest and size verification, closed source/BOM contract, strict TSV structure validation, bounded query length, deterministic parsing, no network, no subprocess, and no dynamic code execution.",
+  "disable_path": "This capability is not wired to a default execution pipeline; refuse execution unless the exact promoted HGNC approved and withdrawn snapshot identities and metadata contract validate."
+}

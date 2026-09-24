@@ -1,0 +1,57 @@
+{
+  "bom_id": "scientific-resource-bom-hgnc-gene-identity-2026-09-18-v1",
+  "bundle_descriptor": {
+    "approved_sha256": "69bb5722d5a42bb355580deb2c9f197ce3d7f7d13807173b9674a7db65e52191",
+    "approved_size_bytes": 16940274,
+    "profile_id": "hgnc-gene-identity-2026-09-18-v1",
+    "source_id": "hgnc-gene-nomenclature",
+    "upstream_last_modified": "2026-09-18",
+    "withdrawn_sha256": "9328a7361ed5149bf7901cae52c6c30b832b8ec55af22146ea296081278a3140",
+    "withdrawn_size_bytes": 258994
+  },
+  "bundle_sha256": "e437feb98c084d34f4988f61d3d0556e59b9aa81e5d082830bfe83e969cdab94",
+  "profile_id": "hgnc-gene-identity-2026-09-18-v1",
+  "resources": [
+    {
+      "known_issues": "Approved symbols remain mutable display/search metadata; canonical identity is HGNC ID.",
+      "license": "Creative Commons Zero (CC0)",
+      "lifecycle": "PINNED",
+      "replacement_path": "Create a new versioned HGNC resource BOM and profile.",
+      "resource_id": "hgnc-approved-complete-set-2026-09-18",
+      "role": "approved_gene_records",
+      "sha256": "69bb5722d5a42bb355580deb2c9f197ce3d7f7d13807173b9674a7db65e52191",
+      "size_bytes": 16940274,
+      "source_id": "hgnc-gene-nomenclature",
+      "source_url": "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt",
+      "storage_mode": "EXTERNAL_PRIVATE_CACHE_NOT_REPOSITORY",
+      "use_rights": "PUBLIC_DOMAIN_CC0",
+      "version_release": "HGNC snapshot 2026-09-18"
+    },
+    {
+      "known_issues": "Withdrawn and merged/split reports are lifecycle evidence and are never silently promoted to current canonical identity.",
+      "license": "Creative Commons Zero (CC0)",
+      "lifecycle": "PINNED",
+      "replacement_path": "Create a new versioned HGNC resource BOM and profile.",
+      "resource_id": "hgnc-withdrawn-set-2026-09-18",
+      "role": "withdrawn_gene_records",
+      "sha256": "9328a7361ed5149bf7901cae52c6c30b832b8ec55af22146ea296081278a3140",
+      "size_bytes": 258994,
+      "source_id": "hgnc-gene-nomenclature",
+      "source_url": "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/withdrawn.txt",
+      "storage_mode": "EXTERNAL_PRIVATE_CACHE_NOT_REPOSITORY",
+      "use_rights": "PUBLIC_DOMAIN_CC0",
+      "version_release": "HGNC snapshot 2026-09-18"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "source_id": "hgnc-gene-nomenclature",
+  "source_registry_id": "source-registry-minimal-e1a-v1",
+  "validation": {
+    "approved_ids_unique": true,
+    "approved_row_count": 45083,
+    "approved_symbols_unique": true,
+    "withdrawn_ids_unique": true,
+    "withdrawn_row_count": 5291,
+    "withdrawn_symbols_unique": true
+  }
+}
