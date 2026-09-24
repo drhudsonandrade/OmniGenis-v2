@@ -14,13 +14,30 @@
       "provider": "NCBI / National Library of Medicine and Genome Reference Consortium",
       "redistribution": "NCBI_NO_RESTRICTION_WITH_THIRD_PARTY_RIGHTS_CAVEAT",
       "refseq_assembly_accession": "GCF_000001405.40",
+      "replacement_path": "Create a new versioned reference profile and Scientific Resource BOM; never mutate this pinned identity in place.",
       "retrieval_date": "2026-09-23",
       "rights_status": "DOCUMENTED_WITH_OBLIGATIONS",
-      "replacement_path": "Create a new versioned reference profile and Scientific Resource BOM; never mutate this pinned identity in place.",
       "source_id": "ncbi-refseq-grch38-p14",
       "source_url": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/",
       "terms_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
       "version_release": "GCF_000001405.40 / GRCh38.p14"
+    },
+    {
+      "attribution": "RECOMMENDED_NOT_REQUIRED",
+      "known_issues": "Approved symbols can change over time and withdrawn or merged/split gene reports exist.",
+      "license": "Creative Commons Zero (CC0)",
+      "lifecycle": "PINNED_BY_DIGEST",
+      "limitations": "Upstream current download files are mutable; trusted execution requires the exact pinned snapshot digests.",
+      "local_reference_use": "ALLOWED",
+      "provider": "HUGO Gene Nomenclature Committee (HGNC)",
+      "redistribution": "ALLOWED_CC0",
+      "replacement_path": "Create a new versioned HGNC resource BOM and profile; never mutate this pinned snapshot identity in place.",
+      "retrieval_date": "2026-09-24",
+      "rights_status": "PUBLIC_DOMAIN_CC0",
+      "source_id": "hgnc-gene-nomenclature",
+      "source_url": "https://storage.googleapis.com/public-download-files/hgnc/",
+      "terms_url": "https://www.genenames.org/about/license/",
+      "version_release": "HGNC snapshot 2026-09-18"
     }
   ]
 }

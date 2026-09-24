@@ -1,0 +1,4 @@
+hgnc_id	symbol	name	locus_group	locus_type	status	alias_symbol	prev_symbol
+HGNC:1001	GENEA	Gene alpha	protein-coding gene	gene with protein product	Approved	ALPHA|GENEA_ALIAS	OLDA
+HGNC:1002	GENEB	Gene beta	protein-coding gene	gene with protein product	Approved	SHARED|GENEA	OLDB
+HGNC:1003	GENEC	Gene gamma	non-coding RNA	RNA, long non-coding	Approved	SHARED
