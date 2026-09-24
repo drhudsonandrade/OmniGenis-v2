@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "canonical-interpretation-object",
+  "capability_version": "1.0.0",
+  "real_use_case": "Create the minimum E1A CanonicalInterpretationObject after CanonicalGenomicModel and EvidenceSnapshot without performing a new clinical pathogenicity classification.",
+  "owner_priority": "foundation",
+  "upstream_status": "Project-owned deterministic projection over already verified canonical model and evidence snapshot contracts; no new mutable external source is introduced.",
+  "license": "Independent project-owned implementation; no third-party implementation or data bytes are copied.",
+  "supported_profile": "One E1A canonical small-variant model plus its exact minimum ClinVar EvidenceSnapshot and an explicit as-of date.",
+  "resource_budget": "O(number of canonical variants plus evidence items); no network, subprocess, external database, or new dependency.",
+  "input_fixture": "Synthetic canonical model and evidence snapshot objects constructed in tests/test_canonical_interpretation_capability.py.",
+  "output_contract": "CanonicalInterpretationObjectResult with one source-attributed typed interpretation item per canonical variant, explicit evidence freshness, unresolved conflict state, and explicit negative-scope statuses.",
+  "known_issues": "ACMG/AMP classification, ClinGen/VCEP criteria application, gene-disease validity, mode of inheritance, actionability, phenotype/personal relevance, diagnosis, treatment, and confirmation policy are intentionally not performed by this capability.",
+  "security": "Fails closed on malformed upstream dataclasses, model/snapshot provenance mismatch, canonical-variant mismatch, cardinality mismatch, invalid/future evidence timestamps, and malformed source-evidence identity.",
+  "disable_path": "This capability is not wired to a default pipeline; refuse projection unless both upstream artifacts are verified and exactly cross-bound."
+}
