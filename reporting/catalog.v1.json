@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0.0",
+  "catalog_id": "e1a-report-catalog-v1",
+  "reports": [
+    {
+      "schema_version": "1.0.0",
+      "report_id": "e1a-small-variant-report",
+      "code": "E1A",
+      "accent": "334155",
+      "slug": "e1a-small-variant-report",
+      "title": "E1A Small-Variant Report",
+      "tagline": "Verified evidence and interpretation boundaries",
+      "purpose": "Present verified E1A small-variant interpretation, provenance, unresolved conflicts, limitations, and source evidence without clinical promotion.",
+      "audience": "Technical reviewers and qualified genomic professionals",
+      "sections": [
+        "Identity and provenance",
+        "Verified source interpretations",
+        "Unresolved evidence conflicts",
+        "Limitations and not assessed",
+        "Sources and versioning"
+      ]
+    }
+  ]
+}

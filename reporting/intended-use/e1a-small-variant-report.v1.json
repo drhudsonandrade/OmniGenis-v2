@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "report_id": "e1a-small-variant-report",
+  "intended_use_id": "e1a-technical-validation",
+  "intended_use_category": "TECHNICAL_E1A_VALIDATION",
+  "summary": "Present verified E1A germline SNV and small-indel reporting inputs for technical review and reporting-pipeline conformance.",
+  "intended_audience": [
+    "Qualified genomic professionals",
+    "Technical reviewers"
+  ],
+  "clinical_use_status": "NOT_CLINICALLY_PROMOTED",
+  "permitted_uses": [
+    "Technical review of verified source-attributed interpretation records",
+    "Reporting pipeline conformance and completeness evaluation"
+  ],
+  "prohibited_claims": [
+    "Do not claim or establish a clinical diagnosis from this report contract.",
+    "Do not recommend or select treatment from this report contract."
+  ],
+  "confirmation_status": "NOT_DEFINED_IN_RPT01",
+  "locale_status": "CANONICAL_ENGLISH_ONLY"
+}
