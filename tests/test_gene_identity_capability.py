@@ -233,28 +233,30 @@ class GeneIdentityCapabilityTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("hgnc_resource_contract_not_verified", result.errors)
 
-    def test_duplicate_or_invalid_resource_entries_fail_closed(self) -> None:
+    def test_resource_role_guards_reject_two_resource_boms(self) -> None:
+        sut = load_sut(self)
         for mutation in ("duplicate_role", "non_string_role"):
             with self.subTest(mutation=mutation):
                 forged = json.loads(json.dumps(self.bom))
                 if mutation == "duplicate_role":
-                    duplicate = json.loads(
-                        json.dumps(forged["resources"][0])
+                    forged["resources"][1]["role"] = (
+                        forged["resources"][0]["role"]
                     )
-                    duplicate["sha256"] = "0" * 64
-                    forged["resources"].append(duplicate)
                 else:
-                    invalid = json.loads(
-                        json.dumps(forged["resources"][0])
-                    )
-                    invalid["role"] = 123
-                    forged["resources"].append(invalid)
-                result = self.run_synthetic("GENEA", bom=forged)
-                self.assertFalse(result.passed)
-                self.assertIn(
-                    "hgnc_resource_contract_not_verified",
-                    result.errors,
-                )
+                    forged["resources"][1]["role"] = 123
+                self.assertEqual(sut._resources_by_role(forged), {})
+
+    def test_three_resource_entries_fail_closed(self) -> None:
+        forged = json.loads(json.dumps(self.bom))
+        forged["resources"].append(
+            json.loads(json.dumps(forged["resources"][0]))
+        )
+        result = self.run_synthetic("GENEA", bom=forged)
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "hgnc_resource_contract_not_verified",
+            result.errors,
+        )
 
     def test_nonserializable_bundle_descriptor_fails_closed(self) -> None:
         sut = load_sut(self)
