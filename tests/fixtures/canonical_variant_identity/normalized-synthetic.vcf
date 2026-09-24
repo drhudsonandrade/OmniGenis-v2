@@ -1,0 +1,6 @@
+##fileformat=VCFv4.5
+##contig=<ID=NC_000001.11,length=248956422>
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+NC_000001.11	10471	synthetic-snv	C	G	60	PASS	.	GT	0/1
+NC_000001.11	10480	synthetic-indel	A	AT	50	PASS	.	GT	0/1
