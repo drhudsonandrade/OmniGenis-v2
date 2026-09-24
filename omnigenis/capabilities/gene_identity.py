@@ -315,14 +315,15 @@ def _resources_by_role(
     bom: Mapping[str, object],
 ) -> dict[str, Mapping[str, object]]:
     resources = bom.get("resources")
-    if not isinstance(resources, list):
+    if not isinstance(resources, list) or len(resources) != 2:
         return {}
     out: dict[str, Mapping[str, object]] = {}
     for item in resources:
         candidate = _mapping(item)
         role = candidate.get("role")
-        if isinstance(role, str) and role not in out:
-            out[role] = candidate
+        if not isinstance(role, str) or role in out:
+            return {}
+        out[role] = candidate
     return out
 
 
@@ -433,6 +434,8 @@ def _resource_contract_verified(
             validation.get("withdrawn_symbols_unique") is True,
         )
     )
+    if descriptor != expected_descriptor or not _is_sha256(declared_bundle):
+        return False
     bundle_ok = all(
         (
             bom.get("schema_version") == "1.0.0",
@@ -441,9 +444,7 @@ def _resource_contract_verified(
             bom.get("profile_id") == PROFILE_ID,
             bom.get("source_registry_id") == SOURCE_REGISTRY_ID,
             bom.get("source_id") == SOURCE_ID,
-            descriptor == expected_descriptor,
-            _is_sha256(declared_bundle),
-            declared_bundle == _canonical_sha256(descriptor),
+            declared_bundle == _canonical_sha256(expected_descriptor),
             declared_bundle == HGNC_BUNDLE_SHA256,
         )
     )

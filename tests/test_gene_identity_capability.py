@@ -233,6 +233,60 @@ class GeneIdentityCapabilityTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("hgnc_resource_contract_not_verified", result.errors)
 
+    def test_duplicate_or_invalid_resource_entries_fail_closed(self) -> None:
+        for mutation in ("duplicate_role", "non_string_role"):
+            with self.subTest(mutation=mutation):
+                forged = json.loads(json.dumps(self.bom))
+                if mutation == "duplicate_role":
+                    duplicate = json.loads(
+                        json.dumps(forged["resources"][0])
+                    )
+                    duplicate["sha256"] = "0" * 64
+                    forged["resources"].append(duplicate)
+                else:
+                    invalid = json.loads(
+                        json.dumps(forged["resources"][0])
+                    )
+                    invalid["role"] = 123
+                    forged["resources"].append(invalid)
+                result = self.run_synthetic("GENEA", bom=forged)
+                self.assertFalse(result.passed)
+                self.assertIn(
+                    "hgnc_resource_contract_not_verified",
+                    result.errors,
+                )
+
+    def test_nonserializable_bundle_descriptor_fails_closed(self) -> None:
+        sut = load_sut(self)
+        forged = json.loads(json.dumps(self.bom))
+        forged["bundle_descriptor"]["unexpected"] = b"not-json"
+        with (
+            patch.object(sut, "HGNC_APPROVED_SHA256", sha256_bytes(self.approved)),
+            patch.object(sut, "HGNC_APPROVED_SIZE_BYTES", len(self.approved)),
+            patch.object(sut, "HGNC_APPROVED_ROW_COUNT", 3),
+            patch.object(sut, "HGNC_WITHDRAWN_SHA256", sha256_bytes(self.withdrawn)),
+            patch.object(sut, "HGNC_WITHDRAWN_SIZE_BYTES", len(self.withdrawn)),
+            patch.object(sut, "HGNC_WITHDRAWN_ROW_COUNT", 3),
+            patch.object(sut, "HGNC_BUNDLE_SHA256", self.bundle_sha),
+        ):
+            try:
+                result = sut.resolve_gene_identity(
+                    "GENEA",
+                    approved_tsv=self.approved,
+                    withdrawn_tsv=self.withdrawn,
+                    source_registry=self.registry,
+                    resource_bom=forged,
+                )
+            except (TypeError, ValueError) as exc:
+                self.fail(
+                    f"Malformed descriptor escaped as {type(exc).__name__}"
+                )
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "hgnc_resource_contract_not_verified",
+            result.errors,
+        )
+
     def test_malformed_inputs_fail_closed_without_exception(self) -> None:
         sut = load_sut(self)
         with (
