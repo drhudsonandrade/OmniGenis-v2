@@ -185,16 +185,43 @@ class CanonicalVariantIdentityCapabilityTests(unittest.TestCase):
             changed_result.variants[0].canonical_variant_id,
         )
 
-    def test_identity_changes_when_core_variant_identity_changes(self) -> None:
+    def test_identity_changes_for_each_core_variant_identity_field(self) -> None:
         sut = load_sut(self)
-        baseline = sut.canonicalize_normalized_variants(normalization_result(self.data), self.identity)
-        changed = self.data.replace(b"\t10471\tsynthetic-snv\tC\tG\t", b"\t10472\tsynthetic-snv\tC\tT\t")
-        changed_result = sut.canonicalize_normalized_variants(normalization_result(changed), self.identity)
-        self.assertTrue(baseline.passed and changed_result.passed)
-        self.assertNotEqual(
-            baseline.variants[0].canonical_variant_id,
-            changed_result.variants[0].canonical_variant_id,
+        baseline = sut.canonicalize_normalized_variants(
+            normalization_result(self.data),
+            self.identity,
         )
+        self.assertTrue(baseline.passed, baseline.errors)
+        cases = {
+            "position": (
+                b"\t10471\tsynthetic-snv\tC\tG\t",
+                b"\t10472\tsynthetic-snv\tC\tG\t",
+            ),
+            "alt": (
+                b"\t10471\tsynthetic-snv\tC\tG\t",
+                b"\t10471\tsynthetic-snv\tC\tT\t",
+            ),
+            "ref": (
+                b"\t10471\tsynthetic-snv\tC\tG\t",
+                b"\t10471\tsynthetic-snv\tA\tG\t",
+            ),
+            "contig": (
+                b"NC_000001.11\t10471\tsynthetic-snv",
+                b"NC_000002.12\t10471\tsynthetic-snv",
+            ),
+        }
+        for field, (old, new) in cases.items():
+            with self.subTest(field=field):
+                changed = self.data.replace(old, new, 1)
+                changed_result = sut.canonicalize_normalized_variants(
+                    normalization_result(changed),
+                    self.identity,
+                )
+                self.assertTrue(changed_result.passed, changed_result.errors)
+                self.assertNotEqual(
+                    baseline.variants[0].canonical_variant_id,
+                    changed_result.variants[0].canonical_variant_id,
+                )
 
     def test_rejects_failed_or_incomplete_normalization_attestation(self) -> None:
         sut = load_sut(self)
