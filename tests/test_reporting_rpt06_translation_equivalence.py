@@ -66,6 +66,37 @@ class Rpt06TranslationEquivalenceTests(unittest.TestCase):
             [component["content"] for component in target],
         )
 
+    def test_retained_translation_ir_is_immutable_after_hashing(self):
+        result = self.translate()
+        original = result.to_dict()
+        with self.assertRaises(TypeError):
+            result.translated_ir["components"][0]["title"] = "MUTATED"
+        self.assertEqual(result.to_dict(), original)
+
+    def test_empty_and_duplicate_component_identity_fail_closed(self):
+        empty = json.loads(json.dumps(self.presentation))
+        empty["components"][0]["component_id"] = ""
+        self.assertIn(
+            "presentation_ir_invalid",
+            self.translate(presentation_ir=empty).errors,
+        )
+
+        duplicate = json.loads(json.dumps(self.presentation))
+        duplicate["components"][1]["component_id"] = duplicate["components"][0]["component_id"]
+        self.assertIn(
+            "presentation_ir_invalid",
+            self.translate(presentation_ir=duplicate).errors,
+        )
+
+    def test_empty_title_and_state_fail_closed(self):
+        for field in ("title", "state"):
+            bad = json.loads(json.dumps(self.presentation))
+            bad["components"][0][field] = ""
+            self.assertIn(
+                "presentation_ir_invalid",
+                self.translate(presentation_ir=bad).errors,
+            )
+
     def test_unsupported_translation_pair_fails_closed(self):
         result = self.translate(target_locale_id="pt-BR")
         self.assertFalse(result.passed)

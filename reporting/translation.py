@@ -7,9 +7,28 @@ from dataclasses import dataclass
 import hashlib
 import json
 from collections.abc import Mapping
+from types import MappingProxyType
 
 ROADMAP_ID = "RPT-06"
 _SUPPORTED_PAIRS = frozenset({("en-US", "en-US")})
+
+
+def _freeze(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze(item) for item in value)
+    if isinstance(value, tuple):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def _thaw(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    return deepcopy(value)
 
 
 @dataclass(frozen=True)
@@ -29,7 +48,7 @@ class TranslationResult:
         return {
             "roadmap_id": ROADMAP_ID,
             "status": "PASS" if self.passed else "FAIL",
-            "translated_ir": deepcopy(self.translated_ir),
+            "translated_ir": _thaw(self.translated_ir),
             "source_locale_id": self.source_locale_id,
             "target_locale_id": self.target_locale_id,
             "equivalence_status": self.equivalence_status,
@@ -58,16 +77,23 @@ def _validate_ir(presentation_ir: object) -> bool:
         return False
     if not isinstance(components, list) or not components:
         return False
+    seen_component_ids: set[str] = set()
     for component in components:
         if not isinstance(component, Mapping):
             return False
         if component.get("component_type") != "semantic-section":
             return False
-        if not isinstance(component.get("component_id"), str):
+        component_id = component.get("component_id")
+        title = component.get("title")
+        state = component.get("state")
+        if not isinstance(component_id, str) or not component_id:
             return False
-        if not isinstance(component.get("title"), str):
+        if component_id in seen_component_ids:
             return False
-        if not isinstance(component.get("state"), str):
+        seen_component_ids.add(component_id)
+        if not isinstance(title, str) or not title:
+            return False
+        if not isinstance(state, str) or not state:
             return False
         if not isinstance(component.get("content"), Mapping):
             return False
@@ -106,7 +132,7 @@ def orchestrate_translation(
     except (TypeError, ValueError):
         return _failure("translation_not_canonical")
     return TranslationResult(
-        translated_ir,
+        _freeze(translated_ir),
         source_locale_id,
         target_locale_id,
         "EQUIVALENT",
