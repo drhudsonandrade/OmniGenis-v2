@@ -79,7 +79,10 @@ def render_primary(
 ) -> RenderResult:
     if renderer_id != _PRIMARY_RENDERER:
         return _failure("renderer_not_supported")
-    if lifecycle_profile not in _SUPPORTED_LIFECYCLE_PROFILES:
+    if (
+        not isinstance(lifecycle_profile, str)
+        or lifecycle_profile not in _SUPPORTED_LIFECYCLE_PROFILES
+    ):
         return _failure("lifecycle_profile_not_supported")
     if not _validate_ir(presentation_ir):
         return _failure("presentation_ir_invalid")
@@ -88,24 +91,27 @@ def render_primary(
         f"Report: {presentation_ir['report_id']}",
         f"Lifecycle: {lifecycle_profile}",
     ]
-    for component in presentation_ir["components"]:
-        canonical_content = json.dumps(
-            component["content"],
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
-            allow_nan=False,
-        )
-        lines.extend(
-            [
-                "",
-                component["title"],
-                f"State: {component['state']}",
-                canonical_content,
-            ]
-        )
-    artifact_text = "\n".join(lines) + "\n"
-    digest = hashlib.sha256(artifact_text.encode("utf-8")).hexdigest()
+    try:
+        for component in presentation_ir["components"]:
+            canonical_content = json.dumps(
+                component["content"],
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+            lines.extend(
+                [
+                    "",
+                    component["title"],
+                    f"State: {component['state']}",
+                    canonical_content,
+                ]
+            )
+        artifact_text = "\n".join(lines) + "\n"
+        digest = hashlib.sha256(artifact_text.encode("utf-8")).hexdigest()
+    except (TypeError, ValueError, UnicodeEncodeError):
+        return _failure("presentation_ir_invalid")
     return RenderResult(
         _PRIMARY_RENDERER,
         lifecycle_profile,

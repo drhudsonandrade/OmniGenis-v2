@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 from pathlib import Path
@@ -72,6 +73,26 @@ class Rpt07PrimaryRendererTests(unittest.TestCase):
             )
         ]
         self.assertEqual(positions, sorted(positions))
+
+    def test_digest_matches_emitted_artifact(self):
+        result = self.render()
+        self.assertTrue(result.passed, result.errors)
+        self.assertEqual(
+            result.artifact_sha256,
+            hashlib.sha256(result.artifact_text.encode("utf-8")).hexdigest(),
+        )
+
+    def test_unhashable_lifecycle_profile_fails_closed(self):
+        result = self.render(lifecycle_profile=[])
+        self.assertFalse(result.passed)
+        self.assertIn("lifecycle_profile_not_supported", result.errors)
+
+    def test_non_finite_content_fails_closed(self):
+        bad = json.loads(json.dumps(self.presentation))
+        bad["components"][0]["content"] = {"score": float("nan")}
+        result = self.render(presentation_ir=bad)
+        self.assertFalse(result.passed)
+        self.assertIn("presentation_ir_invalid", result.errors)
 
     def test_unsupported_renderer_and_lifecycle_fail_closed(self):
         self.assertIn(
