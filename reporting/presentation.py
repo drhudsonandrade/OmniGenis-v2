@@ -81,15 +81,31 @@ def build_presentation_ir(*, report_view_model: object) -> PresentationResult:
         return _failure("report_view_model_invalid")
     if not isinstance(completeness_manifest, Mapping):
         return _failure("report_view_model_invalid")
+    completeness_status = completeness_manifest.get("status")
     required_count = completeness_manifest.get("required_section_count")
+    present_count = completeness_manifest.get("present_section_count")
     missing_required = completeness_manifest.get("missing_required_sections")
-    if not isinstance(required_count, int) or not isinstance(missing_required, list):
+    if (
+        not isinstance(completeness_status, str)
+        or not isinstance(required_count, int)
+        or not isinstance(present_count, int)
+        or not isinstance(missing_required, list)
+    ):
         return _failure("report_view_model_invalid")
     required_sections = [section for section in sections if section.get("required")]
-    if missing_required or len(required_sections) != required_count:
+    if (
+        completeness_status != "COMPLETE"
+        or missing_required
+        or len(required_sections) != required_count
+        or len(required_sections) != present_count
+    ):
         return _failure("report_view_model_incomplete")
     orders = [section.get("order") for section in sections]
-    if any(not isinstance(order, int) for order in orders) or orders != sorted(orders):
+    if (
+        any(not isinstance(order, int) for order in orders)
+        or len(set(orders)) != len(orders)
+        or orders != sorted(orders)
+    ):
         return _failure("report_view_model_order_invalid")
 
     components: list[dict[str, object]] = []

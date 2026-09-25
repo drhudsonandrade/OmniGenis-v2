@@ -84,6 +84,32 @@ class Rpt04PresentationIrTests(unittest.TestCase):
         reordered["sections"].reverse()
         self.assertIn("report_view_model_order_invalid", self.build(report_view_model=reordered).errors)
 
+    def test_inconsistent_completeness_manifest_fails_closed(self):
+        view_model = self.rpt03.to_dict()["view_model"]
+
+        incomplete = json.loads(json.dumps(view_model))
+        incomplete["completeness_manifest"]["status"] = "INCOMPLETE"
+        self.assertIn(
+            "report_view_model_incomplete",
+            self.build(report_view_model=incomplete).errors,
+        )
+
+        wrong_present_count = json.loads(json.dumps(view_model))
+        wrong_present_count["completeness_manifest"]["present_section_count"] = 0
+        self.assertIn(
+            "report_view_model_incomplete",
+            self.build(report_view_model=wrong_present_count).errors,
+        )
+
+    def test_duplicate_section_order_fails_closed(self):
+        view_model = self.rpt03.to_dict()["view_model"]
+        duplicate_order = json.loads(json.dumps(view_model))
+        duplicate_order["sections"][1]["order"] = duplicate_order["sections"][0]["order"]
+        self.assertIn(
+            "report_view_model_order_invalid",
+            self.build(report_view_model=duplicate_order).errors,
+        )
+
     def test_retained_presentation_ir_is_immutable_after_hashing(self):
         result = self.build()
         original = result.to_dict()
