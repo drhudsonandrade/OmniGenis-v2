@@ -47,9 +47,9 @@ class Rpt04PresentationIrTests(unittest.TestCase):
     def test_builds_deterministic_presentation_ir_in_section_order(self):
         result = self.build()
         self.assertTrue(result.passed, result.errors)
-        self.assertEqual(result.presentation_ir["report_id"], REPORT_ID)
+        self.assertEqual(result.to_dict()["presentation_ir"]["report_id"], REPORT_ID)
         self.assertEqual(
-            [component["component_id"] for component in result.presentation_ir["components"]],
+            [component["component_id"] for component in result.to_dict()["presentation_ir"]["components"]],
             [
                 "identity-and-provenance",
                 "verified-source-interpretations",
@@ -62,11 +62,34 @@ class Rpt04PresentationIrTests(unittest.TestCase):
 
     def test_registry_uses_semantic_components_not_renderer_markup(self):
         result = self.build()
-        registry = result.component_registry
+        registry = result.to_dict()["component_registry"]
         self.assertEqual(registry["identity-and-provenance"], "semantic-section")
         serialized = json.dumps(result.to_dict(), sort_keys=True).lower()
         for forbidden in ("html", "css", "pdf", "renderer_id", "locale_id"):
             self.assertNotIn(forbidden, serialized)
+
+    def test_accepts_canonical_frozen_rpt03_view_model_directly(self):
+        module = importlib.import_module("reporting.presentation")
+        result = module.build_presentation_ir(report_view_model=self.rpt03.view_model)
+        self.assertTrue(result.passed, result.errors)
+        self.assertEqual(result.to_dict()["presentation_ir"]["report_id"], REPORT_ID)
+
+    def test_missing_or_reordered_required_sections_fail_closed(self):
+        view_model = self.rpt03.to_dict()["view_model"]
+        missing = json.loads(json.dumps(view_model))
+        missing["sections"].pop()
+        self.assertIn("report_view_model_incomplete", self.build(report_view_model=missing).errors)
+
+        reordered = json.loads(json.dumps(view_model))
+        reordered["sections"].reverse()
+        self.assertIn("report_view_model_order_invalid", self.build(report_view_model=reordered).errors)
+
+    def test_retained_presentation_ir_is_immutable_after_hashing(self):
+        result = self.build()
+        original = result.to_dict()
+        with self.assertRaises(TypeError):
+            result.presentation_ir["components"][0]["title"] = "MUTATED"
+        self.assertEqual(result.to_dict(), original)
 
     def test_invalid_view_model_fails_closed(self):
         self.assertIn("report_view_model_invalid", self.build(report_view_model={}).errors)

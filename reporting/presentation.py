@@ -7,8 +7,27 @@ from dataclasses import dataclass
 import hashlib
 import json
 from collections.abc import Mapping
+from types import MappingProxyType
 
 ROADMAP_ID = "RPT-04"
+
+
+def _freeze(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze(item) for item in value)
+    if isinstance(value, tuple):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def _thaw(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    return deepcopy(value)
 
 
 @dataclass(frozen=True)
@@ -26,8 +45,8 @@ class PresentationResult:
         return {
             "roadmap_id": ROADMAP_ID,
             "status": "PASS" if self.passed else "FAIL",
-            "presentation_ir": deepcopy(self.presentation_ir),
-            "component_registry": deepcopy(self.component_registry),
+            "presentation_ir": _thaw(self.presentation_ir),
+            "component_registry": _thaw(self.component_registry),
             "presentation_ir_sha256": self.presentation_ir_sha256,
             "errors": list(self.errors),
         }
@@ -52,13 +71,26 @@ def build_presentation_ir(*, report_view_model: object) -> PresentationResult:
     if not isinstance(report_view_model, Mapping):
         return _failure("report_view_model_invalid")
     report_id = report_view_model.get("report_id")
-    sections = report_view_model.get("sections")
+    sections = _thaw(report_view_model.get("sections"))
+    completeness_manifest = _thaw(report_view_model.get("completeness_manifest"))
     if not isinstance(report_id, str) or not report_id:
         return _failure("report_view_model_invalid")
     if not isinstance(sections, list) or not sections:
         return _failure("report_view_model_invalid")
     if any(not isinstance(section, Mapping) for section in sections):
         return _failure("report_view_model_invalid")
+    if not isinstance(completeness_manifest, Mapping):
+        return _failure("report_view_model_invalid")
+    required_count = completeness_manifest.get("required_section_count")
+    missing_required = completeness_manifest.get("missing_required_sections")
+    if not isinstance(required_count, int) or not isinstance(missing_required, list):
+        return _failure("report_view_model_invalid")
+    required_sections = [section for section in sections if section.get("required")]
+    if missing_required or len(required_sections) != required_count:
+        return _failure("report_view_model_incomplete")
+    orders = [section.get("order") for section in sections]
+    if any(not isinstance(order, int) for order in orders) or orders != sorted(orders):
+        return _failure("report_view_model_order_invalid")
 
     components: list[dict[str, object]] = []
     registry: dict[str, str] = {}
@@ -99,8 +131,8 @@ def build_presentation_ir(*, report_view_model: object) -> PresentationResult:
     except (TypeError, ValueError):
         return _failure("presentation_ir_not_canonical")
     return PresentationResult(
-        deepcopy(presentation_ir),
-        deepcopy(registry),
+        _freeze(presentation_ir),
+        _freeze(registry),
         digest,
         (),
     )
