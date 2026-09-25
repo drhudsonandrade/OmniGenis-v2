@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "locale_id": "en-US",
+  "labels": {
+    "identity-and-provenance": "Identity and provenance",
+    "verified-source-interpretations": "Verified source interpretations",
+    "unresolved-evidence-conflicts": "Unresolved evidence conflicts",
+    "limitations-and-not-assessed": "Limitations and not assessed",
+    "sources-and-versioning": "Sources and versioning"
+  }
+}
