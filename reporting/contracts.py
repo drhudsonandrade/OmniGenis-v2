@@ -30,6 +30,12 @@ _ALLOWED_EMPTY_POLICIES = frozenset(
 )
 _SECTION_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _HEX6 = re.compile(r"^[0-9A-Fa-f]{6}$")
+_CANONICAL_PROHIBITED_CLAIMS = frozenset(
+    {
+        "Do not claim or establish a clinical diagnosis from this report contract.",
+        "Do not recommend or select treatment from this report contract.",
+    }
+)
 @dataclass(frozen=True)
 class ReportSectionContractRecord:
     report_id: str
@@ -392,7 +398,8 @@ def _parse_intended_use(
         or permitted is None
         or not permitted
         or prohibited is None
-        or len(prohibited) < 2
+        or len(prohibited) != 2
+        or frozenset(prohibited) != _CANONICAL_PROHIBITED_CLAIMS
         or value.get("confirmation_status")
         != "NOT_DEFINED_IN_RPT01"
         or value.get("locale_status")

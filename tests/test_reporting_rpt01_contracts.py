@@ -7,6 +7,7 @@ from pathlib import Path
 import unittest
 
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_SCHEMA = ROOT / "schemas" / "report-catalog-entry.v1.schema.json"
@@ -122,11 +123,11 @@ class Rpt01ReportingContractsTests(unittest.TestCase):
         Draft202012Validator(intended_schema).validate(
             load_json(VALID_INTENDED_USE)
         )
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             Draft202012Validator(section_schema).validate(
                 load_json(INVALID_SECTION)
             )
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             Draft202012Validator(intended_schema).validate(
                 load_json(INVALID_INTENDED_USE)
             )
@@ -218,6 +219,31 @@ class Rpt01ReportingContractsTests(unittest.TestCase):
         result = self.validate(section_contracts=bad)
         self.assertFalse(result.passed)
         self.assertIn("section_semantic_input_not_allowed", result.errors)
+
+    def test_canonical_diagnosis_and_treatment_prohibitions_are_required(self) -> None:
+        diagnosis = (
+            "Do not claim or establish a clinical diagnosis from this report contract."
+        )
+        treatment = (
+            "Do not recommend or select treatment from this report contract."
+        )
+        self.assertEqual(
+            set(self.intended_use["prohibited_claims"]),
+            {diagnosis, treatment},
+        )
+
+        intended_schema = load_json(INTENDED_USE_SCHEMA)
+        bad = json.loads(json.dumps(self.intended_use))
+        bad["prohibited_claims"] = [
+            "Do not make unrelated claim A.",
+            "Do not make unrelated claim B.",
+        ]
+        with self.assertRaises(ValidationError):
+            Draft202012Validator(intended_schema).validate(bad)
+
+        result = self.validate(intended_use=bad)
+        self.assertFalse(result.passed)
+        self.assertIn("intended_use_invalid", result.errors)
 
     def test_intended_use_is_explicitly_non_clinically_promoted(self) -> None:
         result = self.validate()

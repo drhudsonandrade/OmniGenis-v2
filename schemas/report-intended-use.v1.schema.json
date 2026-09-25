@@ -39,8 +39,14 @@
     "prohibited_claims": {
       "type": "array",
       "minItems": 2,
+      "maxItems": 2,
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": ".*\\S.*"}
+      "items": {
+        "enum": [
+          "Do not claim or establish a clinical diagnosis from this report contract.",
+          "Do not recommend or select treatment from this report contract."
+        ]
+      }
     },
     "confirmation_status": {"const": "NOT_DEFINED_IN_RPT01"},
     "locale_status": {"const": "CANONICAL_ENGLISH_ONLY"}

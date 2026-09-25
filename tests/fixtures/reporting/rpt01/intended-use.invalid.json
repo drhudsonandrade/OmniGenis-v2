@@ -8,8 +8,8 @@
   "clinical_use_status": "CLINICALLY_PROMOTED",
   "permitted_uses": ["Technical reporting conformance review"],
   "prohibited_claims": [
-    "Do not establish a diagnosis.",
-    "Do not recommend treatment."
+    "Do not claim or establish a clinical diagnosis from this report contract.",
+    "Do not recommend or select treatment from this report contract."
   ],
   "confirmation_status": "NOT_DEFINED_IN_RPT01",
   "locale_status": "CANONICAL_ENGLISH_ONLY"
