@@ -91,6 +91,43 @@ class Rpt02CompilerTests(unittest.TestCase):
         self.assertNotIn("untrusted_extra", serialized)
         self.assertNotIn("must-not-appear", serialized)
 
+    def test_non_finite_semantic_input_fails_closed(self):
+        bad = dict(self.interpretation)
+        bad["identity"] = {"score": float("nan")}
+        result = self.compile(canonical_interpretation=bad)
+        self.assertFalse(result.passed)
+        self.assertIn("non_finite_semantic_input", result.errors)
+        self.assertIsNone(result.pack_sha256)
+
+    def test_non_json_serializable_semantic_input_fails_closed(self):
+        bad = dict(self.interpretation)
+        bad["identity"] = {"unsupported": {1, 2}}
+        result = self.compile(canonical_interpretation=bad)
+        self.assertFalse(result.passed)
+        self.assertIn("semantic_input_not_json_serializable", result.errors)
+        self.assertIsNone(result.pack_sha256)
+
+    def test_compiled_pack_is_snapshot_isolated_from_input_and_output_mutation(self):
+        result = self.compile()
+        self.assertTrue(result.passed, result.errors)
+        original = result.to_dict()
+
+        self.interpretation["identity"]["sample_id"] = "MUTATED"
+        after_input_mutation = result.to_dict()
+        self.assertEqual(after_input_mutation, original)
+        self.assertEqual(
+            after_input_mutation["sections"][0]["semantic_payload"][
+                "canonical_interpretation.identity"
+            ]["sample_id"],
+            "SYNTHETIC-001",
+        )
+
+        exposed = result.to_dict()
+        exposed["sections"][0]["semantic_payload"][
+            "canonical_interpretation.identity"
+        ]["sample_id"] = "OUTPUT-MUTATED"
+        self.assertEqual(result.to_dict(), original)
+
     def test_compiler_does_not_render_localize_or_release(self):
         result = self.compile()
         serialized = json.dumps(result.to_dict(), sort_keys=True).lower()

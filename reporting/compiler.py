@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 import hashlib
 import json
 from collections.abc import Mapping
@@ -28,7 +29,7 @@ class ReportPackCompileResult:
             "roadmap_id": ROADMAP_ID,
             "compile_status": "COMPILED" if self.passed else "FAIL",
             "report_id": self.report_id,
-            "sections": list(self.sections),
+            "sections": deepcopy(list(self.sections)),
             "pack_sha256": self.pack_sha256,
             "errors": list(self.errors),
         }
@@ -40,6 +41,7 @@ def _canonical_sha256(value: object) -> str:
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
+        allow_nan=False,
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
@@ -105,7 +107,7 @@ def compile_report_pack(
                     "missing_required_semantic_input",
                     contracts.report_id,
                 )
-            semantic_payload[semantic_input] = value
+            semantic_payload[semantic_input] = deepcopy(value)
 
         has_meaningful_content = any(
             value not in (None, "", [], {}, ())
@@ -131,9 +133,16 @@ def compile_report_pack(
         "contract_bundle_sha256": contracts.bundle_sha256,
         "sections": compiled_sections,
     }
+    try:
+        pack_sha256 = _canonical_sha256(canonical_pack)
+    except ValueError:
+        return _failure("non_finite_semantic_input", contracts.report_id)
+    except TypeError:
+        return _failure("semantic_input_not_json_serializable", contracts.report_id)
+
     return ReportPackCompileResult(
         report_id=contracts.report_id,
         sections=tuple(compiled_sections),
-        pack_sha256=_canonical_sha256(canonical_pack),
+        pack_sha256=pack_sha256,
         errors=(),
     )
