@@ -110,7 +110,7 @@ class Rpt02CompilerTests(unittest.TestCase):
     def test_compiled_pack_is_snapshot_isolated_from_input_and_output_mutation(self):
         result = self.compile()
         self.assertTrue(result.passed, result.errors)
-        original = result.to_dict()
+        original = json.loads(json.dumps(result.to_dict()))
 
         self.interpretation["identity"]["sample_id"] = "MUTATED"
         after_input_mutation = result.to_dict()
