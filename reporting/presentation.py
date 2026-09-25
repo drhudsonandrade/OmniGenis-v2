@@ -93,11 +93,20 @@ def build_presentation_ir(*, report_view_model: object) -> PresentationResult:
     ):
         return _failure("report_view_model_invalid")
     required_sections = [section for section in sections if section.get("required")]
+    missing_from_sections = [
+        section.get("section_id")
+        for section in required_sections
+        if not section.get("state")
+    ]
+    actual_present_count = sum(
+        1 for section in required_sections if section.get("state")
+    )
+    expected_status = "COMPLETE" if not missing_from_sections else "INCOMPLETE"
     if (
-        completeness_status != "COMPLETE"
-        or missing_required
+        completeness_status != expected_status
+        or missing_required != missing_from_sections
         or len(required_sections) != required_count
-        or len(required_sections) != present_count
+        or present_count != actual_present_count
     ):
         return _failure("report_view_model_incomplete")
     orders = [section.get("order") for section in sections]

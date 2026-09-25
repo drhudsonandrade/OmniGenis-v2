@@ -101,6 +101,17 @@ class Rpt04PresentationIrTests(unittest.TestCase):
             self.build(report_view_model=wrong_present_count).errors,
         )
 
+    def test_manifest_missing_ids_must_match_required_section_state(self):
+        view_model = self.rpt03.to_dict()["view_model"]
+        inconsistent = json.loads(json.dumps(view_model))
+        inconsistent["completeness_manifest"]["missing_required_sections"] = [
+            "identity-and-provenance"
+        ]
+        self.assertIn(
+            "report_view_model_incomplete",
+            self.build(report_view_model=inconsistent).errors,
+        )
+
     def test_duplicate_section_order_fails_closed(self):
         view_model = self.rpt03.to_dict()["view_model"]
         duplicate_order = json.loads(json.dumps(view_model))
