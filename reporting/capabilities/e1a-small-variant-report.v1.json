@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0.0",
+  "report_id": "e1a-small-variant-report",
+  "required_capability_ids": ["canonical-interpretation-object"],
+  "evaluated_analysis_class_ids": ["germline-snv-small-indel"]
+}

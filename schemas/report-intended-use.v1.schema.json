@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-intended-use:1.0.0",
+  "title": "ReportIntendedUse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "intended_use_id",
+    "intended_use_category",
+    "summary",
+    "intended_audience",
+    "clinical_use_status",
+    "permitted_uses",
+    "prohibited_claims",
+    "confirmation_status",
+    "locale_status"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "report_id": {"type": "string", "pattern": ".*\\S.*"},
+    "intended_use_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "intended_use_category": {"const": "TECHNICAL_E1A_VALIDATION"},
+    "summary": {"type": "string", "pattern": ".*\\S.*"},
+    "intended_audience": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": ".*\\S.*"}
+    },
+    "clinical_use_status": {"const": "NOT_CLINICALLY_PROMOTED"},
+    "permitted_uses": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": ".*\\S.*"}
+    },
+    "prohibited_claims": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "Do not claim or establish a clinical diagnosis from this report contract.",
+          "Do not recommend or select treatment from this report contract."
+        ]
+      }
+    },
+    "confirmation_status": {"const": "NOT_DEFINED_IN_RPT01"},
+    "locale_status": {"const": "CANONICAL_ENGLISH_ONLY"}
+  }
+}

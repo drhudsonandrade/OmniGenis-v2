@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-section-contract:1.0.0",
+  "title": "ReportSectionContract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "section_id",
+    "title",
+    "order",
+    "required",
+    "required_semantic_inputs",
+    "empty_state_policy"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "report_id": {"type": "string", "pattern": ".*\\S.*"},
+    "section_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "title": {"type": "string", "pattern": ".*\\S.*"},
+    "order": {"type": "integer", "minimum": 1},
+    "required": {"type": "boolean"},
+    "required_semantic_inputs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "canonical_interpretation.identity",
+          "canonical_interpretation.items",
+          "canonical_interpretation.conflicts",
+          "canonical_interpretation.limitations",
+          "canonical_interpretation.provenance"
+        ]
+      }
+    },
+    "empty_state_policy": {
+      "enum": [
+        "EXPLICIT_NOT_AVAILABLE",
+        "EXPLICIT_NONE",
+        "EXPLICIT_NO_CONFLICTS"
+      ]
+    }
+  }
+}

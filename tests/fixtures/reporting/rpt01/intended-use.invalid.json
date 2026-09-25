@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "report_id": "e1a-small-variant-report",
+  "intended_use_id": "e1a-technical-validation",
+  "intended_use_category": "TECHNICAL_E1A_VALIDATION",
+  "summary": "Technical E1A reporting validation.",
+  "intended_audience": ["Qualified genomic professionals"],
+  "clinical_use_status": "CLINICALLY_PROMOTED",
+  "permitted_uses": ["Technical reporting conformance review"],
+  "prohibited_claims": [
+    "Do not claim or establish a clinical diagnosis from this report contract.",
+    "Do not recommend or select treatment from this report contract."
+  ],
+  "confirmation_status": "NOT_DEFINED_IN_RPT01",
+  "locale_status": "CANONICAL_ENGLISH_ONLY"
+}
