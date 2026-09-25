@@ -1,0 +1,126 @@
+"""RPT-08 deterministic HTML/CSS adapter and conformance harness."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from html import escape
+import hashlib
+import json
+from collections.abc import Mapping
+
+ROADMAP_ID = "RPT-08"
+
+
+@dataclass(frozen=True)
+class AdapterResult:
+    html: str | None
+    html_sha256: str | None
+    pdf_bytes: bytes | None
+    pdf_status: str
+    pdf_reason: str | None
+    conformance: dict[str, object] | None
+    errors: tuple[str, ...]
+
+    @property
+    def passed(self) -> bool:
+        return not self.errors
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "roadmap_id": ROADMAP_ID,
+            "status": "PASS" if self.passed else "FAIL",
+            "html": self.html,
+            "html_sha256": self.html_sha256,
+            "pdf_status": self.pdf_status,
+            "pdf_reason": self.pdf_reason,
+            "conformance": self.conformance,
+            "errors": list(self.errors),
+        }
+
+
+def _failure(error: str) -> AdapterResult:
+    return AdapterResult(None, None, None, "DISABLED", "pdf_engine_not_activated", None, (error,))
+
+
+def _validate_ir(presentation_ir: object) -> bool:
+    if not isinstance(presentation_ir, Mapping):
+        return False
+    report_id = presentation_ir.get("report_id")
+    components = presentation_ir.get("components")
+    if not isinstance(report_id, str) or not report_id:
+        return False
+    if not isinstance(components, list) or not components:
+        return False
+    seen: set[str] = set()
+    for component in components:
+        if not isinstance(component, Mapping):
+            return False
+        component_id = component.get("component_id")
+        if (
+            component.get("component_type") != "semantic-section"
+            or not isinstance(component_id, str)
+            or not component_id
+            or component_id in seen
+            or not isinstance(component.get("title"), str)
+            or not component.get("title")
+            or not isinstance(component.get("state"), str)
+            or not component.get("state")
+            or not isinstance(component.get("content"), Mapping)
+        ):
+            return False
+        seen.add(component_id)
+    return True
+
+
+def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
+    if not _validate_ir(presentation_ir):
+        return _failure("presentation_ir_invalid")
+
+    parts = [
+        "<!doctype html><html><head><meta charset=\"utf-8\">",
+        "<style>body{font-family:sans-serif}section{margin-block:1rem}pre{white-space:pre-wrap}</style>",
+        "</head><body>",
+        f"<h1>{escape(presentation_ir['report_id'])}</h1>",
+    ]
+    component_ids: list[str] = []
+    try:
+        for component in presentation_ir["components"]:
+            component_ids.append(component["component_id"])
+            payload = json.dumps(
+                component["content"],
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+            parts.extend(
+                [
+                    f'<section data-component="{escape(component["component_id"], quote=True)}">',
+                    f"<h2>{escape(component['title'])}</h2>",
+                    f"<p>{escape(component['state'])}</p>",
+                    f"<pre>{escape(payload)}</pre>",
+                    "</section>",
+                ]
+            )
+        parts.append("</body></html>")
+        html = "".join(parts)
+        digest = hashlib.sha256(html.encode("utf-8")).hexdigest()
+    except (TypeError, ValueError, UnicodeEncodeError):
+        return _failure("presentation_ir_invalid")
+
+    conformance = {
+        "status": "PASS",
+        "component_count": len(component_ids),
+        "component_ids": component_ids,
+        "html_sha256": digest,
+        "pdf_adapter_status": "DISABLED",
+    }
+    return AdapterResult(
+        html,
+        digest,
+        None,
+        "DISABLED",
+        "pdf_engine_not_activated",
+        conformance,
+        (),
+    )
