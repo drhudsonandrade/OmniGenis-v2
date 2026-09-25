@@ -65,9 +65,30 @@ class Rpt05LocalizationTests(unittest.TestCase):
         result = self.localize()
         source = self.presentation.to_dict()["presentation_ir"]
         self.assertEqual(
-            result.localized_ir["components"][0]["content"],
+            result.to_dict()["localized_ir"]["components"][0]["content"],
             source["components"][0]["content"],
         )
+
+    def test_unsupported_locale_alias_is_rejected(self):
+        result = self.localize(locale_id="en-US-extra")
+        self.assertFalse(result.passed)
+        self.assertIn("locale_not_supported", result.errors)
+
+    def test_incomplete_component_fails_closed(self):
+        source = self.presentation.to_dict()["presentation_ir"]
+        source["components"][0] = {
+            "component_id": source["components"][0]["component_id"]
+        }
+        result = self.localize(presentation_ir=source)
+        self.assertFalse(result.passed)
+        self.assertIn("presentation_ir_invalid", result.errors)
+
+    def test_retained_localized_ir_is_immutable_after_hashing(self):
+        result = self.localize()
+        original = result.to_dict()
+        with self.assertRaises(TypeError):
+            result.localized_ir["components"][0]["title"] = "MUTATED"
+        self.assertEqual(result.to_dict(), original)
 
     def test_unknown_locale_fails_closed(self):
         result = self.localize(locale_id="xx-INVALID")
