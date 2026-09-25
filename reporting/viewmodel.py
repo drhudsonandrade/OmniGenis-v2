@@ -6,9 +6,28 @@ from copy import deepcopy
 from dataclasses import dataclass
 import hashlib
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from types import MappingProxyType
 
 ROADMAP_ID = "RPT-03"
+
+
+def _freeze(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze(item) for item in value)
+    if isinstance(value, tuple):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def _thaw(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw(item) for item in value]
+    return deepcopy(value)
 
 
 @dataclass(frozen=True)
@@ -26,9 +45,9 @@ class Rpt03Result:
         return {
             "roadmap_id": ROADMAP_ID,
             "status": "PASS" if self.passed else "FAIL",
-            "view_model": deepcopy(self.view_model),
-            "completeness_manifest": deepcopy(self.completeness_manifest),
-            "release_bundle": deepcopy(self.release_bundle),
+            "view_model": _thaw(self.view_model),
+            "completeness_manifest": _thaw(self.completeness_manifest),
+            "release_bundle": _thaw(self.release_bundle),
             "errors": list(self.errors),
         }
 
@@ -74,7 +93,7 @@ def build_report_view_model_and_release_bundle(
         return _failure("compiled_report_pack_invalid")
     if not isinstance(pack_sha256, str) or len(pack_sha256) != 64:
         return _failure("compiled_report_pack_invalid")
-    if not sections:
+    if not sections or any(not isinstance(section, Mapping) for section in sections):
         return _failure("compiled_report_pack_invalid")
 
     missing_required_sections = [
@@ -123,8 +142,8 @@ def build_report_view_model_and_release_bundle(
         "bundle_sha256": bundle_sha256,
     }
     return Rpt03Result(
-        deepcopy(view_model),
-        deepcopy(completeness_manifest),
-        deepcopy(release_bundle),
+        _freeze(view_model),
+        _freeze(completeness_manifest),
+        _freeze(release_bundle),
         (),
     )

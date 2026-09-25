@@ -63,7 +63,7 @@ class Rpt03ViewModelReleaseBundleTests(unittest.TestCase):
 
     def test_completeness_manifest_binds_every_required_section(self):
         result = self.build()
-        manifest = result.completeness_manifest
+        manifest = result.to_dict()["completeness_manifest"]
         self.assertEqual(manifest["required_section_count"], 5)
         self.assertEqual(manifest["present_section_count"], 5)
         self.assertEqual(manifest["missing_required_sections"], [])
@@ -80,6 +80,34 @@ class Rpt03ViewModelReleaseBundleTests(unittest.TestCase):
         exposed["view_model"]["sections"][0]["title"] = "MUTATED"
         exposed["release_bundle"]["artifact_ids"].append("MUTATED")
         self.assertEqual(result.to_dict(), original)
+
+    def test_retained_payloads_cannot_be_mutated_after_hashing(self):
+        result = self.build()
+        original = result.to_dict()
+        with self.assertRaises(TypeError):
+            result.view_model["sections"][0]["title"] = "MUTATED"
+        with self.assertRaises(TypeError):
+            result.release_bundle["release_status"] = "MUTATED"
+        self.assertEqual(result.to_dict(), original)
+
+    def test_non_mapping_section_fails_closed(self):
+        module = importlib.import_module("reporting.viewmodel")
+        bad = type(
+            "BadPack",
+            (),
+            {
+                "passed": True,
+                "report_id": REPORT_ID,
+                "pack_sha256": "a" * 64,
+                "sections": ("not-a-mapping",),
+            },
+        )()
+        result = module.build_report_view_model_and_release_bundle(
+            compiled_report_pack=bad,
+            artifact_ids=["synthetic"],
+        )
+        self.assertFalse(result.passed)
+        self.assertIn("compiled_report_pack_invalid", result.errors)
 
     def test_invalid_compiled_pack_fails_closed(self):
         module = importlib.import_module("reporting.viewmodel")
