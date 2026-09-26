@@ -4,6 +4,8 @@ import builtins
 import importlib
 import importlib.util
 import json
+import os
+import time
 from pathlib import Path
 import hashlib
 import unittest
@@ -49,9 +51,12 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         module = importlib.import_module("reporting.adapters")
         values = {"presentation_ir": self.presentation}
         values.update(overrides)
-        with patch(
-            "reporting.adapters._render_pdf",
-            return_value=b"%PDF-1.7\nsynthetic-default\n%%EOF\n",
+        with (
+            patch(
+                "reporting.adapters._render_pdf",
+                return_value=b"%PDF-1.7\nsynthetic-default\n%%EOF\n",
+            ),
+            patch("reporting.adapters._validate_pdf_structure"),
         ):
             return module.build_html_css_and_pdf_adapter(**values)
 
@@ -67,6 +72,20 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         )
         self.assertEqual(manifest["integration_mode"], "USE_VIA_ADAPTER")
         self.assertFalse(manifest["source_code_copied"])
+        validator = manifest["structural_validator"]
+        self.assertEqual(validator["validator_id"], "pypdf")
+        self.assertEqual(validator["validator_version"], "6.19.0")
+        self.assertEqual(validator["license"], "BSD-3-Clause")
+        self.assertEqual(validator["integration_mode"], "USE_VIA_ADAPTER")
+        self.assertFalse(validator["source_code_copied"])
+        self.assertEqual(
+            validator["copyright_notices"],
+            [
+                "Copyright (c) 2006-2008, Mathieu Fenniak",
+                "Some contributions copyright (c) 2007, Ashish Kulkarni <kulkarni.ashish@gmail.com>",
+                "Some contributions copyright (c) 2014, Steve Witham <switham_github@mac-guyver.com>",
+            ],
+        )
 
     def test_html_css_adapter_is_deterministic_and_escaped(self):
         result = self.adapt()
@@ -87,7 +106,10 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
     def test_pdf_adapter_binds_generated_pdf(self):
         fake_pdf = b"%PDF-1.7\nsynthetic-fixture\n%%EOF\n"
         module = importlib.import_module("reporting.adapters")
-        with patch("reporting.adapters._render_pdf", return_value=fake_pdf):
+        with (
+            patch("reporting.adapters._render_pdf", return_value=fake_pdf),
+            patch("reporting.adapters._validate_pdf_structure"),
+        ):
             result = module.build_html_css_and_pdf_adapter(
                 presentation_ir=self.presentation
             )
@@ -101,15 +123,16 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         )
         self.assertEqual(result.pdf_engine_id, "weasyprint:70.0")
 
-    @unittest.skipUnless(
-        importlib.util.find_spec("weasyprint"),
-        "pinned PDF engine not installed",
-    )
     def test_pinned_weasyprint_engine_generates_deterministic_pdf(self):
         module = importlib.import_module("reporting.adapters")
+        ready, reason = module._pdf_stack_readiness()
+        if not ready:
+            self.skipTest(reason or "pinned PDF stack not ready")
+        previous_source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH")
         first = module.build_html_css_and_pdf_adapter(
             presentation_ir=self.presentation
         )
+        time.sleep(1.1)
         second = module.build_html_css_and_pdf_adapter(
             presentation_ir=self.presentation
         )
@@ -118,6 +141,10 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         self.assertTrue(first.pdf_bytes.startswith(b"%PDF-1.7"))
         self.assertEqual(first.pdf_sha256, second.pdf_sha256)
         self.assertEqual(first.pdf_bytes, second.pdf_bytes)
+        self.assertEqual(
+            os.environ.get("SOURCE_DATE_EPOCH"),
+            previous_source_date_epoch,
+        )
 
     def test_pdf_native_library_import_error_fails_closed(self):
         module = importlib.import_module("reporting.adapters")
@@ -131,6 +158,25 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         with patch("builtins.__import__", side_effect=fail_weasyprint_import):
             with self.assertRaisesRegex(RuntimeError, "pdf_engine_unavailable"):
                 module._render_pdf("<!doctype html><html></html>", "0" * 64)
+
+    def test_malformed_pdf_bytes_fail_closed_before_hashing(self):
+        try:
+            from importlib.metadata import version
+
+            if version("pypdf") != "6.19.0":
+                self.skipTest("pinned PDF validator not installed")
+        except importlib.metadata.PackageNotFoundError:
+            self.skipTest("pinned PDF validator not installed")
+        module = importlib.import_module("reporting.adapters")
+        broken_pdf = b"%PDF-1.7\nbroken"
+        with patch("reporting.adapters._render_pdf", return_value=broken_pdf):
+            result = module.build_html_css_and_pdf_adapter(
+                presentation_ir=self.presentation
+            )
+        self.assertFalse(result.passed)
+        self.assertIn("pdf_engine_invalid_output", result.errors)
+        self.assertIsNone(result.pdf_sha256)
+        self.assertIsNone(result.conformance)
 
     def test_pdf_engine_unavailable_fails_closed(self):
         module = importlib.import_module("reporting.adapters")

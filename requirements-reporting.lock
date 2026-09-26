@@ -7,6 +7,7 @@ jsonschema==4.10.3
 pillow==12.3.0
 pycparser==3.0
 pydyf==0.12.1
+pypdf==6.19.0
 pyphen==0.18.1
 pyrsistent==0.20.0
 tinycss2==1.5.1

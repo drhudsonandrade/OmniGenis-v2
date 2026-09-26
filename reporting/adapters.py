@@ -5,10 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html import escape
 import hashlib
+from io import BytesIO
 import json
+import os
+import threading
 from collections.abc import Mapping
 
 ROADMAP_ID = "RPT-08"
+_PDF_RENDER_ENV_LOCK = threading.Lock()
+_PDF_SOURCE_DATE_EPOCH = "0"
 
 
 @dataclass(frozen=True)
@@ -76,30 +81,97 @@ def _validate_ir(presentation_ir: object) -> bool:
     return True
 
 
-def _render_pdf(html: str, html_sha256: str) -> bytes:
+def _pdf_stack_readiness() -> tuple[bool, str | None]:
     try:
-        from weasyprint import HTML, __version__ as weasyprint_version
-        from weasyprint.urls import URLFetcher
-    except (ImportError, OSError) as exc:
-        raise RuntimeError("pdf_engine_unavailable") from exc
-    if weasyprint_version != "70.0":
-        raise RuntimeError("pdf_engine_version_mismatch")
+        from importlib.metadata import version
 
-    fetcher = URLFetcher(
-        allowed_protocols=(),
-        allow_redirects=False,
-        fail_on_errors=True,
-    )
+        from weasyprint import HTML  # noqa: F401
+        from weasyprint.urls import URLFetcher
+    except (ImportError, OSError):
+        return False, "pdf_engine_unavailable"
+    if version("weasyprint") != "70.0":
+        return False, "pdf_engine_version_mismatch"
+
     try:
-        pdf = HTML(string=html, url_fetcher=fetcher).write_pdf(
-            pdf_identifier=bytes.fromhex(html_sha256),
-            pdf_version="1.7",
+        from pypdf import PdfReader  # noqa: F401
+    except (ImportError, OSError):
+        return False, "pdf_validator_unavailable"
+    if version("pypdf") != "6.19.0":
+        return False, "pdf_validator_version_mismatch"
+
+    try:
+        URLFetcher(
+            allowed_protocols=(),
+            allow_redirects=False,
+            fail_on_errors=True,
         )
-    except Exception as exc:
-        raise RuntimeError("pdf_render_failed") from exc
+    except Exception:
+        return False, "pdf_engine_unavailable"
+    return True, None
+
+
+def _validate_pdf_structure(pdf: bytes) -> None:
     if not isinstance(pdf, bytes) or not pdf.startswith(b"%PDF-1.7"):
         raise RuntimeError("pdf_engine_invalid_output")
-    return pdf
+
+    try:
+        from importlib.metadata import version
+
+        from pypdf import PdfReader
+    except (ImportError, OSError) as exc:
+        raise RuntimeError("pdf_validator_unavailable") from exc
+    if version("pypdf") != "6.19.0":
+        raise RuntimeError("pdf_validator_version_mismatch")
+
+    try:
+        reader = PdfReader(BytesIO(pdf), strict=True)
+        if len(reader.pages) < 1:
+            raise RuntimeError("pdf_engine_invalid_output")
+        root = reader.trailer.get("/Root")
+        if root is None:
+            raise RuntimeError("pdf_engine_invalid_output")
+        root.get_object()
+        for page in reader.pages:
+            _ = page.mediabox
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError("pdf_engine_invalid_output") from exc
+
+
+def _render_pdf(html: str, html_sha256: str) -> bytes:
+    with _PDF_RENDER_ENV_LOCK:
+        previous_source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+        os.environ["SOURCE_DATE_EPOCH"] = _PDF_SOURCE_DATE_EPOCH
+        try:
+            try:
+                from weasyprint import HTML, __version__ as weasyprint_version
+                from weasyprint.urls import URLFetcher
+            except (ImportError, OSError) as exc:
+                raise RuntimeError("pdf_engine_unavailable") from exc
+            if weasyprint_version != "70.0":
+                raise RuntimeError("pdf_engine_version_mismatch")
+
+            fetcher = URLFetcher(
+                allowed_protocols=(),
+                allow_redirects=False,
+                fail_on_errors=True,
+            )
+            try:
+                pdf = HTML(string=html, url_fetcher=fetcher).write_pdf(
+                    pdf_identifier=bytes.fromhex(html_sha256),
+                    pdf_version="1.7",
+                )
+            except Exception as exc:
+                raise RuntimeError("pdf_render_failed") from exc
+            if not isinstance(pdf, bytes) or not pdf.startswith(b"%PDF-1.7"):
+                raise RuntimeError("pdf_engine_invalid_output")
+            return pdf
+        finally:
+            if previous_source_date_epoch is None:
+                os.environ.pop("SOURCE_DATE_EPOCH", None)
+            else:
+                os.environ["SOURCE_DATE_EPOCH"] = previous_source_date_epoch
 
 
 def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
@@ -140,6 +212,7 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
 
     try:
         pdf_bytes = _render_pdf(html, digest)
+        _validate_pdf_structure(pdf_bytes)
     except RuntimeError as exc:
         reason = str(exc)
         return AdapterResult(
@@ -157,6 +230,7 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
         "pdf_sha256": pdf_sha256,
         "pdf_adapter_status": "READY",
         "pdf_engine_id": "weasyprint:70.0",
+        "pdf_validator_id": "pypdf:6.19.0",
     }
     return AdapterResult(
         html,
