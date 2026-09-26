@@ -1,4 +1,5 @@
 {
+  "copyright_notice": "Copyright (c) 2011-2021, Simon Sapin and contributors.",
   "dependency_licenses_observed": {
     "brotli": "MIT",
     "cffi": "MIT-0",
@@ -18,12 +19,19 @@
   "engine_version": "70.0",
   "external_resource_fetching": false,
   "input_domain": "OmniGenis-generated escaped self-contained HTML/CSS only",
+  "integration_mode": "USE_VIA_ADAPTER",
   "known_issues": [
     "Do not downgrade below 70.0; 70.0 includes a security fix.",
     "PDF/A and PDF/UA conformance are not asserted by RPT-08 and remain RPT-12 work.",
     "Current environment warns that HarfBuzz-Subset will be required by a future WeasyPrint version; version 70.0 remains functional without it."
   ],
   "license": "BSD-3-Clause",
+  "omnigenis_authorship_scope": [
+    "reporting adapter code",
+    "canonical pipeline integration",
+    "dependency activation policy",
+    "conformance and regression tests"
+  ],
   "pdf_version": "1.7",
   "profile_id": "internal-generated-html-to-pdf-v1",
   "resource_budget": {
@@ -32,6 +40,7 @@
     "measured_peak_rss_kib": 62184
   },
   "schema_version": "1.0.0",
+  "source_code_copied": false,
   "source_release_commit": "4d3b7b6449e3494f59c7c2f36b512d129225679c",
   "source_repository": "Kozea/WeasyPrint",
   "wheel_sha256": "5043e55e38d2a2af2b2b871e869697b1f65dad5f8b4a3677961d04ceacf9c5fe"

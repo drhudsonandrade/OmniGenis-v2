@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import builtins
 import importlib
+import importlib.util
 import json
 from pathlib import Path
 import hashlib
@@ -53,6 +55,19 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         ):
             return module.build_html_css_and_pdf_adapter(**values)
 
+    def test_pdf_engine_manifest_preserves_external_provenance_and_rights(self):
+        manifest = load_json(ROOT / "reporting" / "pdf-engine.v1.json")
+        self.assertEqual(manifest["engine_id"], "weasyprint")
+        self.assertEqual(manifest["engine_version"], "70.0")
+        self.assertEqual(manifest["license"], "BSD-3-Clause")
+        self.assertEqual(manifest["source_repository"], "Kozea/WeasyPrint")
+        self.assertEqual(
+            manifest["copyright_notice"],
+            "Copyright (c) 2011-2021, Simon Sapin and contributors.",
+        )
+        self.assertEqual(manifest["integration_mode"], "USE_VIA_ADAPTER")
+        self.assertFalse(manifest["source_code_copied"])
+
     def test_html_css_adapter_is_deterministic_and_escaped(self):
         result = self.adapt()
         self.assertTrue(result.passed, result.errors)
@@ -103,6 +118,19 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         self.assertTrue(first.pdf_bytes.startswith(b"%PDF-1.7"))
         self.assertEqual(first.pdf_sha256, second.pdf_sha256)
         self.assertEqual(first.pdf_bytes, second.pdf_bytes)
+
+    def test_pdf_native_library_import_error_fails_closed(self):
+        module = importlib.import_module("reporting.adapters")
+        original_import = builtins.__import__
+
+        def fail_weasyprint_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "weasyprint":
+                raise OSError("synthetic native library load failure")
+            return original_import(name, globals, locals, fromlist, level)
+
+        with patch("builtins.__import__", side_effect=fail_weasyprint_import):
+            with self.assertRaisesRegex(RuntimeError, "pdf_engine_unavailable"):
+                module._render_pdf("<!doctype html><html></html>", "0" * 64)
 
     def test_pdf_engine_unavailable_fails_closed(self):
         module = importlib.import_module("reporting.adapters")

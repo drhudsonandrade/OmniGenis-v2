@@ -80,7 +80,7 @@ def _render_pdf(html: str, html_sha256: str) -> bytes:
     try:
         from weasyprint import HTML, __version__ as weasyprint_version
         from weasyprint.urls import URLFetcher
-    except ImportError as exc:
+    except (ImportError, OSError) as exc:
         raise RuntimeError("pdf_engine_unavailable") from exc
     if weasyprint_version != "70.0":
         raise RuntimeError("pdf_engine_version_mismatch")
