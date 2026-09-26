@@ -3,7 +3,9 @@ from __future__ import annotations
 import importlib
 import json
 from pathlib import Path
+import hashlib
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_ID = "e1a-small-variant-report"
@@ -45,7 +47,11 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         module = importlib.import_module("reporting.adapters")
         values = {"presentation_ir": self.presentation}
         values.update(overrides)
-        return module.build_html_css_and_pdf_adapter(**values)
+        with patch(
+            "reporting.adapters._render_pdf",
+            return_value=b"%PDF-1.7\nsynthetic-default\n%%EOF\n",
+        ):
+            return module.build_html_css_and_pdf_adapter(**values)
 
     def test_html_css_adapter_is_deterministic_and_escaped(self):
         result = self.adapt()
@@ -63,11 +69,53 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
             [component["component_id"] for component in self.presentation["components"]],
         )
 
-    def test_pdf_adapter_fails_closed_when_engine_is_not_activated(self):
-        result = self.adapt()
+    def test_pdf_adapter_binds_generated_pdf(self):
+        fake_pdf = b"%PDF-1.7\nsynthetic-fixture\n%%EOF\n"
+        module = importlib.import_module("reporting.adapters")
+        with patch("reporting.adapters._render_pdf", return_value=fake_pdf):
+            result = module.build_html_css_and_pdf_adapter(
+                presentation_ir=self.presentation
+            )
+        self.assertTrue(result.passed, result.errors)
+        self.assertEqual(result.pdf_status, "READY")
+        self.assertIsNone(result.pdf_reason)
+        self.assertEqual(result.pdf_bytes, fake_pdf)
+        self.assertEqual(
+            result.pdf_sha256,
+            hashlib.sha256(fake_pdf).hexdigest(),
+        )
+        self.assertEqual(result.pdf_engine_id, "weasyprint:70.0")
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("weasyprint"),
+        "pinned PDF engine not installed",
+    )
+    def test_pinned_weasyprint_engine_generates_deterministic_pdf(self):
+        module = importlib.import_module("reporting.adapters")
+        first = module.build_html_css_and_pdf_adapter(
+            presentation_ir=self.presentation
+        )
+        second = module.build_html_css_and_pdf_adapter(
+            presentation_ir=self.presentation
+        )
+        self.assertTrue(first.passed, first.errors)
+        self.assertEqual(first.pdf_status, "READY")
+        self.assertTrue(first.pdf_bytes.startswith(b"%PDF-1.7"))
+        self.assertEqual(first.pdf_sha256, second.pdf_sha256)
+        self.assertEqual(first.pdf_bytes, second.pdf_bytes)
+
+    def test_pdf_engine_unavailable_fails_closed(self):
+        module = importlib.import_module("reporting.adapters")
+        with patch(
+            "reporting.adapters._render_pdf",
+            side_effect=RuntimeError("pdf_engine_unavailable"),
+        ):
+            result = module.build_html_css_and_pdf_adapter(
+                presentation_ir=self.presentation
+            )
+        self.assertFalse(result.passed)
+        self.assertIn("pdf_engine_unavailable", result.errors)
         self.assertIsNone(result.pdf_bytes)
-        self.assertEqual(result.pdf_status, "DISABLED")
-        self.assertEqual(result.pdf_reason, "pdf_engine_not_activated")
 
     def test_malformed_ir_fails_closed(self):
         bad = json.loads(json.dumps(self.presentation))

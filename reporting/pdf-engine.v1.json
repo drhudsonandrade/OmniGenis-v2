@@ -1,0 +1,38 @@
+{
+  "dependency_licenses_observed": {
+    "brotli": "MIT",
+    "cffi": "MIT-0",
+    "cssselect2": "BSD",
+    "fonttools": "MIT",
+    "pillow": "MIT-CMU",
+    "pycparser": "BSD-3-Clause",
+    "pydyf": "BSD-3-Clause",
+    "pyphen": "GPL-2.0+ OR LGPL-2.1+ OR MPL-1.1",
+    "tinycss2": "BSD",
+    "tinyhtml5": "MIT",
+    "webencodings": "BSD",
+    "zopfli": "Apache-2.0"
+  },
+  "disable_behavior": "fail_closed",
+  "engine_id": "weasyprint",
+  "engine_version": "70.0",
+  "external_resource_fetching": false,
+  "input_domain": "OmniGenis-generated escaped self-contained HTML/CSS only",
+  "known_issues": [
+    "Do not downgrade below 70.0; 70.0 includes a security fix.",
+    "PDF/A and PDF/UA conformance are not asserted by RPT-08 and remain RPT-12 work.",
+    "Current environment warns that HarfBuzz-Subset will be required by a future WeasyPrint version; version 70.0 remains functional without it."
+  ],
+  "license": "BSD-3-Clause",
+  "pdf_version": "1.7",
+  "profile_id": "internal-generated-html-to-pdf-v1",
+  "resource_budget": {
+    "isolated_venv_bytes": 106025961,
+    "measured_fixture_wall_seconds": 1.13,
+    "measured_peak_rss_kib": 62184
+  },
+  "schema_version": "1.0.0",
+  "source_release_commit": "4d3b7b6449e3494f59c7c2f36b512d129225679c",
+  "source_repository": "Kozea/WeasyPrint",
+  "wheel_sha256": "5043e55e38d2a2af2b2b871e869697b1f65dad5f8b4a3677961d04ceacf9c5fe"
+}

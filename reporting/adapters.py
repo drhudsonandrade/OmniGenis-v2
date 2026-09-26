@@ -16,6 +16,8 @@ class AdapterResult:
     html: str | None
     html_sha256: str | None
     pdf_bytes: bytes | None
+    pdf_sha256: str | None
+    pdf_engine_id: str | None
     pdf_status: str
     pdf_reason: str | None
     conformance: dict[str, object] | None
@@ -31,6 +33,8 @@ class AdapterResult:
             "status": "PASS" if self.passed else "FAIL",
             "html": self.html,
             "html_sha256": self.html_sha256,
+            "pdf_sha256": self.pdf_sha256,
+            "pdf_engine_id": self.pdf_engine_id,
             "pdf_status": self.pdf_status,
             "pdf_reason": self.pdf_reason,
             "conformance": self.conformance,
@@ -39,7 +43,7 @@ class AdapterResult:
 
 
 def _failure(error: str) -> AdapterResult:
-    return AdapterResult(None, None, None, "DISABLED", "pdf_engine_not_activated", None, (error,))
+    return AdapterResult(None, None, None, None, None, "DISABLED", None, None, (error,))
 
 
 def _validate_ir(presentation_ir: object) -> bool:
@@ -70,6 +74,32 @@ def _validate_ir(presentation_ir: object) -> bool:
             return False
         seen.add(component_id)
     return True
+
+
+def _render_pdf(html: str, html_sha256: str) -> bytes:
+    try:
+        from weasyprint import HTML, __version__ as weasyprint_version
+        from weasyprint.urls import URLFetcher
+    except ImportError as exc:
+        raise RuntimeError("pdf_engine_unavailable") from exc
+    if weasyprint_version != "70.0":
+        raise RuntimeError("pdf_engine_version_mismatch")
+
+    fetcher = URLFetcher(
+        allowed_protocols=(),
+        allow_redirects=False,
+        fail_on_errors=True,
+    )
+    try:
+        pdf = HTML(string=html, url_fetcher=fetcher).write_pdf(
+            pdf_identifier=bytes.fromhex(html_sha256),
+            pdf_version="1.7",
+        )
+    except Exception as exc:
+        raise RuntimeError("pdf_render_failed") from exc
+    if not isinstance(pdf, bytes) or not pdf.startswith(b"%PDF-1.7"):
+        raise RuntimeError("pdf_engine_invalid_output")
+    return pdf
 
 
 def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
@@ -108,19 +138,34 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
     except (TypeError, ValueError, UnicodeEncodeError):
         return _failure("presentation_ir_invalid")
 
+    try:
+        pdf_bytes = _render_pdf(html, digest)
+    except RuntimeError as exc:
+        reason = str(exc)
+        return AdapterResult(
+            html, digest, None, None, "weasyprint:70.0", "DISABLED", reason, None, (reason,)
+        )
+    except (TypeError, ValueError, UnicodeError):
+        return _failure("pdf_render_failed")
+
+    pdf_sha256 = hashlib.sha256(pdf_bytes).hexdigest()
     conformance = {
         "status": "PASS",
         "component_count": len(component_ids),
         "component_ids": component_ids,
         "html_sha256": digest,
-        "pdf_adapter_status": "DISABLED",
+        "pdf_sha256": pdf_sha256,
+        "pdf_adapter_status": "READY",
+        "pdf_engine_id": "weasyprint:70.0",
     }
     return AdapterResult(
         html,
         digest,
+        pdf_bytes,
+        pdf_sha256,
+        "weasyprint:70.0",
+        "READY",
         None,
-        "DISABLED",
-        "pdf_engine_not_activated",
         conformance,
         (),
     )
