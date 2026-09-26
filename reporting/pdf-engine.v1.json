@@ -1,0 +1,72 @@
+{
+  "copyright_notice": "Copyright (c) 2011-2021, Simon Sapin and contributors.",
+  "dependency_licenses_observed": {
+    "brotli": "MIT",
+    "cffi": "MIT-0",
+    "cssselect2": "BSD",
+    "fonttools": "MIT",
+    "pillow": "MIT-CMU",
+    "pycparser": "BSD-3-Clause",
+    "pydyf": "BSD-3-Clause",
+    "pypdf": "BSD-3-Clause",
+    "pyphen": "GPL-2.0+ OR LGPL-2.1+ OR MPL-1.1",
+    "tinycss2": "BSD",
+    "tinyhtml5": "MIT",
+    "webencodings": "BSD",
+    "zopfli": "Apache-2.0"
+  },
+  "determinism": {
+    "previous_environment_restored": true,
+    "process_lock": true,
+    "purpose": "stabilize font subsetting and PDF bytes across identical renders",
+    "scope": "single render call",
+    "source_date_epoch": "0"
+  },
+  "disable_behavior": "fail_closed",
+  "engine_id": "weasyprint",
+  "engine_version": "70.0",
+  "external_resource_fetching": false,
+  "input_domain": "OmniGenis-generated escaped self-contained HTML/CSS only",
+  "integration_mode": "USE_VIA_ADAPTER",
+  "known_issues": [
+    "Do not downgrade below 70.0; 70.0 includes a security fix.",
+    "PDF/A and PDF/UA conformance are not asserted by RPT-08 and remain RPT-12 work.",
+    "Current environment warns that HarfBuzz-Subset will be required by a future WeasyPrint version; version 70.0 remains functional without it.",
+    "Deterministic rendering pins SOURCE_DATE_EPOCH=0 during each render call and restores the previous process value."
+  ],
+  "license": "BSD-3-Clause",
+  "omnigenis_authorship_scope": [
+    "reporting adapter code",
+    "canonical pipeline integration",
+    "dependency activation policy",
+    "conformance and regression tests"
+  ],
+  "pdf_version": "1.7",
+  "profile_id": "internal-generated-html-to-pdf-v1",
+  "resource_budget": {
+    "isolated_venv_bytes": 106025961,
+    "measured_fixture_wall_seconds": 1.13,
+    "measured_peak_rss_kib": 62184
+  },
+  "schema_version": "1.0.0",
+  "source_code_copied": false,
+  "source_release_commit": "4d3b7b6449e3494f59c7c2f36b512d129225679c",
+  "source_repository": "Kozea/WeasyPrint",
+  "structural_validator": {
+    "copyright_notices": [
+      "Copyright (c) 2006-2008, Mathieu Fenniak",
+      "Some contributions copyright (c) 2007, Ashish Kulkarni <kulkarni.ashish@gmail.com>",
+      "Some contributions copyright (c) 2014, Steve Witham <switham_github@mac-guyver.com>"
+    ],
+    "integration_mode": "USE_VIA_ADAPTER",
+    "license": "BSD-3-Clause",
+    "package_url": "https://pypi.org/project/pypdf/6.19.0/",
+    "source_code_copied": false,
+    "source_repository": "py-pdf/pypdf",
+    "strict_mode": true,
+    "validator_id": "pypdf",
+    "validator_version": "6.19.0",
+    "wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14"
+  },
+  "wheel_sha256": "5043e55e38d2a2af2b2b871e869697b1f65dad5f8b4a3677961d04ceacf9c5fe"
+}
