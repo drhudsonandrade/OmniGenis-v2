@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-family:1.0.0",
+  "title": "ReportFamily",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "family_id",
+    "title",
+    "report_ids",
+    "required_capability_ids",
+    "evaluated_analysis_class_ids"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "family_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "title": {"type": "string", "minLength": 1},
+    "report_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "required_capability_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "evaluated_analysis_class_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}
