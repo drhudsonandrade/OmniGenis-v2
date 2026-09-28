@@ -170,6 +170,40 @@ class Rpt10ReportFamilyTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("family_analysis_class_mismatch", result.errors)
 
+    def test_stale_upstream_view_model_digest_fails_closed(self):
+        """A passed-looking RPT-03 object with stale digest is rejected."""
+        payload = self.rpt03.to_dict()
+        fake = type(
+            "FakeRpt03",
+            (),
+            {
+                "passed": True,
+                "view_model": copy.deepcopy(payload["view_model"]),
+                "release_bundle": copy.deepcopy(payload["release_bundle"]),
+            },
+        )()
+        fake.view_model["sections"][0]["title"] = "MUTATED AFTER HASH"
+        result = self.build(rpt03_result=fake)
+        self.assertFalse(result.passed)
+        self.assertIn("canonical_report_view_model_required", result.errors)
+
+    def test_mismatched_release_bundle_identity_fails_closed(self):
+        """A passed-looking RPT-03 object with wrong bundle identity is rejected."""
+        payload = self.rpt03.to_dict()
+        fake = type(
+            "FakeRpt03",
+            (),
+            {
+                "passed": True,
+                "view_model": copy.deepcopy(payload["view_model"]),
+                "release_bundle": copy.deepcopy(payload["release_bundle"]),
+            },
+        )()
+        fake.release_bundle["release_bundle_id"] = "other-report:deadbeefdeadbeef"
+        result = self.build(rpt03_result=fake)
+        self.assertFalse(result.passed)
+        self.assertIn("canonical_report_view_model_required", result.errors)
+
     def test_invalid_upstream_view_model_fails_closed(self):
         """RPT-10 accepts only a successful canonical RPT-03 result."""
         bad = type("BadRpt03", (), {"passed": False})()

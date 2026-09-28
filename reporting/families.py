@@ -229,11 +229,20 @@ def build_report_family_view_model(
     if family_analysis_classes != analysis_classes:
         return _failure("family_analysis_class_mismatch", report_id=report_id)
 
+    thawed_view_model = _thaw(view_model)
+    try:
+        canonical_digest = _sha256(thawed_view_model)
+    except (TypeError, ValueError):
+        return _failure("family_view_model_not_serializable", report_id=report_id)
+
     report_view_model_sha256 = release_bundle.get("report_view_model_sha256")
     if (
         not isinstance(report_view_model_sha256, str)
         or len(report_view_model_sha256) != 64
         or any(character not in "0123456789abcdef" for character in report_view_model_sha256)
+        or report_view_model_sha256 != canonical_digest
+        or release_bundle.get("release_bundle_id")
+        != f"{report_id}:{canonical_digest[:16]}"
     ):
         return _failure("canonical_report_view_model_required", report_id=report_id)
 
@@ -244,7 +253,7 @@ def build_report_family_view_model(
         "required_capability_ids": list(capabilities),
         "evaluated_analysis_class_ids": list(analysis_classes),
         "report_view_model_sha256": report_view_model_sha256,
-        "report_view_model": _thaw(view_model),
+        "report_view_model": thawed_view_model,
     }
     try:
         digest = _sha256(payload)
