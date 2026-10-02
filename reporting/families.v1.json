@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "catalog_id": "e1a-report-family-catalog-v1",
+  "families": [
+    {
+      "schema_version": "1.0.0",
+      "family_id": "e1a-small-variant",
+      "title": "E1A Small-Variant Reporting",
+      "report_ids": ["e1a-small-variant-report"],
+      "required_capability_ids": ["canonical-interpretation-object"],
+      "evaluated_analysis_class_ids": ["germline-snv-small-indel"]
+    }
+  ]
+}
