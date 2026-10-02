@@ -24,6 +24,12 @@ class Rpt11ProfileContractTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Draft202012Validator(schema).validate(load(INVALID))
 
+    def test_every_registry_entry_conforms_to_profile_schema(self):
+        """Every declared registry profile must satisfy the public profile contract."""
+        validator = Draft202012Validator(load(SCHEMA))
+        for profile in load(REGISTRY)["profiles"]:
+            validator.validate(profile)
+
     def test_registry_pins_exactly_three_non_ballot_profiles(self):
         """RPT-11 profile expansion is bounded to the accepted budget."""
         data=load(REGISTRY)
