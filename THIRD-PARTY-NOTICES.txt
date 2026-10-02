@@ -1,6 +1,23 @@
 THIRD-PARTY NOTICES
 
-No third-party source code is incorporated in this repository baseline.
+No third-party source code is incorporated by the interoperability profile registry.
 
-Required notices and attributions for third-party components will be added
-before such components are distributed.
+The registry references external interoperability standards for compatibility work:
+
+HL7 Genomics Reporting Implementation Guide 3.0.0, based on HL7 FHIR R4.
+Copyright HL7 International and contributors. The referenced implementation-guide
+material is made available under Creative Commons Attribution 4.0 International
+(CC BY 4.0), subject to the guide's IP statements and incorporated terminology rights.
+https://hl7.org/fhir/uv/genomics-reporting/
+
+GA4GH Phenopackets 2.0.
+The referenced phenopacket schema is distributed under the BSD 3-Clause License.
+https://www.ga4gh.org/product/phenopackets/
+
+GA4GH Variation Representation Specification (VRS) 2.0.
+The referenced VRS specification/software is distributed under the Apache License 2.0.
+https://www.ga4gh.org/product/variation-representation/
+
+These references do not transfer authorship of OmniGenis code to the standards
+organizations and do not imply endorsement or full conformance. Adapter conformance
+must be established separately before an interoperability profile is enabled.

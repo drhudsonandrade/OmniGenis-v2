@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "fhir-genomics-reporting-r4",
+  "standard_name": "HL7 Genomics Reporting Implementation Guide",
+  "standard_version": "3.0.0",
+  "base_version": "FHIR 4.0.1",
+  "source_url": "https://hl7.org/fhir/uv/genomics-reporting/",
+  "license": "CC-BY-4.0",
+  "activation_state": "PROFILE_DECLARED_ADAPTER_PENDING",
+  "adapter_enabled": false,
+  "network_access": "FORBIDDEN_DURING_PROJECTION",
+  "subject_identity_policy": "OPTIONAL_EXPLICIT_ONLY",
+  "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
+  "unsupported_behavior": "FAIL_CLOSED",
+  "scope": [
+    "GenomicReport report-level projection",
+    "E1A small-variant results only"
+  ],
+  "known_issues": [
+    "No patient identity is inferred from case_id or sample_id.",
+    "Terminology and profile validation obligations remain adapter-conformance work."
+  ]
+}

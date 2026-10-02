@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0.0",
+  "registry_id": "omnigenis-rpt11-interoperability-profiles-v1",
+  "profiles": [
+    {
+      "schema_version": "1.0.0",
+      "profile_id": "fhir-genomics-reporting-r4",
+      "standard_name": "HL7 Genomics Reporting Implementation Guide",
+      "standard_version": "3.0.0",
+      "base_version": "FHIR 4.0.1",
+      "source_url": "https://hl7.org/fhir/uv/genomics-reporting/",
+      "license": "CC-BY-4.0",
+      "activation_state": "PROFILE_DECLARED_ADAPTER_PENDING",
+      "adapter_enabled": false,
+      "network_access": "FORBIDDEN_DURING_PROJECTION",
+      "subject_identity_policy": "OPTIONAL_EXPLICIT_ONLY",
+      "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
+      "unsupported_behavior": "FAIL_CLOSED",
+      "scope": ["GenomicReport report-level projection", "E1A small-variant results only"],
+      "known_issues": ["No patient identity is inferred from case_id or sample_id.", "Terminology and profile validation obligations remain adapter-conformance work."]
+    },
+    {
+      "schema_version": "1.0.0",
+      "profile_id": "ga4gh-phenopackets-v2",
+      "standard_name": "GA4GH Phenopackets",
+      "standard_version": "2.0",
+      "base_version": null,
+      "source_url": "https://www.ga4gh.org/product/phenopackets/",
+      "license": "BSD-3-Clause",
+      "activation_state": "PROFILE_DECLARED_ADAPTER_PENDING",
+      "adapter_enabled": false,
+      "network_access": "FORBIDDEN_DURING_PROJECTION",
+      "subject_identity_policy": "REQUIRED_EXPLICIT_FOR_SUBJECT_PROJECTION",
+      "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
+      "unsupported_behavior": "FAIL_CLOSED",
+      "scope": ["Explicit-subject projection", "E1A small-variant findings only"],
+      "known_issues": ["Individual identity is never inferred from sample_id.", "Phenotypic features are not synthesized when absent from canonical inputs."]
+    },
+    {
+      "schema_version": "1.0.0",
+      "profile_id": "ga4gh-vrs-v2",
+      "standard_name": "GA4GH Variation Representation Specification",
+      "standard_version": "2.0",
+      "base_version": null,
+      "source_url": "https://www.ga4gh.org/product/variation-representation/",
+      "license": "Apache-2.0",
+      "activation_state": "PROFILE_DECLARED_ADAPTER_PENDING",
+      "adapter_enabled": false,
+      "network_access": "FORBIDDEN_DURING_PROJECTION",
+      "subject_identity_policy": "NOT_APPLICABLE",
+      "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
+      "unsupported_behavior": "FAIL_CLOSED",
+      "scope": ["Allele projection", "E1A SNV and small-indel variants only"],
+      "known_issues": ["VRS 2.1 ballot/development material is not activated.", "Computed VRS identifiers are adapter-conformance work and are not declared by this registry."]
+    }
+  ]
+}
