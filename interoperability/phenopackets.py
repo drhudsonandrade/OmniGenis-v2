@@ -110,7 +110,12 @@ def project_phenopacket(
     if created_at is None:
         return _failure("metadata_created_required")
 
-    sample=_nonblank(canonical_sample_id) if canonical_sample_id is not None else None
+    sample=None
+    if canonical_sample_id is not None:
+        sample=_nonblank(canonical_sample_id)
+        if sample is None:
+            return _failure("canonical_sample_id_invalid")
+
     file_attributes={
         "genomeAssembly":assembly,
         "fileFormat":file_format.lower(),

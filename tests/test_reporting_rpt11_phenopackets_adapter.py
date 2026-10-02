@@ -66,6 +66,19 @@ class Rpt11PhenopacketsAdapterTests(unittest.TestCase):
                 )
                 self.assertFalse(result.passed)
 
+    def test_supplied_invalid_canonical_sample_id_fails_closed(self):
+        """A supplied sample identity cannot disappear silently during projection."""
+        for invalid in ("   ", 123):
+            with self.subTest(invalid=invalid):
+                result=project_phenopacket(
+                    phenopacket_id="PP-001",subject_id="SUBJECT-001",
+                    genomic_file_uri="urn:omnigenis:artifact:sha256:abc123",
+                    genomic_file_format="vcf",genome_assembly="GRCh38",
+                    canonical_sample_id=invalid,created="2026-10-02T12:00:00Z",
+                )
+                self.assertFalse(result.passed)
+                self.assertIn("canonical_sample_id_invalid",result.errors)
+
     def test_created_timestamp_is_required_for_metadata(self):
         """MetaData creation time must be supplied explicitly for deterministic output."""
         result=project_phenopacket(
