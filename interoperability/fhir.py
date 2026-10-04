@@ -18,6 +18,7 @@ _PATIENT_REFERENCE=re.compile(r"^Patient/[A-Za-z0-9\-.]{1,64}$")
 
 
 def _freeze(value: object) -> object:
+    """Recursively freeze retained JSON-compatible values."""
     if isinstance(value,Mapping):
         return MappingProxyType({key:_freeze(item) for key,item in value.items()})
     if isinstance(value,list):
@@ -26,6 +27,7 @@ def _freeze(value: object) -> object:
 
 
 def _thaw(value: object) -> object:
+    """Return a detached JSON-compatible value."""
     if isinstance(value,Mapping):
         return {key:_thaw(item) for key,item in value.items()}
     if isinstance(value,tuple):
@@ -34,6 +36,7 @@ def _thaw(value: object) -> object:
 
 
 def _digest(value: object) -> str:
+    """Return a deterministic OmniGenis payload SHA-256."""
     raw=json.dumps(value,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()
     return hashlib.sha256(raw).hexdigest()
 
@@ -46,9 +49,11 @@ class FhirGenomicReportResult:
 
     @property
     def passed(self) -> bool:
+        """Return whether all projection gates passed."""
         return not self.errors
 
     def to_dict(self) -> dict[str,object]:
+        """Return a detached JSON-compatible representation."""
         return {
             "profile_id":PROFILE_ID,
             "profile_version":PROFILE_VERSION,
@@ -67,6 +72,7 @@ class FhirGenomicReportResult:
 
 
 def _failure(error: str) -> FhirGenomicReportResult:
+    """Return one fail-closed projection result."""
     return FhirGenomicReportResult(None,None,(error,))
 
 
