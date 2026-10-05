@@ -67,6 +67,18 @@ class Rpt11ActivationTests(unittest.TestCase):
             with self.assertRaises(ValidationError):
                 validator.validate(candidate)
 
+    def test_enabled_scope_matches_bounded_adapter_output(self):
+        """Enabled profile scope must not advertise outputs its adapter does not emit."""
+        profiles=self.profiles()
+        self.assertEqual(
+            profiles["fhir-genomics-reporting-r4"]["scope"],
+            ["GenomicReport report-level projection"],
+        )
+        self.assertEqual(
+            profiles["ga4gh-phenopackets-v2"]["scope"],
+            ["Explicit-subject and genomic-file-reference projection"],
+        )
+
     def test_versions_remain_pinned(self):
         profiles=self.profiles()
         self.assertEqual(profiles["ga4gh-vrs-v2"]["standard_version"],"2.0")

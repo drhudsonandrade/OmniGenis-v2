@@ -17,8 +17,7 @@
       "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
       "unsupported_behavior": "FAIL_CLOSED",
       "scope": [
-        "GenomicReport report-level projection",
-        "E1A small-variant results only"
+        "GenomicReport report-level projection"
       ],
       "known_issues": [
         "No patient identity is inferred from case_id or sample_id.",
@@ -49,8 +48,7 @@
       "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
       "unsupported_behavior": "FAIL_CLOSED",
       "scope": [
-        "Explicit-subject projection",
-        "E1A small-variant findings only"
+        "Explicit-subject and genomic-file-reference projection"
       ],
       "known_issues": [
         "Individual identity is never inferred from sample_id.",
