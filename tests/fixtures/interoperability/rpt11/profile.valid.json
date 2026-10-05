@@ -6,8 +6,8 @@
   "base_version": "FHIR 4.0.1",
   "source_url": "https://hl7.org/fhir/uv/genomics-reporting/",
   "license": "CC-BY-4.0",
-  "activation_state": "PROFILE_DECLARED_ADAPTER_PENDING",
-  "adapter_enabled": false,
+  "activation_state": "BOUNDED_ADAPTER_ENABLED",
+  "adapter_enabled": true,
   "network_access": "FORBIDDEN_DURING_PROJECTION",
   "subject_identity_policy": "OPTIONAL_EXPLICIT_ONLY",
   "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
@@ -19,5 +19,14 @@
   "known_issues": [
     "No patient identity is inferred from case_id or sample_id.",
     "Terminology and profile validation obligations remain adapter-conformance work."
-  ]
+  ],
+  "adapter_module": "interoperability.fhir",
+  "conformance_test_module": "tests.test_reporting_rpt11_fhir_adapter",
+  "limitations": [
+    "Report-level GenomicReport projection only; no Observation results are synthesized.",
+    "Subject is optional and explicit-only; projection success does not establish patient authorization or clinical conformance."
+  ],
+  "conformance_scope": "BOUNDED_PROFILE_ONLY",
+  "disable_path": "set adapter_enabled=false and activation_state=DISABLED",
+  "clinical_authorization": "NOT_ESTABLISHED"
 }

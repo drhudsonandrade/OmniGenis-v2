@@ -10,14 +10,29 @@
       "base_version": "FHIR 4.0.1",
       "source_url": "https://hl7.org/fhir/uv/genomics-reporting/",
       "license": "CC-BY-4.0",
-      "activation_state": "PROFILE_DECLARED_ADAPTER_PENDING",
-      "adapter_enabled": false,
+      "activation_state": "BOUNDED_ADAPTER_ENABLED",
+      "adapter_enabled": true,
       "network_access": "FORBIDDEN_DURING_PROJECTION",
       "subject_identity_policy": "OPTIONAL_EXPLICIT_ONLY",
       "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
       "unsupported_behavior": "FAIL_CLOSED",
-      "scope": ["GenomicReport report-level projection", "E1A small-variant results only"],
-      "known_issues": ["No patient identity is inferred from case_id or sample_id.", "Terminology and profile validation obligations remain adapter-conformance work."]
+      "scope": [
+        "GenomicReport report-level projection",
+        "E1A small-variant results only"
+      ],
+      "known_issues": [
+        "No patient identity is inferred from case_id or sample_id.",
+        "Terminology and profile validation obligations remain adapter-conformance work."
+      ],
+      "adapter_module": "interoperability.fhir",
+      "conformance_test_module": "tests.test_reporting_rpt11_fhir_adapter",
+      "limitations": [
+        "Report-level GenomicReport projection only; no Observation results are synthesized.",
+        "Subject is optional and explicit-only; projection success does not establish patient authorization or clinical conformance."
+      ],
+      "conformance_scope": "BOUNDED_PROFILE_ONLY",
+      "disable_path": "set adapter_enabled=false and activation_state=DISABLED",
+      "clinical_authorization": "NOT_ESTABLISHED"
     },
     {
       "schema_version": "1.0.0",
@@ -27,14 +42,29 @@
       "base_version": null,
       "source_url": "https://www.ga4gh.org/product/phenopackets/",
       "license": "BSD-3-Clause",
-      "activation_state": "PROFILE_DECLARED_ADAPTER_PENDING",
-      "adapter_enabled": false,
+      "activation_state": "BOUNDED_ADAPTER_ENABLED",
+      "adapter_enabled": true,
       "network_access": "FORBIDDEN_DURING_PROJECTION",
       "subject_identity_policy": "REQUIRED_EXPLICIT_FOR_SUBJECT_PROJECTION",
       "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
       "unsupported_behavior": "FAIL_CLOSED",
-      "scope": ["Explicit-subject projection", "E1A small-variant findings only"],
-      "known_issues": ["Individual identity is never inferred from sample_id.", "Phenotypic features are not synthesized when absent from canonical inputs."]
+      "scope": [
+        "Explicit-subject projection",
+        "E1A small-variant findings only"
+      ],
+      "known_issues": [
+        "Individual identity is never inferred from sample_id.",
+        "Phenotypic features are not synthesized when absent from canonical inputs."
+      ],
+      "adapter_module": "interoperability.phenopackets",
+      "conformance_test_module": "tests.test_reporting_rpt11_phenopackets_adapter",
+      "limitations": [
+        "Minimal subject/file/metadata projection only; phenotype, disease, interpretation, demographics, and medical actions are not synthesized.",
+        "Subject identity and creation time are explicit inputs; sample identity is never promoted to person identity."
+      ],
+      "conformance_scope": "BOUNDED_PROFILE_ONLY",
+      "disable_path": "set adapter_enabled=false and activation_state=DISABLED",
+      "clinical_authorization": "NOT_ESTABLISHED"
     },
     {
       "schema_version": "1.0.0",
@@ -44,14 +74,29 @@
       "base_version": null,
       "source_url": "https://www.ga4gh.org/product/variation-representation/",
       "license": "Apache-2.0",
-      "activation_state": "PROFILE_DECLARED_ADAPTER_PENDING",
-      "adapter_enabled": false,
+      "activation_state": "BOUNDED_ADAPTER_ENABLED",
+      "adapter_enabled": true,
       "network_access": "FORBIDDEN_DURING_PROJECTION",
       "subject_identity_policy": "NOT_APPLICABLE",
       "scientific_semantics": "PROJECT_EXISTING_CANONICAL_E1A_ONLY",
       "unsupported_behavior": "FAIL_CLOSED",
-      "scope": ["Allele projection", "E1A SNV and small-indel variants only"],
-      "known_issues": ["VRS 2.1 ballot/development material is not activated.", "Computed VRS identifiers are adapter-conformance work and are not declared by this registry."]
+      "scope": [
+        "Allele projection",
+        "E1A SNV and small-indel variants only"
+      ],
+      "known_issues": [
+        "VRS 2.1 ballot/development material is not activated.",
+        "Computed VRS identifiers are adapter-conformance work and are not declared by this registry."
+      ],
+      "adapter_module": "interoperability.vrs",
+      "conformance_test_module": "tests.test_reporting_rpt11_vrs_adapter",
+      "limitations": [
+        "E1A literal SNV/small-indel Allele projection only; explicit verified refget binding is required.",
+        "No VRS computed identifier or general VRS conformance is claimed by this bounded adapter."
+      ],
+      "conformance_scope": "BOUNDED_PROFILE_ONLY",
+      "disable_path": "set adapter_enabled=false and activation_state=DISABLED",
+      "clinical_authorization": "NOT_ESTABLISHED"
     }
   ]
 }
