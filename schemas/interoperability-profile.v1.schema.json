@@ -19,13 +19,7 @@
     "scientific_semantics",
     "unsupported_behavior",
     "scope",
-    "known_issues",
-    "adapter_module",
-    "conformance_test_module",
-    "conformance_scope",
-    "limitations",
-    "disable_path",
-    "clinical_authorization"
+    "known_issues"
   ],
   "properties": {
     "schema_version": {
@@ -130,5 +124,73 @@
     "clinical_authorization": {
       "const": "NOT_ESTABLISHED"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "activation_state": {
+            "const": "BOUNDED_ADAPTER_ENABLED"
+          }
+        },
+        "required": [
+          "activation_state"
+        ]
+      },
+      "then": {
+        "required": [
+          "adapter_module",
+          "conformance_test_module",
+          "conformance_scope",
+          "limitations",
+          "disable_path",
+          "clinical_authorization"
+        ]
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "activation_state": {
+          "const": "PROFILE_DECLARED_ADAPTER_PENDING"
+        },
+        "adapter_enabled": {
+          "const": false
+        }
+      },
+      "required": [
+        "activation_state",
+        "adapter_enabled"
+      ]
+    },
+    {
+      "properties": {
+        "activation_state": {
+          "const": "BOUNDED_ADAPTER_ENABLED"
+        },
+        "adapter_enabled": {
+          "const": true
+        }
+      },
+      "required": [
+        "activation_state",
+        "adapter_enabled"
+      ]
+    },
+    {
+      "properties": {
+        "activation_state": {
+          "const": "DISABLED"
+        },
+        "adapter_enabled": {
+          "const": false
+        }
+      },
+      "required": [
+        "activation_state",
+        "adapter_enabled"
+      ]
+    }
+  ]
 }
