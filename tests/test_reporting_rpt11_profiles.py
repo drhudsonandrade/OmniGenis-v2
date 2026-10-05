@@ -44,12 +44,14 @@ class Rpt11ProfileContractTests(unittest.TestCase):
         for profile in by_id.values():
             self.assertNotIn("ballot", profile["standard_version"].lower())
 
-    def test_profiles_are_contract_only_until_adapter_conformance(self):
-        """Declaring a profile does not falsely claim adapter support."""
+    def test_profiles_expose_only_reviewed_bounded_adapters(self):
+        """Enabled profiles remain bounded, offline, and explicitly non-clinical."""
         for profile in load(REGISTRY)["profiles"]:
-            self.assertEqual(profile["activation_state"],"PROFILE_DECLARED_ADAPTER_PENDING")
-            self.assertFalse(profile["adapter_enabled"])
+            self.assertEqual(profile["activation_state"],"BOUNDED_ADAPTER_ENABLED")
+            self.assertTrue(profile["adapter_enabled"])
             self.assertEqual(profile["network_access"],"FORBIDDEN_DURING_PROJECTION")
+            self.assertEqual(profile["conformance_scope"],"BOUNDED_PROFILE_ONLY")
+            self.assertEqual(profile["clinical_authorization"],"NOT_ESTABLISHED")
 
     def test_identity_and_scientific_boundaries_are_explicit(self):
         """Profiles prohibit inferred person identity and new scientific claims."""
