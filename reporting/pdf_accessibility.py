@@ -52,6 +52,7 @@ def validate_pdf_accessibility_structure(
         return _failure("pdf_accessibility_structure_invalid")
     try:
         from pypdf import PdfReader
+        from pypdf.generic import BooleanObject, DictionaryObject
         reader=PdfReader(BytesIO(pdf_bytes),strict=True)
         if reader.is_encrypted:
             return _failure("encrypted_pdf_forbidden")
@@ -60,13 +61,17 @@ def validate_pdf_accessibility_structure(
         mark_info=root.get("/MarkInfo")
         if mark_info is not None:
             mark_info=mark_info.get_object()
-        marked_value=mark_info.get("/Marked") if isinstance(mark_info,dict) else None
-        marked=bool(getattr(marked_value,"value",marked_value)) if marked_value is not None else False
+        marked_value=(
+            mark_info["/Marked"]
+            if isinstance(mark_info,DictionaryObject) and "/Marked" in mark_info
+            else None
+        )
+        marked=isinstance(marked_value,BooleanObject) and marked_value.value is True
         struct=root.get("/StructTreeRoot")
         if struct is not None:
             struct=struct.get_object()
         struct_present=isinstance(struct,dict) and str(struct.get("/Type",""))=="/StructTreeRoot"
-    except Exception:
+    except Exception:  # noqa: BLE001 - malformed PDF parser errors must fail closed
         return _failure("pdf_accessibility_structure_invalid")
 
     errors=[]
