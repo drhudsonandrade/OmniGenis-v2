@@ -8,6 +8,11 @@ from io import BytesIO
 import re
 from types import MappingProxyType
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
+from xml.dom import Node
+
+if TYPE_CHECKING:
+    from pypdf import PdfReader
 
 ROADMAP_ID="RPT-12"
 _SHA256=re.compile(r"^[0-9a-f]{64}$")
@@ -45,6 +50,7 @@ class PdfCandidateValidation:
             "limitations":[
                 "This gate validates post-render integrity, structure, metadata hygiene, and accessibility prerequisites only.",
                 "Visual QA, tagged-PDF semantics, reading order, and full accessibility conformance are not established by this unit.",
+                "Metadata hygiene inspects Info values, catalog language, and document-level XMP text and attributes; other metadata channels are not validated.",
                 "PDF remains a derived artifact and is never scientific source of truth.",
             ],
         }
@@ -55,6 +61,39 @@ def _result(*,digest=None,page_count=None,metadata=None,accessibility="BLOCKED",
     return PdfCandidateValidation(
         digest,page_count,MappingProxyType(dict(metadata or {})),accessibility,tuple(errors)
     )
+
+
+def _xmp_metadata_values(reader: PdfReader) -> tuple[str, ...]:
+    """Extract document-level XMP values using the pinned parser, without retaining XML."""
+    xmp = reader.xmp_metadata
+    if xmp is None:
+        return ()
+    document = xmp.rdf_root.ownerDocument
+    if document is None or document.doctype is not None:
+        raise ValueError("unsupported_xmp_document")
+
+    values: list[str] = []
+    pending = [document]
+    while pending:
+        node = pending.pop()
+        if node.nodeType == Node.ELEMENT_NODE:
+            # Adjacent text and CDATA form one logical value after XML decoding.
+            text = "".join(
+                child.data for child in node.childNodes
+                if child.nodeType in (Node.TEXT_NODE, Node.CDATA_SECTION_NODE)
+            )
+            if text:
+                values.append(text)
+                name = node.localName or node.nodeName
+                values.append(f"{name}={text}")
+            for attribute in node.attributes.values():
+                values.append(attribute.value)
+                name = attribute.localName or attribute.name
+                values.append(f"{name}={attribute.value}")
+        elif node.nodeType in (Node.COMMENT_NODE, Node.PROCESSING_INSTRUCTION_NODE):
+            values.append(node.data)
+        pending.extend(reversed(node.childNodes))
+    return tuple(values)
 
 
 def validate_pdf_candidate(
@@ -85,16 +124,24 @@ def validate_pdf_candidate(
             errors.append("pdf_structure_invalid")
         raw_metadata=reader.metadata or {}
         metadata={str(k):str(v) for k,v in raw_metadata.items() if v is not None}
+        catalog=reader.root_object
+        language=catalog["/Lang"] if "/Lang" in catalog else None
     except Exception:
         return _result(digest=digest,errors=tuple(errors)+("pdf_structure_invalid",))
 
+    try:
+        metadata_values = list(metadata.values()) + list(_xmp_metadata_values(reader))
+        if isinstance(language, str):
+            metadata_values.append(language)
+    except Exception:
+        return _result(digest=digest,errors=tuple(errors)+("pdf_xmp_invalid",))
+
     author=metadata.get("/Author")
-    language=metadata.get("/Lang")
     if not isinstance(expected_author,str) or not expected_author.strip() or author != expected_author.strip():
         errors.append("pdf_author_mismatch")
     if not isinstance(expected_language,str) or not expected_language.strip() or language != expected_language.strip():
         errors.append("pdf_language_mismatch")
-    if any(pattern.search(value) for value in metadata.values() for pattern in _SENSITIVE):
+    if any(pattern.search(value) for value in metadata_values for pattern in _SENSITIVE):
         errors.append("pdf_metadata_sensitive")
 
     accessibility="PASS" if author == str(expected_author).strip() and language == str(expected_language).strip() else "BLOCKED"
