@@ -160,6 +160,7 @@ def _render_pdf(html: str, html_sha256: str) -> bytes:
             try:
                 pdf = HTML(string=html, url_fetcher=fetcher).write_pdf(
                     pdf_identifier=bytes.fromhex(html_sha256),
+                    pdf_variant="pdf/ua-1",
                     pdf_version="1.7",
                 )
             except Exception as exc:
