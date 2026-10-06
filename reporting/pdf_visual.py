@@ -4,10 +4,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import signal
 import subprocess
 import sys
+import tempfile
 
 from reporting._pdf_visual_worker import (
     ERRORS as WORKER_ERRORS,MAX_PAGES,MAX_PDF_BYTES,MAX_TOTAL_PIXELS,
@@ -88,6 +91,25 @@ class PdfVisualValidation:
         }
 
 
+def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
+    """Own the worker process group and temporary files through every exit."""
+    with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-") as scratch:
+        with subprocess.Popen(
+            [sys.executable,"-I",str(_WORKER)],
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
+            env={**os.environ,"TMPDIR":scratch},start_new_session=True,
+        ) as process:
+            try:
+                output,_=process.communicate(input=pdf_bytes,timeout=WALL_SECONDS)
+            finally:
+                try:
+                    os.killpg(process.pid,signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait(timeout=2)
+            return subprocess.CompletedProcess(process.args,process.returncode,output)
+
+
 def validate_pdf_visual_geometry(
     *,pdf_bytes: object,expected_pdf_sha256: object
 ) -> PdfVisualValidation:
@@ -107,12 +129,10 @@ def validate_pdf_visual_geometry(
         return fail("expected_pdf_digest_invalid")
     if pdf_digest!=expected_pdf_sha256:
         return fail("pdf_digest_mismatch")
+    if sys.platform!="linux":
+        return fail("pdf_visual_worker_unavailable")
     try:
-        child=subprocess.run(
-            [sys.executable,"-I",str(_WORKER)],input=pdf_bytes,
-            stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
-            timeout=WALL_SECONDS,check=False,
-        )
+        child=_run_worker(pdf_bytes)
     except subprocess.TimeoutExpired:
         return fail("pdf_visual_worker_timeout")
     except OSError:

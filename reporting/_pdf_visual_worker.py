@@ -52,6 +52,8 @@ def _tool_identity() -> tuple[str,str,str]:
         raise OSError("pdftoppm unavailable")
     path=Path(tool).resolve()
     binary_hash=hashlib.sha256(path.read_bytes()).hexdigest()
+    if binary_hash!=TOOL_SHA256:
+        raise OSError("pdftoppm digest mismatch")
     process=subprocess.run(
         [str(path),"-v"],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
         timeout=3,check=False,
@@ -92,7 +94,7 @@ def inspect_visual_geometry(pdf: bytes) -> dict:
         return blocked("pdf_visual_library_mismatch",pdf_digest)
     try:
         tool_version,tool_hash,tool=_tool_identity()
-    except (OSError,UnicodeError):
+    except (OSError,UnicodeError,subprocess.TimeoutExpired):
         return blocked("pdf_visual_executor_mismatch",pdf_digest)
     if tool_version!=TOOL_VERSION or tool_hash!=TOOL_SHA256:
         return blocked("pdf_visual_executor_mismatch",pdf_digest)

@@ -8,8 +8,13 @@ import importlib
 import importlib.util
 from io import BytesIO
 import json
+import os
 from pathlib import Path
+import shutil
+import signal
 import subprocess
+import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -145,7 +150,7 @@ class Rpt12PdfVisualTests(unittest.TestCase):
         cases=((None,"expected_pdf_digest_invalid"),("G"*64,"expected_pdf_digest_invalid"),
                ("0"*64,"pdf_digest_mismatch"))
         for expected,error in cases:
-            with self.subTest(error=error),patch.object(self.module.subprocess,"run") as worker:
+            with self.subTest(error=error),patch.object(self.module,"_run_worker") as worker:
                 result=self.check(expected_pdf_sha256=expected)
                 self.assertFalse(result.passed)
                 self.assertIn(error,result.errors)
@@ -154,11 +159,11 @@ class Rpt12PdfVisualTests(unittest.TestCase):
     def test_worker_timeout_failure_and_malformed_reply_fail_closed(self):
         """Worker outages or protocol corruption cannot become visual PASS."""
         for exc in (OSError("synthetic"),subprocess.TimeoutExpired("worker",10)):
-            with self.subTest(kind=type(exc).__name__),patch.object(self.module.subprocess,"run",side_effect=exc):
+            with self.subTest(kind=type(exc).__name__),patch.object(self.module,"_run_worker",side_effect=exc):
                 self.assertFalse(self.check().passed)
         for code,data in ((-9,b""),(0,b"not-json"),(0,b'{"status":"PASS"}'),(0,b"x"*8193)):
             with self.subTest(code=code,length=len(data)),patch.object(
-                self.module.subprocess,"run",
+                self.module,"_run_worker",
                 return_value=subprocess.CompletedProcess([],code,data)
             ):
                 self.assertFalse(self.check().passed)
@@ -178,7 +183,7 @@ class Rpt12PdfVisualTests(unittest.TestCase):
             with self.subTest(change=change):
                 record={**template,**change}
                 with patch.object(
-                    self.module.subprocess,"run",
+                    self.module,"_run_worker",
                     return_value=subprocess.CompletedProcess([],0,json.dumps(record).encode())
                 ):
                     result=self.check()
@@ -234,6 +239,93 @@ class Rpt12PdfVisualTests(unittest.TestCase):
             result=worker.inspect_visual_geometry(self.pdf)
         self.assertEqual(result["status"],"PASS",result["errors"])
         self.assertEqual(lookup.call_count,1)
+
+
+    def test_unapproved_executor_is_never_executed_for_version_detection(self):
+        """A different executable must be rejected before even its version command."""
+        with tempfile.TemporaryDirectory(prefix="omnigenis-visual-test-") as td:
+            root=Path(td)
+            tool=root/"pdftoppm"
+            marker=root/"executed"
+            tool.write_text(
+                '#!/bin/sh\n'
+                'printf executed > "$OMNIGENIS_VISUAL_TEST_MARKER"\n'
+                'printf "pdftoppm version 24.02.0\\n"\n'
+            )
+            tool.chmod(0o700)
+            with patch.dict(os.environ,{
+                "PATH":str(root)+os.pathsep+os.environ.get("PATH",""),
+                "OMNIGENIS_VISUAL_TEST_MARKER":str(marker),
+            }):
+                result=self.check()
+            self.assertEqual(result.errors,("pdf_visual_executor_mismatch",))
+            self.assertFalse(marker.exists(),"Unapproved executable ran before digest rejection")
+
+    def test_worker_timeout_and_crash_remove_descendants_and_private_artifacts(self):
+        """Real worker failure cannot leave a running child or temporary candidate."""
+        script=(
+            "import json,os,subprocess,sys,tempfile,time\n"
+            "from pathlib import Path\n"
+            "scratch=Path(tempfile.mkdtemp(prefix='omnigenis-visual-test-artifacts-'))\n"
+            "(scratch/'candidate.pdf').write_bytes(b'SYNTHETIC-ONLY')\n"
+            "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'],"
+            "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)\n"
+            "Path(os.environ['OMNIGENIS_VISUAL_TEST_STATE']).write_text("
+            "json.dumps({'child_pid':child.pid,'scratch':str(scratch)}))\n"
+            "if os.environ['OMNIGENIS_VISUAL_TEST_MODE']=='crash': os._exit(9)\n"
+            "time.sleep(60)\n"
+        )
+        for mode in ("timeout","crash"):
+            with self.subTest(mode=mode),tempfile.TemporaryDirectory(
+                prefix="omnigenis-visual-supervisor-test-"
+            ) as td:
+                root=Path(td)
+                worker=root/"worker.py"
+                state_file=root/"state.json"
+                worker.write_text(script)
+                state=None
+                try:
+                    with patch.object(self.module,"_WORKER",worker),patch.object(
+                        self.module,"WALL_SECONDS",2
+                    ),patch.dict(os.environ,{
+                        "OMNIGENIS_VISUAL_TEST_STATE":str(state_file),
+                        "OMNIGENIS_VISUAL_TEST_MODE":mode,
+                    }):
+                        result=self.check()
+                    expected="pdf_visual_worker_timeout" if mode=="timeout" else "pdf_visual_worker_failed"
+                    self.assertEqual(result.errors,(expected,))
+                    self.assertTrue(state_file.is_file(),"Synthetic worker did not reach its fixture")
+                    state=json.loads(state_file.read_text())
+                    child_pid=state["child_pid"]
+                    scratch=Path(state["scratch"])
+
+                    def running():
+                        """Treat a terminated zombie as stopped while its parent reaps it."""
+                        try:
+                            return Path(f"/proc/{child_pid}/stat").read_text().split()[2]!="Z"
+                        except FileNotFoundError:
+                            return False
+
+                    deadline=time.monotonic()+1
+                    while running() and time.monotonic()<deadline:
+                        time.sleep(0.01)
+                    alive=running()
+                    artifacts=scratch.exists()
+                    self.assertFalse(
+                        alive or artifacts,
+                        f"orphan_running={alive}, artifacts_remaining={artifacts}",
+                    )
+                finally:
+                    if state is None and state_file.is_file():
+                        state=json.loads(state_file.read_text())
+                    if state:
+                        try:
+                            os.kill(state["child_pid"],signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        scratch=Path(state["scratch"])
+                        if scratch.name.startswith("omnigenis-visual-test-artifacts-"):
+                            shutil.rmtree(scratch,ignore_errors=True)
 
     def test_executor_version_or_binary_drift_is_rejected(self):
         """An unreviewed Poppler executable identity cannot produce PASS evidence."""
