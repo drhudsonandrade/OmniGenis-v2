@@ -1,0 +1,35 @@
+{
+  "engine_id": "poppler-pdftoppm-raster-v1",
+  "tool": "pdftoppm",
+  "tool_version": "24.02.0",
+  "package": "poppler-utils",
+  "package_version": "24.02.0-1ubuntu9.9",
+  "binary_sha256": "207dcabcaeea0ce572aefc498d07d44d56a9ca06a85b3ae1fecd050476a34bf8",
+  "package_sha256": "fb936375b183a9d8ecb5b1fc5665a44110ca130c445946fb575c0b800b1dc0f4",
+  "license": "GPL-2 or GPL-3",
+  "source": "https://poppler.freedesktop.org/",
+  "integration_class": "USE_VIA_ADAPTER",
+  "source_copied": false,
+  "binary_vendored": false,
+  "profile": {
+    "output_format": "PNG",
+    "dpi": 96,
+    "color_mode": "RGB",
+    "minimum_edge_margin_px": 2
+  },
+  "resource_budget": {
+    "pdf_bytes": 8388608,
+    "pages": 32,
+    "pixels_per_page": 4000000,
+    "total_pixels": 32000000,
+    "worker_memory_bytes": 536870912,
+    "worker_cpu_seconds": 20,
+    "worker_wall_seconds": 30,
+    "page_wall_seconds": 8
+  },
+  "known_issues": [
+    "Raster geometry checks do not establish semantic visual equivalence, reading order, color accuracy, font correctness, or human review.",
+    "This profile supports newly generated OmniGenis report candidates only, not arbitrary uploaded PDFs."
+  ],
+  "disable_path": "Do not use raster visual evidence and keep downstream release authorization blocked."
+}
