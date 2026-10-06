@@ -9,6 +9,7 @@ import re
 from types import MappingProxyType
 from collections.abc import Mapping
 from xml.dom import Node
+import zlib
 
 from reporting.localization import is_supported_report_locale
 
@@ -124,6 +125,43 @@ def _xmp_metadata_values(xmp) -> tuple[str, ...]:
         pending.extend(reversed(node.childNodes))
     return tuple(values)
 
+
+
+def _profile_xmp_metadata(stream):
+    """Bound native XMP decoding before passing unfiltered bytes to the XML parser."""
+    from pypdf.generic import DecodedStreamObject, NameObject, StreamObject
+    from pypdf.xmp import XmpInformation
+
+    if not isinstance(stream, StreamObject):
+        raise ValueError("unsupported_metadata_stream")
+    if stream.get("/Type") != "/Metadata" or stream.get("/Subtype") != "/XML":
+        raise ValueError("unsupported_metadata_stream")
+    if not set(stream) <= {"/Type", "/Subtype", "/Filter", "/Length"}:
+        raise ValueError("unsupported_metadata_stream_field")
+    # The base implementation reads encoded bytes without invoking filter decoding.
+    raw = StreamObject.get_data(stream)
+    if not isinstance(raw, bytes):
+        raise ValueError("unsupported_metadata_bytes")
+    if len(raw) > _PROFILE_MAX_PDF_BYTES:
+        raise OverflowError("xmp_budget")
+    decoder = None
+    if "/Filter" not in stream:
+        decoded = raw
+    else:
+        compression = stream.raw_get("/Filter")
+        if not isinstance(compression, NameObject) or compression != "/FlateDecode":
+            raise ValueError("unsupported_metadata_filter")
+        decoder = zlib.decompressobj()
+        decoded = decoder.decompress(raw, _PROFILE_MAX_XMP_BYTES + 1)
+    if len(decoded) > _PROFILE_MAX_XMP_BYTES:
+        raise OverflowError("xmp_budget")
+    if decoder is not None and (
+        not decoder.eof or decoder.unused_data or decoder.unconsumed_tail
+    ):
+        raise ValueError("invalid_metadata_compression")
+    bounded_stream = DecodedStreamObject()
+    bounded_stream.set_data(decoded)
+    return XmpInformation(bounded_stream)
 
 
 def _qualified_name(node) -> tuple[str, str]:
@@ -309,22 +347,28 @@ def validate_pdf_candidate(
     if page_count < 1:
         errors.append("pdf_structure_invalid")
     try:
-        if profile and "/Metadata" in catalog:
-            stream = catalog["/Metadata"]
-            if stream.get("/Type") != "/Metadata" or stream.get("/Subtype") != "/XML":
-                raise ValueError("unsupported_metadata_stream")
-            if not set(stream) <= {"/Type", "/Subtype", "/Filter", "/Length"}:
-                raise ValueError("unsupported_metadata_stream_field")
-            if len(stream.get_data()) > _PROFILE_MAX_XMP_BYTES:
-                raise OverflowError("xmp_budget")
-        xmp = reader.xmp_metadata
+        if profile:
+            xmp = _profile_xmp_metadata(catalog["/Metadata"]) if "/Metadata" in catalog else None
+        else:
+            xmp = reader.xmp_metadata
+    except OverflowError:
+        return _result(digest=digest,errors=("pdf_metadata_budget_exceeded",),profile=profile)
+    except Exception:
+        return _result(digest=digest,errors=("pdf_xmp_invalid",),profile=profile)
+
+    if profile:
+        try:
+            _controlled_xmp_fields(xmp)
+        except OverflowError:
+            return _result(digest=digest,errors=("pdf_metadata_budget_exceeded",),profile=profile)
+        except Exception:
+            return _result(digest=digest,errors=("pdf_metadata_profile_mismatch",),profile=profile)
+    try:
         metadata_values = list(metadata.values()) + [
             f"{key.lstrip('/')}={value}" for key,value in metadata.items()
         ] + list(_xmp_metadata_values(xmp))
         if isinstance(language, str):
             metadata_values.append(language)
-    except OverflowError:
-        return _result(digest=digest,errors=("pdf_metadata_budget_exceeded",),profile=profile)
     except Exception:
         return _result(digest=digest,errors=("pdf_xmp_invalid",),profile=profile)
 
@@ -335,15 +379,8 @@ def validate_pdf_candidate(
         errors.append("pdf_language_mismatch")
     if any(pattern.search(value) for value in metadata_values for pattern in _SENSITIVE):
         errors.append("pdf_metadata_sensitive")
-    if profile:
-        if dict(raw_metadata) != _CONTROLLED_INFO:
-            errors.append("pdf_metadata_profile_mismatch")
-        try:
-            _controlled_xmp_fields(xmp)
-        except OverflowError:
-            errors.append("pdf_metadata_budget_exceeded")
-        except Exception:
-            errors.append("pdf_metadata_profile_mismatch")
+    if profile and dict(raw_metadata) != _CONTROLLED_INFO:
+        errors.append("pdf_metadata_profile_mismatch")
 
     return _result(
         digest=digest,page_count=page_count,metadata=metadata,

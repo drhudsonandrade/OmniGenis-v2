@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 from io import BytesIO
 import json
+import tracemalloc
 import unittest
+import zlib
 from unittest.mock import patch
 
 from reporting.adapters import build_html_css_and_pdf_adapter
@@ -136,6 +138,31 @@ def rewrite_candidate(pdf, *, updates=None, remove=(), xmp=None, language=None,
         })
     if stream_field is not None:
         writer.root_object["/Metadata"][NameObject("/Unexpected")] = TextStringObject(stream_field)
+    output = BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+def raw_xmp_candidate(pdf, raw, *, filter_value=None, indirect_filter=False,
+                      decode_params=False):
+    """Install an exact encoded stream without asking the PDF writer to decode it."""
+    from pypdf import PdfWriter
+    from pypdf.generic import DictionaryObject, NameObject, StreamObject
+
+    writer = PdfWriter(clone_from=BytesIO(pdf))
+    writer.pdf_header = pdf.splitlines()[0]
+    stream = StreamObject()
+    stream.set_data(raw)
+    stream.update({
+        NameObject("/Type"): NameObject("/Metadata"),
+        NameObject("/Subtype"): NameObject("/XML"),
+    })
+    if filter_value is not None:
+        value = NameObject(filter_value) if isinstance(filter_value, str) else filter_value
+        stream[NameObject("/Filter")] = writer._add_object(value) if indirect_filter else value
+    if decode_params:
+        stream[NameObject("/DecodeParms")] = DictionaryObject()
+    writer.root_object[NameObject("/Metadata")] = writer._add_object(stream)
     output = BytesIO()
     writer.write(output)
     return output.getvalue()
@@ -415,6 +442,112 @@ class GeneratedPdfMetadataProfileTests(unittest.TestCase):
         self.assertIn(presentation()["report_id"], text)
         self.assertIn("Synthetic summary", text)
         self.assertIn("Synthetic metadata regression content.", text)
+
+
+    def test_native_xmp_avoids_the_original_encoded_decoder(self):
+        """Native metadata must pass without invoking the original stream decoder."""
+        from pypdf.generic import EncodedStreamObject
+
+        original = EncodedStreamObject.get_data
+
+        def reject_metadata_decode(stream):
+            """Permit unrelated PDF parsing while detecting unbounded XMP decoding."""
+            if stream.get("/Type") == "/Metadata":
+                raise AssertionError("unbounded_metadata_decode")
+            return original(stream)
+
+        with patch.object(EncodedStreamObject, "get_data", reject_metadata_decode):
+            result = self.strict(self.pdf)
+        self.assertTrue(result.passed, result.errors)
+
+    def test_compressed_xmp_budget_caps_peak_allocation(self):
+        """A tiny compressed stream must not allocate its 16 MiB expanded payload."""
+        compressed = zlib.compress(b" " * (16 * 1024 * 1024))
+        pdf = raw_xmp_candidate(self.pdf, compressed, filter_value="/FlateDecode")
+        tracemalloc.start()
+        try:
+            result = self.strict(pdf)
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        self.assertIn("pdf_metadata_budget_exceeded", result.errors)
+        self.assertEqual(dict(result.metadata), {})
+        self.assertLess(peak, 4 * 1024 * 1024)
+
+    def test_strict_xml_budgets_precede_generic_value_scanning(self):
+        """Over-budget node and depth trees are rejected before value collection."""
+        packets = (
+            self.appended('<rdf:Description rdf:about=""/>' * 128),
+            self.xmp.replace(
+                "<xmp:CreatorTool>OmniGenis</xmp:CreatorTool>",
+                "<xmp:CreatorTool>" + "<xmp:Nested>" * 9 + PRODUCT
+                + "</xmp:Nested>" * 9 + "</xmp:CreatorTool>",
+            ).encode(),
+        )
+        for packet in packets:
+            with self.subTest(length=len(packet)):
+                pdf = rewrite_candidate(self.pdf, xmp=packet)
+                with patch("reporting.pdf_qa._xmp_metadata_values") as scan:
+                    result = self.strict(pdf)
+                    scan.assert_not_called()
+                self.assertIn("pdf_metadata_budget_exceeded", result.errors)
+
+    def test_xmp_exact_byte_boundary_and_one_byte_overflow(self):
+        """Both supported encodings accept 64 KiB and reject one extra byte."""
+        size = 64 * 1024
+        padded = self.xmp.replace(
+            "</rdf:RDF>", " " * (size - len(self.xmp.encode())) + "</rdf:RDF>"
+        ).encode()
+        self.assertEqual(len(padded), size)
+        for filtered in (False, True):
+            with self.subTest(filtered=filtered):
+                encode = zlib.compress if filtered else lambda value: value
+                options = {"filter_value": "/FlateDecode"} if filtered else {}
+                valid = raw_xmp_candidate(self.pdf, encode(padded), **options)
+                self.assertTrue(self.strict(valid).passed)
+                oversized = raw_xmp_candidate(self.pdf, encode(padded + b" "), **options)
+                with patch("pypdf.xmp.XmpInformation") as parser:
+                    result = self.strict(oversized)
+                    parser.assert_not_called()
+                self.assertIn("pdf_metadata_budget_exceeded", result.errors)
+
+    def test_invalid_or_incomplete_flate_streams_are_rejected(self):
+        """The bounded profile accepts one complete zlib member without recovery."""
+        compressed = zlib.compress(self.xmp.encode())
+        cases = {
+            "truncated": compressed[:-1],
+            "checksum": compressed[:-1] + bytes([compressed[-1] ^ 1]),
+            "trailing": compressed + b"unexpected",
+            "concatenated": compressed + zlib.compress(b"unexpected"),
+        }
+        for name, raw in cases.items():
+            with self.subTest(case=name):
+                self.assertBlocked(raw_xmp_candidate(self.pdf, raw, filter_value="/FlateDecode"))
+
+    def test_unsupported_filter_representations_are_rejected(self):
+        """Filter chains, other codecs, indirect names and parameters are excluded."""
+        from pypdf.generic import ArrayObject, NameObject
+
+        compressed = zlib.compress(self.xmp.encode())
+        candidates = (
+            raw_xmp_candidate(
+                self.pdf, compressed,
+                filter_value=ArrayObject([NameObject("/FlateDecode")]),
+            ),
+            raw_xmp_candidate(
+                self.pdf, self.xmp.encode().hex().encode() + b">",
+                filter_value="/ASCIIHexDecode",
+            ),
+            raw_xmp_candidate(
+                self.pdf, compressed, filter_value="/FlateDecode", indirect_filter=True,
+            ),
+            raw_xmp_candidate(
+                self.pdf, compressed, filter_value="/FlateDecode", decode_params=True,
+            ),
+        )
+        for index, pdf in enumerate(candidates):
+            with self.subTest(case=index):
+                self.assertBlocked(pdf)
 
 
 if __name__ == "__main__":
