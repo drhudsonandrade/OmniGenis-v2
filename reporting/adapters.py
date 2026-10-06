@@ -12,6 +12,10 @@ import threading
 from collections.abc import Mapping
 
 from reporting.localization import is_supported_report_locale
+from reporting.pdf_qa import (
+    GENERATED_PDF_AUTHOR, GENERATED_PDF_PRODUCT, GENERATED_PDF_METADATA_PROFILE,
+    validate_pdf_candidate,
+)
 
 ROADMAP_ID = "RPT-08"
 _PDF_RENDER_ENV_LOCK = threading.Lock()
@@ -116,7 +120,8 @@ def _pdf_stack_readiness() -> tuple[bool, str | None]:
     return True, None
 
 
-def _validate_pdf_structure(pdf: bytes) -> None:
+def _validate_pdf_structure(pdf: bytes, *, expected_language: str) -> None:
+    """Validate structure and the controlled metadata of generated candidate bytes."""
     if not isinstance(pdf, bytes) or not pdf.startswith(b"%PDF-1.7"):
         raise RuntimeError("pdf_engine_invalid_output")
 
@@ -128,6 +133,18 @@ def _validate_pdf_structure(pdf: bytes) -> None:
         raise RuntimeError("pdf_validator_unavailable") from exc
     if version("pypdf") != "6.19.0":
         raise RuntimeError("pdf_validator_version_mismatch")
+
+    metadata_result = validate_pdf_candidate(
+        pdf_bytes=pdf,
+        expected_pdf_sha256=hashlib.sha256(pdf).hexdigest(),
+        expected_author=GENERATED_PDF_AUTHOR,
+        expected_language=expected_language,
+        metadata_profile=GENERATED_PDF_METADATA_PROFILE,
+    )
+    if not metadata_result.passed:
+        if "pdf_structure_invalid" in metadata_result.errors or "encrypted_pdf_forbidden" in metadata_result.errors:
+            raise RuntimeError("pdf_engine_invalid_output")
+        raise RuntimeError("pdf_metadata_invalid")
 
     try:
         reader = PdfReader(BytesIO(pdf), strict=True)
@@ -190,6 +207,9 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
     locale_id = presentation_ir["locale_id"]
     parts = [
         f'<!doctype html><html lang="{escape(locale_id, quote=True)}"><head><meta charset="utf-8">',
+        f"<title>{GENERATED_PDF_PRODUCT}</title>",
+        f'<meta name="author" content="{GENERATED_PDF_AUTHOR}">',
+        f'<meta name="generator" content="{GENERATED_PDF_PRODUCT}">',
         "<style>body{font-family:sans-serif}section{margin-block:1rem}pre{white-space:pre-wrap}</style>",
         "</head><body>",
         f"<h1>{escape(presentation_ir['report_id'])}</h1>",
@@ -222,7 +242,7 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
 
     try:
         pdf_bytes = _render_pdf(html, digest)
-        _validate_pdf_structure(pdf_bytes)
+        _validate_pdf_structure(pdf_bytes, expected_language=locale_id)
     except RuntimeError as exc:
         reason = str(exc)
         return AdapterResult(
@@ -241,6 +261,9 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
         "pdf_adapter_status": "READY",
         "pdf_engine_id": "weasyprint:70.0",
         "pdf_validator_id": "pypdf:6.19.0",
+        "pdf_metadata_profile": GENERATED_PDF_METADATA_PROFILE,
+        "pdf_metadata_status": "PASS",
+        "release_authorization": "NOT_ESTABLISHED",
     }
     return AdapterResult(
         html,
