@@ -45,8 +45,8 @@ def blocked(error: str,pdf_digest: str|None=None) -> dict:
     }
 
 
-def _tool_identity() -> tuple[str,str]:
-    """Resolve the activated raster executable and return version plus binary digest."""
+def _tool_identity() -> tuple[str,str,str]:
+    """Resolve the activated raster executable and return version, digest, and path."""
     tool=shutil.which("pdftoppm")
     if not tool:
         raise OSError("pdftoppm unavailable")
@@ -62,7 +62,7 @@ def _tool_identity() -> tuple[str,str]:
     prefix="pdftoppm version "
     if not first.startswith(prefix):
         raise OSError("pdftoppm version invalid")
-    return first[len(prefix):],binary_hash
+    return first[len(prefix):],binary_hash,str(path)
 
 
 def _expected_pixels(page) -> tuple[int,int]:
@@ -91,7 +91,7 @@ def inspect_visual_geometry(pdf: bytes) -> dict:
     except (ImportError,OSError):
         return blocked("pdf_visual_library_mismatch",pdf_digest)
     try:
-        tool_version,tool_hash=_tool_identity()
+        tool_version,tool_hash,tool=_tool_identity()
     except (OSError,UnicodeError):
         return blocked("pdf_visual_executor_mismatch",pdf_digest)
     if tool_version!=TOOL_VERSION or tool_hash!=TOOL_SHA256:
@@ -121,7 +121,6 @@ def inspect_visual_geometry(pdf: bytes) -> dict:
             root=Path(td)
             source=root/"candidate.pdf"
             source.write_bytes(pdf)
-            tool=str(Path(shutil.which("pdftoppm") or "").resolve())
             for index,(expected_width,expected_height) in enumerate(expected,1):
                 prefix=root/f"page-{index}"
                 process=subprocess.run(

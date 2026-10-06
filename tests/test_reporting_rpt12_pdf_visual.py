@@ -226,10 +226,22 @@ class Rpt12PdfVisualTests(unittest.TestCase):
         self.assertEqual(manifest["profile"]["dpi"],96)
         self.assertIn("disable_path",manifest)
 
+    def test_rasterization_reuses_the_verified_executor_lookup(self):
+        """Rasterization must not perform a second PATH lookup after identity verification."""
+        worker=importlib.import_module("reporting._pdf_visual_worker")
+        real_which=worker.shutil.which
+        with patch.object(worker.shutil,"which",side_effect=lambda name: real_which(name)) as lookup:
+            result=worker.inspect_visual_geometry(self.pdf)
+        self.assertEqual(result["status"],"PASS",result["errors"])
+        self.assertEqual(lookup.call_count,1)
+
     def test_executor_version_or_binary_drift_is_rejected(self):
         """An unreviewed Poppler executable identity cannot produce PASS evidence."""
         worker=importlib.import_module("reporting._pdf_visual_worker")
-        with patch.object(worker,"_tool_identity",return_value=("0.0.0","0"*64)):
+        with patch.object(
+            worker,"_tool_identity",
+            return_value=("0.0.0","0"*64,"/usr/bin/pdftoppm"),
+        ):
             result=worker.inspect_visual_geometry(self.pdf)
         self.assertEqual(result["errors"],["pdf_visual_executor_mismatch"])
 
