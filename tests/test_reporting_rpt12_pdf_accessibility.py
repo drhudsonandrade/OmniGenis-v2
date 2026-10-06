@@ -147,6 +147,38 @@ class Rpt12PdfAccessibilityTests(unittest.TestCase):
         self.assertFalse(adapter.passed)
         self.assertIn("presentation_ir_invalid",adapter.errors)
 
+    def test_adapter_rejects_malformed_and_inactive_locales(self):
+        """Only an explicitly enabled report locale may reach PDF rendering."""
+        from reporting.adapters import build_html_css_and_pdf_adapter
+        invalid=(None,"","   ","not a language","pt-BR","en-US-extra", " en-US ","en_US",123,True,[],{})
+        for locale in invalid:
+            with self.subTest(locale=repr(locale)):
+                presentation={
+                    "report_id":"synthetic-accessibility-report",
+                    "locale_id":locale,
+                    "components":[{
+                        "component_id":"summary","component_type":"semantic-section",
+                        "title":"Summary","state":"PRESENT","content":{"text":"Synthetic"},
+                    }],
+                }
+                result=build_html_css_and_pdf_adapter(presentation_ir=presentation)
+                self.assertFalse(result.passed)
+                self.assertIn("presentation_ir_invalid",result.errors)
+                self.assertIsNone(result.pdf_bytes)
+
+    def test_accessibility_rejects_malformed_and_inactive_expected_locales(self):
+        """Matching invalid language text cannot establish a bounded locale pass."""
+        invalid=("","   ","not a language","pt-BR","en-US-extra"," en-US ","en_US",None,123,True,[],{})
+        for locale in invalid:
+            with self.subTest(locale=repr(locale)):
+                pdf_language=locale if isinstance(locale,str) else "en-US"
+                result=validate_pdf_accessibility_structure(
+                    pdf_bytes=synthetic_tagged_pdf(language=pdf_language),
+                    expected_language=locale,
+                )
+                self.assertFalse(result.passed)
+                self.assertIn("pdf_accessibility_language_mismatch",result.errors)
+
     def test_indirect_catalog_language_is_resolved(self):
         """An indirect /Lang text string is resolved before language comparison."""
         result=validate_pdf_accessibility_structure(

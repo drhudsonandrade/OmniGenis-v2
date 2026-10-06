@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from io import BytesIO
 
+from reporting.localization import is_supported_report_locale
+
 
 @dataclass(frozen=True)
 class PdfAccessibilityValidation:
@@ -32,6 +34,7 @@ class PdfAccessibilityValidation:
             "errors":list(self.errors),
             "limitations":[
                 "This gate checks PDF/UA-1 structural prerequisites only.",
+                "Only explicitly activated reporting locales are accepted.",
                 "Reading order, alternate-text quality, semantic tag correctness, visual QA, and full PDF/UA conformance are not established.",
             ],
         }
@@ -80,9 +83,8 @@ def validate_pdf_accessibility_structure(
     if not struct_present:
         errors.append("pdf_struct_tree_missing")
     if (
-        not isinstance(expected_language,str)
-        or not expected_language.strip()
-        or language != expected_language.strip()
+        not is_supported_report_locale(expected_language)
+        or language != expected_language
     ):
         errors.append("pdf_accessibility_language_mismatch")
     return PdfAccessibilityValidation(

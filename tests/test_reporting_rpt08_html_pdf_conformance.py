@@ -21,6 +21,7 @@ def load_json(path: Path) -> object:
 
 class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
     def setUp(self) -> None:
+        """Build a synthetic report through the controlled localization stage."""
         compiler = importlib.import_module("reporting.compiler")
         viewmodel = importlib.import_module("reporting.viewmodel")
         presentation = importlib.import_module("reporting.presentation")

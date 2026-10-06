@@ -11,6 +11,8 @@ import os
 import threading
 from collections.abc import Mapping
 
+from reporting.localization import is_supported_report_locale
+
 ROADMAP_ID = "RPT-08"
 _PDF_RENDER_ENV_LOCK = threading.Lock()
 _PDF_SOURCE_DATE_EPOCH = "0"
@@ -52,6 +54,7 @@ def _failure(error: str) -> AdapterResult:
 
 
 def _validate_ir(presentation_ir: object) -> bool:
+    """Check component shape and the activated locale before any rendering."""
     if not isinstance(presentation_ir, Mapping):
         return False
     report_id = presentation_ir.get("report_id")
@@ -59,7 +62,7 @@ def _validate_ir(presentation_ir: object) -> bool:
     components = presentation_ir.get("components")
     if not isinstance(report_id, str) or not report_id:
         return False
-    if not isinstance(locale_id, str) or not locale_id:
+    if not is_supported_report_locale(locale_id):
         return False
     if not isinstance(components, list) or not components:
         return False
@@ -143,6 +146,7 @@ def _validate_pdf_structure(pdf: bytes) -> None:
 
 
 def _render_pdf(html: str, html_sha256: str) -> bytes:
+    """Render deterministic candidate bytes with the pinned offline PDF stack."""
     with _PDF_RENDER_ENV_LOCK:
         previous_source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH")
         os.environ["SOURCE_DATE_EPOCH"] = _PDF_SOURCE_DATE_EPOCH
@@ -179,6 +183,7 @@ def _render_pdf(html: str, html_sha256: str) -> bytes:
 
 
 def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
+    """Render localized semantic components without inferring a document language."""
     if not _validate_ir(presentation_ir):
         return _failure("presentation_ir_invalid")
 
