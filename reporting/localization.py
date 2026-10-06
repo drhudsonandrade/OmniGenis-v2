@@ -70,8 +70,14 @@ def _sha256(value: object) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def is_supported_report_locale(locale_id: object) -> bool:
+    """Return whether the exact locale is activated for controlled reporting."""
+    return isinstance(locale_id, str) and locale_id in _SUPPORTED_LOCALES
+
+
 def _load_locale(locale_id: str) -> object:
-    if locale_id not in _SUPPORTED_LOCALES:
+    """Load a catalog only for an explicitly activated report locale."""
+    if not is_supported_report_locale(locale_id):
         return None
     path = _LOCALE_ROOT / f"{locale_id}.v1.json"
     if not path.is_file():
