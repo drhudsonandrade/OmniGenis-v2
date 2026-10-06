@@ -99,6 +99,47 @@ class Rpt12PdfAccessibilityTests(unittest.TestCase):
                 self.assertEqual(result.marked,expected)
                 self.assertEqual(result.passed,expected)
 
+    @staticmethod
+    def _pdf_with_struct_type(value, *, indirect=False):
+        """Serialize a selected object as the structure root Type without coercion."""
+        reader=PdfReader(BytesIO(synthetic_tagged_pdf()),strict=True)
+        writer=PdfWriter()
+        writer.clone_document_from_reader(reader)
+        value=writer._add_object(value) if indirect else value
+        writer.root_object["/StructTreeRoot"][NameObject("/Type")]=value
+        out=BytesIO()
+        writer.write(out)
+        return out.getvalue()
+
+    def test_structure_root_type_requires_pdf_name(self):
+        """Text, numbers, null, and containers cannot impersonate the root name."""
+        invalid=(
+            TextStringObject("/StructTreeRoot"), NameObject("/Other"),
+            NumberObject(1), NullObject(), ArrayObject([NameObject("/StructTreeRoot")]),
+            DictionaryObject({NameObject("/Type"):NameObject("/StructTreeRoot")}),
+        )
+        for value in invalid:
+            for indirect in (False,True):
+                with self.subTest(pdf_type=type(value).__name__,indirect=indirect):
+                    result=validate_pdf_accessibility_structure(
+                        pdf_bytes=self._pdf_with_struct_type(value,indirect=indirect),
+                        expected_language="en-US",
+                    )
+                    self.assertFalse(result.passed)
+                    self.assertFalse(result.struct_tree_root)
+                    self.assertIn("pdf_struct_tree_missing",result.errors)
+
+    def test_direct_and_indirect_structure_root_name_are_accepted(self):
+        """Reference resolution preserves the required PDF name type."""
+        for indirect in (False,True):
+            with self.subTest(indirect=indirect):
+                result=validate_pdf_accessibility_structure(
+                    pdf_bytes=self._pdf_with_struct_type(NameObject("/StructTreeRoot"),indirect=indirect),
+                    expected_language="en-US",
+                )
+                self.assertTrue(result.passed,result.errors)
+                self.assertTrue(result.struct_tree_root)
+
     def test_missing_struct_tree_root_fails_closed(self):
         """A tagged claim requires a document structure tree."""
         result=validate_pdf_accessibility_structure(
