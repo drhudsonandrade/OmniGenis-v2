@@ -24,6 +24,7 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         compiler = importlib.import_module("reporting.compiler")
         viewmodel = importlib.import_module("reporting.viewmodel")
         presentation = importlib.import_module("reporting.presentation")
+        localization = importlib.import_module("reporting.localization")
         interpretation = {
             "identity": {"sample_id": "SYNTHETIC-001"},
             "items": [],
@@ -43,9 +44,13 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
             compiled_report_pack=compiled,
             artifact_ids=["canonical-interpretation:synthetic-001"],
         )
-        self.presentation = presentation.build_presentation_ir(
+        raw_presentation = presentation.build_presentation_ir(
             report_view_model=rpt03.view_model,
         ).to_dict()["presentation_ir"]
+        self.presentation = localization.localize_presentation_ir(
+            presentation_ir=raw_presentation,
+            locale_id="en-US",
+        ).to_dict()["localized_ir"]
 
     def adapt(self, **overrides):
         module = importlib.import_module("reporting.adapters")

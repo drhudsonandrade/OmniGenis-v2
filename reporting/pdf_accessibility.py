@@ -57,7 +57,7 @@ def validate_pdf_accessibility_structure(
         if reader.is_encrypted:
             return _failure("encrypted_pdf_forbidden")
         root=reader.root_object
-        language=root.get("/Lang")
+        language=root["/Lang"] if "/Lang" in root else None
         mark_info=root.get("/MarkInfo")
         if mark_info is not None:
             mark_info=mark_info.get_object()

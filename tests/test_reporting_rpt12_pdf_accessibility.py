@@ -13,12 +13,18 @@ from reporting.adapters import _render_pdf
 from reporting.pdf_accessibility import validate_pdf_accessibility_structure
 
 
-def synthetic_tagged_pdf(*, language="en-US", marked=True, struct_tree=True, mark_info=True):
+def synthetic_tagged_pdf(
+    *, language="en-US", marked=True, struct_tree=True, mark_info=True,
+    indirect_language=False,
+):
     """Create a minimal synthetic PDF carrying selected accessibility markers."""
     writer=PdfWriter()
     writer.add_blank_page(width=612,height=792)
     if language is not None:
-        writer.root_object[NameObject("/Lang")]=TextStringObject(language)
+        language_value=TextStringObject(language)
+        if indirect_language:
+            language_value=writer._add_object(language_value)
+        writer.root_object[NameObject("/Lang")]=language_value
     if mark_info:
         writer.root_object[NameObject("/MarkInfo")]=DictionaryObject({
             NameObject("/Marked"):BooleanObject(marked),
@@ -100,6 +106,55 @@ class Rpt12PdfAccessibilityTests(unittest.TestCase):
         )
         self.assertFalse(result.passed)
         self.assertIn("pdf_struct_tree_missing",result.errors)
+
+    def test_public_adapter_emits_catalog_language_from_localized_ir(self):
+        """The adapter entrypoint propagates the localized IR language into PDF /Lang."""
+        from reporting.adapters import build_html_css_and_pdf_adapter
+        presentation={
+            "report_id":"synthetic-accessibility-report",
+            "locale_id":"en-US",
+            "components":[{
+                "component_id":"summary",
+                "component_type":"semantic-section",
+                "title":"Summary",
+                "state":"PRESENT",
+                "content":{"text":"Synthetic"},
+            }],
+        }
+        adapter=build_html_css_and_pdf_adapter(presentation_ir=presentation)
+        self.assertTrue(adapter.passed,adapter.errors)
+        self.assertIn('<html lang="en-US">',adapter.html)
+        result=validate_pdf_accessibility_structure(
+            pdf_bytes=adapter.pdf_bytes,expected_language="en-US",
+        )
+        self.assertTrue(result.passed,result.errors)
+        self.assertEqual(result.language,"en-US")
+
+    def test_public_adapter_rejects_unlocalized_ir_for_pdf_ua(self):
+        """PDF/UA rendering requires an explicit locale from the localization stage."""
+        from reporting.adapters import build_html_css_and_pdf_adapter
+        presentation={
+            "report_id":"synthetic-accessibility-report",
+            "components":[{
+                "component_id":"summary",
+                "component_type":"semantic-section",
+                "title":"Summary",
+                "state":"PRESENT",
+                "content":{"text":"Synthetic"},
+            }],
+        }
+        adapter=build_html_css_and_pdf_adapter(presentation_ir=presentation)
+        self.assertFalse(adapter.passed)
+        self.assertIn("presentation_ir_invalid",adapter.errors)
+
+    def test_indirect_catalog_language_is_resolved(self):
+        """An indirect /Lang text string is resolved before language comparison."""
+        result=validate_pdf_accessibility_structure(
+            pdf_bytes=synthetic_tagged_pdf(language="en-US",indirect_language=True),
+            expected_language="en-US",
+        )
+        self.assertTrue(result.passed,result.errors)
+        self.assertEqual(result.language,"en-US")
 
     def test_catalog_language_must_match(self):
         """Structural accessibility uses the catalog language."""

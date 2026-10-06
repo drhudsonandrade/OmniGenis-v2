@@ -55,8 +55,11 @@ def _validate_ir(presentation_ir: object) -> bool:
     if not isinstance(presentation_ir, Mapping):
         return False
     report_id = presentation_ir.get("report_id")
+    locale_id = presentation_ir.get("locale_id")
     components = presentation_ir.get("components")
     if not isinstance(report_id, str) or not report_id:
+        return False
+    if not isinstance(locale_id, str) or not locale_id:
         return False
     if not isinstance(components, list) or not components:
         return False
@@ -179,8 +182,9 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
     if not _validate_ir(presentation_ir):
         return _failure("presentation_ir_invalid")
 
+    locale_id = presentation_ir["locale_id"]
     parts = [
-        "<!doctype html><html><head><meta charset=\"utf-8\">",
+        f'<!doctype html><html lang="{escape(locale_id, quote=True)}"><head><meta charset="utf-8">',
         "<style>body{font-family:sans-serif}section{margin-block:1rem}pre{white-space:pre-wrap}</style>",
         "</head><body>",
         f"<h1>{escape(presentation_ir['report_id'])}</h1>",
