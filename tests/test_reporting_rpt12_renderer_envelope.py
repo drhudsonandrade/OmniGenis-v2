@@ -131,14 +131,14 @@ class RendererEnvelopeTests(unittest.TestCase):
                 [sys.executable, "-c", script],
                 env=os.environ.copy(),
             )
-            with self.assertRaisesRegex(RuntimeError, "pdf_render_failed"):
-                adapters._wait_pdf_render_worker(process, wall_seconds=0.2)
-
             deadline = time.monotonic() + 3
             while not pid_file.exists() and time.monotonic() < deadline:
                 time.sleep(0.02)
             self.assertTrue(pid_file.exists())
             child_pid = int(pid_file.read_text())
+
+            with self.assertRaisesRegex(RuntimeError, "pdf_render_failed"):
+                adapters._wait_pdf_render_worker(process, wall_seconds=0.2)
 
             def child_running():
                 try:
