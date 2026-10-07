@@ -396,6 +396,59 @@ class ValidationEnvelopeTests(unittest.TestCase):
                                 capture_output=True, text=True, timeout=5, check=True)
         self.assertEqual(result.stdout.strip(), "LIMITED")
 
+    def test_safe_path_mode_imports_only_the_pinned_worker_root(self):
+        """Keep safe-path mode enabled while explicitly locating the trusted module."""
+        with patch.dict(os.environ, {"PYTHONSAFEPATH": "1", "PYTHONPATH": ""}):
+            result = boundary._run("metadata", self.pdf, self.digest)
+            self.assertEqual(os.environ["PYTHONSAFEPATH"], "1")
+            self.assertEqual(os.environ["PYTHONPATH"], "")
+        self.assertEqual(result["errors"], [])
+
+    def test_worker_environment_matches_existing_renderer_allowlist(self):
+        """Copy only approved environment values without changing the hosting process."""
+        values = {"PYTHONSAFEPATH": "1", "PYTHONPATH": "synthetic-foreign-path",
+                  "PYTHONHOME": "synthetic-foreign-home", "LANG": "C.UTF-8",
+                  "VALIDATION_TEST_SENTINEL": "must-not-be-forwarded"}
+        with patch.dict(os.environ, values), patch.object(boundary.subprocess, "Popen") as launch:
+            boundary._start([sys.executable, "-I", str(Path(worker.__file__).resolve())], (3, 4))
+            self.assertEqual(os.environ["PYTHONPATH"], "synthetic-foreign-path")
+            self.assertEqual(os.environ["PYTHONSAFEPATH"], "1")
+        child = launch.call_args.kwargs["env"]
+        self.assertEqual(child["LANG"], "C.UTF-8")
+        self.assertTrue(set(child).issubset({"PATH", "HOME", "LANG", "LC_ALL",
+                         "LC_CTYPE", "TZ", "FONTCONFIG_FILE", "FONTCONFIG_PATH"}))
+        for name in ("PYTHONPATH", "PYTHONHOME", "PYTHONSAFEPATH", "VALIDATION_TEST_SENTINEL"):
+            self.assertNotIn(name, child)
+
+
+    def test_inherited_python_home_cannot_replace_the_validator_runtime(self):
+        """A foreign Python home is ignored rather than selecting a different runtime."""
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"PYTHONHOME": directory,
+                                        "PYTHONPATH": directory, "PYTHONSAFEPATH": "1"}):
+                result = boundary._run("metadata", self.pdf, self.digest)
+                self.assertEqual(os.environ["PYTHONHOME"], directory)
+            self.assertEqual(result["errors"], [])
+
+    def test_native_worker_is_launched_with_isolated_python(self):
+        """The real validation request uses an explicit script with isolated startup."""
+        with patch.object(boundary, "_start", wraps=boundary._start) as start:
+            result = boundary._run("metadata", self.pdf, self.digest)
+        command = start.call_args.args[0]
+        self.assertEqual(command[:3], [sys.executable, "-I", str(Path(worker.__file__).resolve())])
+        self.assertEqual(result["errors"], [])
+
+    def test_python_startup_hooks_are_not_loaded_from_foreign_path(self):
+        """Untrusted startup hooks cannot run before the fixed validation worker."""
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "startup-loaded"
+            (Path(directory) / "sitecustomize.py").write_text(
+                f"from pathlib import Path;Path({str(marker)!r}).write_text('unexpected')")
+            with patch.dict(os.environ, {"PYTHONPATH": directory, "PYTHONSAFEPATH": "1"}):
+                result = boundary._run("metadata", self.pdf, self.digest)
+            self.assertFalse(marker.exists())
+            self.assertEqual(result["errors"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

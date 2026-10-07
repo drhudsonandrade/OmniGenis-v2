@@ -5,9 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from pathlib import Path
 import signal
 import stat
 import sys
+
+# Isolated script execution resolves only this verified deployment source root.
+# Importing the module normally must not modify the hosting process search path.
+if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
 

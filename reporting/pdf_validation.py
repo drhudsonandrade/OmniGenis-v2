@@ -97,8 +97,10 @@ def _decode(data: bytes, operation: str, digest: str) -> dict:
 
 def _start(command: list[str], fds: tuple[int, int]) -> subprocess.Popen:
     """Start a worker with only the declared anonymous descriptors inherited."""
-    env = os.environ.copy()
-    env["PYTHONNOUSERSITE"] = "1"
+    env = {key: os.environ[key] for key in (
+        "PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "TZ",
+        "FONTCONFIG_FILE", "FONTCONFIG_PATH",
+    ) if key in os.environ}
     return subprocess.Popen(
         command, cwd=Path(__file__).resolve().parents[1], env=env,
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -144,7 +146,8 @@ def _run(operation: str, pdf: object, expected_digest: object) -> dict:
             request.write(pdf)
             request.flush()
             process = _start([
-                sys.executable, "-m", "reporting._pdf_validation_worker",
+                sys.executable, "-I",
+                str(Path(__file__).resolve().with_name("_pdf_validation_worker.py")),
                 str(fds[0]), str(fds[1]), str(os.getpid()),
             ], fds)
             if _wait(process) != 0 or not 1 <= os.fstat(result.fileno()).st_size <= RESULT_BYTES:

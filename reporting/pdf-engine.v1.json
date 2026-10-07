@@ -112,6 +112,18 @@
     "disable_environment": "OMNIGENIS_PDF_VALIDATION_DISABLED=1",
     "os_sandbox_claimed": false,
     "total_operation_budget_claimed": false,
-    "standalone_low_level_validators_changed": false
+    "standalone_low_level_validators_changed": false,
+    "launch_mode": "isolated_python_explicit_worker",
+    "worker_import_root": "verified_deployment_source_root",
+    "inherited_environment": [
+      "PATH",
+      "HOME",
+      "LANG",
+      "LC_ALL",
+      "LC_CTYPE",
+      "TZ",
+      "FONTCONFIG_FILE",
+      "FONTCONFIG_PATH"
+    ]
   }
 }
