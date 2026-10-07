@@ -26,13 +26,27 @@
   "engine_id": "weasyprint",
   "engine_version": "70.0",
   "external_resource_fetching": false,
+  "execution_envelope": {
+    "protocol_version": 1,
+    "html_bytes": 67108864,
+    "pdf_bytes": 8388608,
+    "memory_bytes": 1073741824,
+    "cpu_seconds": 20,
+    "wall_seconds": 30,
+    "open_files": 128,
+    "result_bytes": 65536,
+    "process_boundary": "subprocess",
+    "os_sandbox_claimed": false,
+    "disable_environment": "OMNIGENIS_PDF_RENDERER_DISABLED=1"
+  },
   "input_domain": "OmniGenis-generated escaped self-contained HTML/CSS only",
   "integration_mode": "USE_VIA_ADAPTER",
   "known_issues": [
     "Do not downgrade below 70.0; 70.0 includes a security fix.",
     "PDF/A and PDF/UA conformance are not asserted by RPT-08 and remain RPT-12 work.",
     "Current environment warns that HarfBuzz-Subset will be required by a future WeasyPrint version; version 70.0 remains functional without it.",
-    "Deterministic rendering pins SOURCE_DATE_EPOCH=0 during each render call and restores the previous process value."
+    "Deterministic rendering pins SOURCE_DATE_EPOCH=0 inside each isolated render worker.",
+    "The bounded subprocess is a resource envelope, not an OS network/filesystem sandbox or a complete-operation aggregate memory guarantee."
   ],
   "license": "BSD-3-Clause",
   "omnigenis_authorship_scope": [

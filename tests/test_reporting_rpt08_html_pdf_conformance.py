@@ -146,9 +146,11 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
                 raise OSError("synthetic native library load failure")
             return original_import(name, globals, locals, fromlist, level)
 
+        html = "<!doctype html><html></html>"
+        digest = hashlib.sha256(html.encode("utf-8")).hexdigest()
         with patch("builtins.__import__", side_effect=fail_weasyprint_import):
             with self.assertRaisesRegex(RuntimeError, "pdf_engine_unavailable"):
-                module._render_pdf("<!doctype html><html></html>", "0" * 64)
+                module._render_pdf(html, digest)
 
     def test_malformed_pdf_bytes_fail_closed_before_hashing(self):
         try:
