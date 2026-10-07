@@ -57,14 +57,7 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         module = importlib.import_module("reporting.adapters")
         values = {"presentation_ir": self.presentation}
         values.update(overrides)
-        with (
-            patch(
-                "reporting.adapters._render_pdf",
-                return_value=b"%PDF-1.7\nsynthetic-default\n%%EOF\n",
-            ),
-            patch("reporting.adapters._validate_pdf_structure"),
-        ):
-            return module.build_html_css_and_pdf_adapter(**values)
+        return module.build_html_css_and_pdf_adapter(**values)
 
     def test_pdf_engine_manifest_preserves_external_provenance_and_rights(self):
         manifest = load_json(ROOT / "reporting" / "pdf-engine.v1.json")
@@ -110,22 +103,14 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         )
 
     def test_pdf_adapter_binds_generated_pdf(self):
-        fake_pdf = b"%PDF-1.7\nsynthetic-fixture\n%%EOF\n"
-        module = importlib.import_module("reporting.adapters")
-        with (
-            patch("reporting.adapters._render_pdf", return_value=fake_pdf),
-            patch("reporting.adapters._validate_pdf_structure"),
-        ):
-            result = module.build_html_css_and_pdf_adapter(
-                presentation_ir=self.presentation
-            )
+        result = self.adapt()
         self.assertTrue(result.passed, result.errors)
         self.assertEqual(result.pdf_status, "READY")
         self.assertIsNone(result.pdf_reason)
-        self.assertEqual(result.pdf_bytes, fake_pdf)
+        self.assertTrue(result.pdf_bytes.startswith(b"%PDF-1.7"))
         self.assertEqual(
             result.pdf_sha256,
-            hashlib.sha256(fake_pdf).hexdigest(),
+            hashlib.sha256(result.pdf_bytes).hexdigest(),
         )
         self.assertEqual(result.pdf_engine_id, "weasyprint:70.0")
 

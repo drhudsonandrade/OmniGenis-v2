@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from html import escape
 import hashlib
@@ -12,6 +13,10 @@ import threading
 from collections.abc import Mapping
 
 from reporting.localization import is_supported_report_locale
+from reporting.pdf_candidate_qa import (
+    MAX_PDF_BYTES, _MAX_JSON_NODES, PdfCandidateQAValidation,
+    _snapshot_ir, validate_pdf_candidate_qa,
+)
 from reporting.pdf_qa import (
     GENERATED_PDF_AUTHOR, GENERATED_PDF_PRODUCT, GENERATED_PDF_METADATA_PROFILE,
     validate_pdf_candidate,
@@ -48,7 +53,7 @@ class AdapterResult:
             "pdf_engine_id": self.pdf_engine_id,
             "pdf_status": self.pdf_status,
             "pdf_reason": self.pdf_reason,
-            "conformance": self.conformance,
+            "conformance": deepcopy(self.conformance),
             "errors": list(self.errors),
         }
 
@@ -89,6 +94,51 @@ def _validate_ir(presentation_ir: object) -> bool:
             return False
         seen.add(component_id)
     return True
+
+
+def _capture_adapter_ir(value: object) -> dict:
+    """Bridge only structural Mapping wrappers, then capture bounded native JSON.
+
+    Descendants retain the fixed QA input contract; tuples and arbitrary nested
+    Mapping values are not coerced. Mutation during capture is unsupported.
+    """
+    remaining = _MAX_JSON_NODES
+    key_chars = 0
+
+    def capture_mapping(mapping: object) -> dict:
+        nonlocal remaining, key_chars
+        if not isinstance(mapping, Mapping):
+            raise ValueError("invalid presentation mapping")
+        remaining -= 1
+        if remaining < 0 or len(mapping) > remaining // 2:
+            raise ValueError("presentation input budget exceeded")
+        captured = {}
+        for key, child in mapping.items():
+            remaining -= 2
+            if remaining < 0 or type(key) is not str:
+                raise ValueError("invalid presentation mapping")
+            key_chars += len(key)
+            if key_chars > MAX_PDF_BYTES:
+                raise ValueError("presentation input budget exceeded")
+            if key in captured:
+                raise ValueError("duplicate presentation key")
+            captured[key] = child
+        return captured
+
+    captured = capture_mapping(value)
+    components = captured.get("components")
+    if type(components) is not list or len(components) > remaining:
+        raise ValueError("invalid presentation components")
+    captured["components"] = [capture_mapping(component) for component in components]
+    return _snapshot_ir(captured)
+
+
+def _pdf_failure(html: str, html_sha256: str, reason: str) -> AdapterResult:
+    """Retain generated HTML while withholding the rejected PDF and conformance."""
+    return AdapterResult(
+        html, html_sha256, None, None, "weasyprint:70.0", "DISABLED",
+        reason, None, (reason,),
+    )
 
 
 def _pdf_stack_readiness() -> tuple[bool, str | None]:
@@ -200,8 +250,22 @@ def _render_pdf(html: str, html_sha256: str) -> bytes:
 
 
 def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
-    """Render localized semantic components without inferring a document language."""
-    if not _validate_ir(presentation_ir):
+    """Create one candidate from captured localized IR and require bounded QA.
+
+    The native handoff is LocalizationResult.to_dict()["localized_ir"]. Root
+    and component Mapping wrappers remain supported with native JSON descendants.
+    READY covers the fixed candidate checks; it does not authorize report release.
+    """
+    try:
+        presentation_ir = _capture_adapter_ir(presentation_ir)
+        if not _validate_ir(presentation_ir):
+            return _failure("presentation_ir_invalid")
+        ir_digest = hashlib.sha256(json.dumps(
+            presentation_ir, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False,
+        ).encode("utf-8")).hexdigest()
+    except Exception:
+        # Mapping implementations can raise arbitrary errors during capture.
         return _failure("presentation_ir_invalid")
 
     locale_id = presentation_ir["locale_id"]
@@ -242,16 +306,45 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
 
     try:
         pdf_bytes = _render_pdf(html, digest)
+        if type(pdf_bytes) is not bytes or not pdf_bytes.startswith(b"%PDF-1.7"):
+            raise RuntimeError("pdf_engine_invalid_output")
+        if len(pdf_bytes) > MAX_PDF_BYTES:
+            raise RuntimeError("pdf_candidate_budget_exceeded")
         _validate_pdf_structure(pdf_bytes, expected_language=locale_id)
     except RuntimeError as exc:
         reason = str(exc)
-        return AdapterResult(
-            html, digest, None, None, "weasyprint:70.0", "DISABLED", reason, None, (reason,)
-        )
+        return _pdf_failure(html, digest, reason)
     except (TypeError, ValueError, UnicodeError):
         return _failure("pdf_render_failed")
 
     pdf_sha256 = hashlib.sha256(pdf_bytes).hexdigest()
+    try:
+        candidate_qa = validate_pdf_candidate_qa(
+            presentation_ir=presentation_ir, expected_ir_sha256=ir_digest,
+            pdf_bytes=pdf_bytes, expected_pdf_sha256=pdf_sha256,
+        )
+    except Exception:
+        return _pdf_failure(html, digest, "pdf_candidate_qa_failed")
+    try:
+        if type(candidate_qa) is not PdfCandidateQAValidation:
+            raise ValueError("invalid candidate QA result")
+        # Recheck invariants rather than trusting a success-looking object.
+        candidate_qa = PdfCandidateQAValidation(
+            candidate_qa.pdf_sha256, candidate_qa.ir_sha256,
+            candidate_qa.locale_id, candidate_qa.gates,
+        )
+        for actual, expected in (
+            (candidate_qa.pdf_sha256, pdf_sha256),
+            (candidate_qa.ir_sha256, ir_digest),
+            (candidate_qa.locale_id, locale_id),
+        ):
+            if actual is not None and actual != expected:
+                raise ValueError("candidate QA identity mismatch")
+        if not candidate_qa.passed:
+            return _pdf_failure(html, digest, "pdf_candidate_qa_blocked")
+        qa_evidence = candidate_qa.to_dict()
+    except Exception:
+        return _pdf_failure(html, digest, "pdf_candidate_qa_invalid_result")
     conformance = {
         "status": "PASS",
         "component_count": len(component_ids),
@@ -263,6 +356,8 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
         "pdf_validator_id": "pypdf:6.19.0",
         "pdf_metadata_profile": GENERATED_PDF_METADATA_PROFILE,
         "pdf_metadata_status": "PASS",
+        "presentation_ir_sha256": ir_digest,
+        "pdf_candidate_qa": qa_evidence,
         "release_authorization": "NOT_ESTABLISHED",
     }
     return AdapterResult(

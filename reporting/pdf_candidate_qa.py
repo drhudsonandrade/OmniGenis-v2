@@ -224,10 +224,12 @@ class _Gate:
             raise ValueError("invalid candidate QA stage")
         if type(self.status) is not str or self.status not in {"PASS", "BLOCKED", "NOT_EXECUTED"}:
             raise ValueError("invalid candidate QA status")
-        if type(self.errors) is not tuple or any(type(e) is not str or e not in _ERRORS for e in self.errors):
+        if (type(self.errors) is not tuple or len(self.errors) > 1
+                or any(type(e) is not str or e not in _ERRORS for e in self.errors)):
             raise ValueError("invalid candidate QA errors")
         if self.status == "PASS":
-            if self.errors or type(self.evidence) is not tuple or not self.evidence:
+            if (self.errors or type(self.evidence) is not tuple
+                    or not self.evidence or len(self.evidence) > 6):
                 raise ValueError("missing candidate QA evidence")
             keys = set()
             for pair in self.evidence:
@@ -251,8 +253,11 @@ class PdfCandidateQAValidation:
     def __post_init__(self) -> None:
         """Enforce complete ordered evidence and a fail-fast state sequence."""
         if (type(self.gates) is not tuple or len(self.gates) != len(_STAGES)
-                or any(type(gate) is not _Gate for gate in self.gates)
-                or tuple(gate.name for gate in self.gates) != _STAGES):
+                or any(type(gate) is not _Gate for gate in self.gates)):
+            raise ValueError("invalid candidate QA gate sequence")
+        for gate in self.gates:
+            gate.__post_init__()
+        if tuple(gate.name for gate in self.gates) != _STAGES:
             raise ValueError("invalid candidate QA gate sequence")
         if self.gates[0].status == "PASS":
             if (not _digest(self.pdf_sha256) or not _digest(self.ir_sha256)
