@@ -16,6 +16,7 @@
     "zopfli": "Apache-2.0"
   },
   "determinism": {
+    "parent_environment_unchanged": true,
     "previous_environment_restored": true,
     "process_lock": true,
     "purpose": "stabilize font subsetting and PDF bytes across identical renders",
@@ -25,6 +26,24 @@
   "disable_behavior": "fail_closed",
   "engine_id": "weasyprint",
   "engine_version": "70.0",
+  "execution_envelope": {
+    "cpu_seconds": 20,
+    "disable_environment": "OMNIGENIS_PDF_RENDERER_DISABLED=1",
+    "html_bytes": 67108864,
+    "independent_worker_timer": "ITIMER_REAL / SIGALRM default action",
+    "memory_bytes": 1073741824,
+    "open_files": 128,
+    "os_sandbox_claimed": false,
+    "parent_death_signal": "SIGKILL; bound to launching thread",
+    "parent_environment": "allowlisted rendering environment; isolated Python startup",
+    "pdf_bytes": 8388608,
+    "process_boundary": "subprocess",
+    "protocol_storage": "three inherited anonymous regular file descriptors",
+    "protocol_version": 1,
+    "result_bytes": 65536,
+    "supported_os": "Linux",
+    "wall_seconds": 30
+  },
   "external_resource_fetching": false,
   "input_domain": "OmniGenis-generated escaped self-contained HTML/CSS only",
   "integration_mode": "USE_VIA_ADAPTER",
@@ -32,7 +51,11 @@
     "Do not downgrade below 70.0; 70.0 includes a security fix.",
     "PDF/A and PDF/UA conformance are not asserted by RPT-08 and remain RPT-12 work.",
     "Current environment warns that HarfBuzz-Subset will be required by a future WeasyPrint version; version 70.0 remains functional without it.",
-    "Deterministic rendering pins SOURCE_DATE_EPOCH=0 during each render call and restores the previous process value."
+    "Deterministic rendering pins SOURCE_DATE_EPOCH=0 inside each isolated render worker.",
+    "The bounded subprocess is a resource envelope, not an OS network/filesystem sandbox or a complete-operation aggregate memory guarantee.",
+    "The parent-death signal covers the renderer process, not arbitrary forked descendants; OS sandbox and aggregate process budgets remain unestablished.",
+    "The 30-second renderer budget excludes parent-side input preparation, native interpreter startup, queueing and PDF postvalidation.",
+    "Resource fixture measurements in resource_budget describe the earlier activation fixture, not a new benchmark of this worker."
   ],
   "license": "BSD-3-Clause",
   "omnigenis_authorship_scope": [
