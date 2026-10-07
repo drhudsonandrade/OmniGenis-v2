@@ -91,5 +91,27 @@
     "validator_version": "6.19.0",
     "wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14"
   },
-  "wheel_sha256": "5043e55e38d2a2af2b2b871e869697b1f65dad5f8b4a3677961d04ceacf9c5fe"
+  "wheel_sha256": "5043e55e38d2a2af2b2b871e869697b1f65dad5f8b4a3677961d04ceacf9c5fe",
+  "postvalidation_envelope": {
+    "profile_id": "generated-pdf-validation-envelope-v1",
+    "protocol_version": 1,
+    "operations": [
+      "structure",
+      "metadata",
+      "accessibility"
+    ],
+    "pdf_bytes": 8388608,
+    "result_bytes": 65536,
+    "memory_bytes": 268435456,
+    "cpu_seconds": 5,
+    "wall_seconds": 10,
+    "open_files": 128,
+    "file_bytes": 65536,
+    "platform": "linux",
+    "storage": "anonymous_inherited_regular_files",
+    "disable_environment": "OMNIGENIS_PDF_VALIDATION_DISABLED=1",
+    "os_sandbox_claimed": false,
+    "total_operation_budget_claimed": false,
+    "standalone_low_level_validators_changed": false
+  }
 }
