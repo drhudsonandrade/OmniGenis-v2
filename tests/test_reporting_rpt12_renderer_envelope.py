@@ -22,6 +22,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class RendererEnvelopeTests(unittest.TestCase):
     @staticmethod
+    def process_running(pid):
+        """Observe a test-owned process while tolerating concurrent kernel removal."""
+        try:
+            state = Path(f"/proc/{pid}/stat").read_text().split()[2]
+        except (FileNotFoundError, ProcessLookupError):
+            return False
+        return state != "Z"
+
+    @staticmethod
     def cleanup_process(process):
         """Always stop and reap test-owned processes even after an assertion fails."""
         try:
@@ -189,11 +198,7 @@ class RendererEnvelopeTests(unittest.TestCase):
                 adapters._wait_pdf_render_worker(process, wall_seconds=0.2)
 
             def child_running():
-                try:
-                    state = Path(f"/proc/{child_pid}/stat").read_text().split()[2]
-                except FileNotFoundError:
-                    return False
-                return state != "Z"
+                return self.process_running(child_pid)
 
             deadline = time.monotonic() + 3
             while child_running() and time.monotonic() < deadline:
@@ -226,11 +231,7 @@ class RendererEnvelopeTests(unittest.TestCase):
             )
 
             def child_running():
-                try:
-                    state = Path(f"/proc/{child_pid}/stat").read_text().split()[2]
-                except FileNotFoundError:
-                    return False
-                return state != "Z"
+                return self.process_running(child_pid)
 
             deadline = time.monotonic() + 3
             while child_running() and time.monotonic() < deadline:
@@ -352,11 +353,7 @@ class RendererEnvelopeTests(unittest.TestCase):
         self.assertEqual(ready, "READY")
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline:
-            try:
-                state = Path(f"/proc/{pid}/stat").read_text().split()[2]
-            except FileNotFoundError:
-                return
-            if state == "Z":
+            if not self.process_running(pid):
                 return
             time.sleep(0.02)
         self.fail("worker survived parent exit")
@@ -439,6 +436,14 @@ class RendererEnvelopeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "^pdf_render_failed$"):
                 adapters._render_pdf(html, hashlib.sha256(html.encode()).hexdigest())
         self.assertEqual(len(os.listdir("/proc/self/fd")), count)
+
+
+    def test_process_disappears_during_proc_read_is_not_running(self):
+        """Both Linux disappearance errors mean the test-owned process is gone."""
+        for error in (FileNotFoundError(), ProcessLookupError()):
+            with self.subTest(error=type(error).__name__):
+                with patch.object(Path, "read_text", side_effect=error):
+                    self.assertFalse(self.process_running(123456))
 
 
 if __name__ == "__main__":
