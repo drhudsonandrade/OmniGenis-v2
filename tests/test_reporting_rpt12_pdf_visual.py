@@ -300,10 +300,10 @@ class Rpt12PdfVisualTests(unittest.TestCase):
                     scratch=Path(state["scratch"])
 
                     def running():
-                        """Treat a terminated zombie as stopped while its parent reaps it."""
+                        """Treat a terminated or concurrently reaped child as stopped."""
                         try:
                             return Path(f"/proc/{child_pid}/stat").read_text().split()[2]!="Z"
-                        except FileNotFoundError:
+                        except (FileNotFoundError, ProcessLookupError):
                             return False
 
                     deadline=time.monotonic()+1
