@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,7 @@ from reporting._pdf_render_worker import (
     PDF_BYTES as PDF_RENDER_MAX_PDF_BYTES,
     PROTOCOL_VERSION as PDF_RENDER_PROTOCOL_VERSION,
     RESULT_BYTES as PDF_RENDER_RESULT_BYTES,
+    WALL_SECONDS as PDF_RENDER_WALL_SECONDS,
 )
 from reporting.pdf_candidate_qa import (
     MAX_PDF_BYTES, _MAX_JSON_NODES, PdfCandidateQAValidation,
@@ -237,7 +239,7 @@ def _validate_pdf_structure(pdf: bytes, *, expected_language: str) -> None:
 
 
 def _start_pdf_render_worker(
-    command: list[str], *, env: dict[str, str]
+    command: list[str], *, env: dict[str, str], pass_fds: tuple[int, ...] = ()
 ) -> subprocess.Popen:
     """Start one renderer in a fresh process group without captured streams."""
     return subprocess.Popen(
@@ -248,6 +250,8 @@ def _start_pdf_render_worker(
         stderr=subprocess.DEVNULL,
         env=env,
         start_new_session=True,
+        close_fds=True,
+        pass_fds=pass_fds,
     )
 
 
@@ -278,29 +282,39 @@ def _wait_pdf_render_worker(
 
 
 def _decode_pdf_render_result(
-    result_bytes: bytes, *, expected_pdf_path: Path | None
+    result_bytes: bytes, *, expected_pdf_path: Path | int | None
 ) -> tuple[bytes | None, str | None]:
     """Validate the bounded worker protocol before exposing renderer output."""
     if type(result_bytes) is not bytes or len(result_bytes) > PDF_RENDER_RESULT_BYTES:
         raise RuntimeError("pdf_render_failed")
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate protocol field")
+            result[key] = value
+        return result
+
     try:
-        record = json.loads(result_bytes.decode("ascii"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        record = json.loads(result_bytes.decode("ascii"), object_pairs_hook=unique_object)
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
         raise RuntimeError("pdf_render_failed") from exc
-    if type(record) is not dict or record.get("protocol_version") != PDF_RENDER_PROTOCOL_VERSION:
+    if (type(record) is not dict or type(record.get("protocol_version")) is not int
+            or record["protocol_version"] != PDF_RENDER_PROTOCOL_VERSION):
+        raise RuntimeError("pdf_render_failed")
+    limits = record.get("limits")
+    if (type(limits) is not dict or limits != _PDF_RENDER_LIMITS
+            or any(type(value) is not int for value in limits.values())):
         raise RuntimeError("pdf_render_failed")
 
     status = record.get("status")
     if status == "FAIL":
-        if not set(record).issubset(
-            {"protocol_version", "status", "error", "limits"}
-        ):
+        if set(record) != {"protocol_version", "status", "error", "limits"}:
             raise RuntimeError("pdf_render_failed")
         error = record.get("error")
         if type(error) is not str or error not in _PDF_RENDER_ERRORS:
             raise RuntimeError("pdf_render_failed")
-        limits = record.get("limits")
-        if limits is not None and limits != _PDF_RENDER_LIMITS:
+        if record.get("limits") != _PDF_RENDER_LIMITS:
             raise RuntimeError("pdf_render_failed")
         return None, error
 
@@ -321,11 +335,18 @@ def _decode_pdf_render_result(
         or len(expected_digest) != 64
     ):
         raise RuntimeError("pdf_render_failed")
+    if any(char not in "0123456789abcdef" for char in expected_digest):
+        raise RuntimeError("pdf_render_failed")
     try:
-        int(expected_digest, 16)
-        if expected_pdf_path.stat().st_size != expected_size:
-            raise RuntimeError("pdf_render_failed")
-        pdf = expected_pdf_path.read_bytes()
+        fd = (os.dup(expected_pdf_path) if type(expected_pdf_path) is int else
+              os.open(expected_pdf_path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW))
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_size != expected_size:
+                raise RuntimeError("pdf_render_failed")
+            pdf = os.pread(fd, expected_size + 1, 0)
+        finally:
+            os.close(fd)
     except (OSError, ValueError) as exc:
         raise RuntimeError("pdf_render_failed") from exc
     if (
@@ -338,67 +359,54 @@ def _decode_pdf_render_result(
 
 
 def _render_pdf(html: str, html_sha256: str) -> bytes:
-    """Render deterministic candidate bytes in the bounded native worker."""
-    if os.environ.get("OMNIGENIS_PDF_RENDERER_DISABLED") == "1":
+    """Run native rendering only in the Linux bounded child, with unnamed I/O."""
+    if sys.platform != "linux" or os.environ.get("OMNIGENIS_PDF_RENDERER_DISABLED") == "1":
         raise RuntimeError("pdf_engine_unavailable")
     if type(html) is not str or type(html_sha256) is not str or len(html_sha256) != 64:
         raise RuntimeError("pdf_render_failed")
+    if len(html) > PDF_RENDER_MAX_HTML_BYTES:
+        raise RuntimeError("pdf_render_input_too_large")
     try:
-        int(html_sha256, 16)
         html_bytes = html.encode("utf-8")
-    except (ValueError, UnicodeEncodeError) as exc:
+    except UnicodeEncodeError as exc:
         raise RuntimeError("pdf_render_failed") from exc
     if len(html_bytes) > PDF_RENDER_MAX_HTML_BYTES:
         raise RuntimeError("pdf_render_input_too_large")
     if hashlib.sha256(html_bytes).hexdigest() != html_sha256:
         raise RuntimeError("pdf_render_failed")
-
-    ready, reason = _pdf_stack_readiness()
-    if not ready:
-        raise RuntimeError(reason or "pdf_engine_unavailable")
-
-    with _PDF_RENDER_ENV_LOCK, tempfile.TemporaryDirectory(
-        prefix="omnigenis-pdf-render-"
-    ) as directory:
-        root = Path(directory)
-        request_path = root / "request.bin"
-        pdf_path = root / "candidate.pdf"
-        result_path = root / "result.json"
-        request_path.write_bytes(
-            f"{PDF_RENDER_PROTOCOL_VERSION} {html_sha256}\n".encode("ascii")
-            + html_bytes
-        )
-        os.chmod(request_path, 0o600)
-        env = os.environ.copy()
-        env["PYTHONNOUSERSITE"] = "1"
-        process = _start_pdf_render_worker(
-            [
-                sys.executable,
-                "-m",
-                "reporting._pdf_render_worker",
-                str(request_path),
-                str(pdf_path),
-                str(result_path),
-            ],
-            env=env,
-        )
-        return_code = _wait_pdf_render_worker(process, wall_seconds=30)
-        if return_code != 0 or not result_path.is_file():
-            raise RuntimeError("pdf_render_failed")
-        try:
-            if result_path.stat().st_size > PDF_RENDER_RESULT_BYTES:
+    try:
+        with (_PDF_RENDER_ENV_LOCK, tempfile.TemporaryFile() as request,
+              tempfile.TemporaryFile() as candidate, tempfile.TemporaryFile() as result):
+            handles = (request, candidate, result)
+            fds = tuple(handle.fileno() for handle in handles)
+            if any(os.fstat(fd).st_nlink != 0 for fd in fds):
                 raise RuntimeError("pdf_render_failed")
-            result_bytes = result_path.read_bytes()
-        except OSError as exc:
-            raise RuntimeError("pdf_render_failed") from exc
-        pdf, error = _decode_pdf_render_result(
-            result_bytes, expected_pdf_path=pdf_path
-        )
-        if error is not None:
-            raise RuntimeError(error)
-        if pdf is None:
-            raise RuntimeError("pdf_render_failed")
-        return pdf
+            request.write(f"{PDF_RENDER_PROTOCOL_VERSION} {html_sha256}\n".encode("ascii"))
+            request.write(html_bytes)
+            request.flush()
+            request.seek(0)
+            env = {key: os.environ[key] for key in (
+                "PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "TZ",
+                "FONTCONFIG_FILE", "FONTCONFIG_PATH",
+            ) if key in os.environ}
+            env["SOURCE_DATE_EPOCH"] = "0"
+            process = _start_pdf_render_worker([
+                sys.executable, "-I", str(Path(__file__).with_name("_pdf_render_worker.py")),
+                *(str(fd) for fd in fds), str(os.getpid()),
+            ], env=env, pass_fds=fds)
+            code = _wait_pdf_render_worker(process, wall_seconds=PDF_RENDER_WALL_SECONDS)
+            if code != 0 or os.fstat(result.fileno()).st_size > PDF_RENDER_RESULT_BYTES:
+                raise RuntimeError("pdf_render_failed")
+            result.seek(0)
+            pdf, error = _decode_pdf_render_result(
+                result.read(PDF_RENDER_RESULT_BYTES + 1), expected_pdf_path=candidate.fileno())
+            if error is not None:
+                raise RuntimeError(error)
+            if pdf is None:
+                raise RuntimeError("pdf_render_failed")
+            return pdf
+    except OSError as exc:
+        raise RuntimeError("pdf_render_failed") from exc
 
 
 def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
