@@ -6,7 +6,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 from html import escape
 import hashlib
-from io import BytesIO
 import json
 import os
 from pathlib import Path
@@ -35,8 +34,9 @@ from reporting.pdf_candidate_qa import (
 )
 from reporting.pdf_qa import (
     GENERATED_PDF_AUTHOR, GENERATED_PDF_PRODUCT, GENERATED_PDF_METADATA_PROFILE,
-    validate_pdf_candidate,
 )
+
+from reporting.pdf_validation import validate_native_structure
 
 ROADMAP_ID = "RPT-08"
 _PDF_RENDER_ENV_LOCK = threading.Lock()
@@ -197,45 +197,8 @@ def _pdf_stack_readiness() -> tuple[bool, str | None]:
 
 
 def _validate_pdf_structure(pdf: bytes, *, expected_language: str) -> None:
-    """Validate structure and the controlled metadata of generated candidate bytes."""
-    if not isinstance(pdf, bytes) or not pdf.startswith(b"%PDF-1.7"):
-        raise RuntimeError("pdf_engine_invalid_output")
-
-    try:
-        from importlib.metadata import version
-
-        from pypdf import PdfReader
-    except (ImportError, OSError) as exc:
-        raise RuntimeError("pdf_validator_unavailable") from exc
-    if version("pypdf") != "6.19.0":
-        raise RuntimeError("pdf_validator_version_mismatch")
-
-    metadata_result = validate_pdf_candidate(
-        pdf_bytes=pdf,
-        expected_pdf_sha256=hashlib.sha256(pdf).hexdigest(),
-        expected_author=GENERATED_PDF_AUTHOR,
-        expected_language=expected_language,
-        metadata_profile=GENERATED_PDF_METADATA_PROFILE,
-    )
-    if not metadata_result.passed:
-        if "pdf_structure_invalid" in metadata_result.errors or "encrypted_pdf_forbidden" in metadata_result.errors:
-            raise RuntimeError("pdf_engine_invalid_output")
-        raise RuntimeError("pdf_metadata_invalid")
-
-    try:
-        reader = PdfReader(BytesIO(pdf), strict=True)
-        if len(reader.pages) < 1:
-            raise RuntimeError("pdf_engine_invalid_output")
-        root = reader.trailer.get("/Root")
-        if root is None:
-            raise RuntimeError("pdf_engine_invalid_output")
-        root.get_object()
-        for page in reader.pages:
-            _ = page.mediabox
-    except RuntimeError:
-        raise
-    except Exception as exc:
-        raise RuntimeError("pdf_engine_invalid_output") from exc
+    """Run the existing native postvalidation inside its limited process."""
+    validate_native_structure(pdf, expected_language=expected_language)
 
 
 def _start_pdf_render_worker(

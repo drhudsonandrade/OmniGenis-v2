@@ -17,12 +17,16 @@ from types import MappingProxyType
 from reporting._pdf_safety_worker import MAX_PAGES, MAX_PDF_BYTES, MAX_VISITS, POLICY_ID
 from reporting._pdf_visual_worker import MAX_PIXELS_PER_PAGE, MAX_TOTAL_PIXELS
 from reporting.pdf_accessibility import (
-    PdfAccessibilityValidation, validate_pdf_accessibility_structure,
+    PdfAccessibilityValidation,
 )
 from reporting.pdf_content import PdfContentValidation, _expected_content, validate_pdf_text_content
 from reporting.pdf_qa import (
     GENERATED_PDF_AUTHOR, GENERATED_PDF_METADATA_PROFILE, GENERATED_PDF_PRODUCT,
-    PdfCandidateValidation, validate_pdf_candidate,
+    PdfCandidateValidation,
+)
+from reporting.pdf_validation import (
+    validate_generated_metadata as validate_pdf_candidate,
+    validate_generated_accessibility as validate_pdf_accessibility_structure,
 )
 from reporting.pdf_safety import PdfSafetyValidation, validate_pdf_object_safety
 from reporting.pdf_visual import PdfVisualValidation, validate_pdf_visual_geometry
@@ -326,7 +330,7 @@ class PdfCandidateQAValidation:
                 "PASS covers passive-object policy, controlled metadata, accessibility prerequisites, text content and raster geometry.",
                 "Accessibility is bound by invocation; its validator returns no independent PDF digest or page count.",
                 "Full accessibility, scientific correctness, provenance, human visual review and release authorization are not established.",
-                "Existing child budgets are preserved; metadata and accessibility execute in-process, without an overall sandbox or total time guarantee.",
+                "Metadata and accessibility use bounded child processes on this entrypoint; standalone low-level validators, an overall sandbox and total-operation budgets are outside this claim.",
                 "IR input is limited to 8 MiB canonical UTF-8 JSON, depth 64, 100000 expanded nodes and 4096-bit integers.",
             ],
         }
