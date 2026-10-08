@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from pathlib import Path
 import signal
 import stat
 import sys
@@ -168,6 +169,14 @@ def main(argv: list[str] | None = None) -> int:
             return 64
         limits = _apply_resource_limits()
         _arm_worker_lifetime(parent_pid)
+        if __name__ == "__main__":
+            # -I excludes the worker script directory from sys.path; restore
+            # only the fixed, resolved and trusted sibling module directory.
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from _pdf_process_sandbox import enforce_pdf_landlock
+        else:
+            from reporting._pdf_process_sandbox import enforce_pdf_landlock
+        enforce_pdf_landlock(Path(__file__))
     except Exception:
         return 70
     try:
