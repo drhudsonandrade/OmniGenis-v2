@@ -1,8 +1,9 @@
-"""Linux Landlock guard for generated PDF workers (partial OS isolation only).
+"""Linux PDF worker filesystem and syscall guards (partial isolation).
 
-Landlock ABI 4 restricts new filesystem path access and TCP bind/connect.
-It does not cover UDP, inherited open file descriptors, or total resource
-usage of an entire process tree. No host security setting is modified.
+Landlock limits newly opened filesystem paths and TCP operations. The separate
+x86_64 seccomp-BPF filter denies new network-related syscalls, including UDP.
+Pre-opened descriptors and aggregate process-tree resources are not covered.
+No host security settings are modified.
 """
 from __future__ import annotations
 
@@ -132,3 +133,86 @@ def enforce_pdf_landlock(worker_script: Path) -> None:
             os.close(ruleset_fd)
     except (OSError, ValueError, TypeError) as exc:
         raise RuntimeError("pdf_sandbox_unavailable") from exc
+
+
+NETWORK_PROFILE_ID = "omnigenis-generated-pdf-seccomp-network-v1"
+
+# Linux x86_64 syscall numbers from asm/unistd_64.h, pinned to this profile.
+# This list restricts creation and use of new socket syscalls, plus io_uring
+# which can otherwise submit network operations through a different entrypoint.
+# Already-open descriptors, direct write(2) and all other syscalls remain outside
+# this narrow control and MUST NOT be described as full network isolation.
+_DENIED_NETWORK_SYSCALLS = {
+    "socket": 41, "connect": 42, "accept": 43, "sendto": 44,
+    "recvfrom": 45, "sendmsg": 46, "recvmsg": 47, "shutdown": 48,
+    "bind": 49, "listen": 50, "getsockname": 51, "getpeername": 52,
+    "socketpair": 53, "setsockopt": 54, "getsockopt": 55,
+    "accept4": 288, "recvmmsg": 299, "sendmmsg": 307,
+    "io_uring_setup": 425, "io_uring_enter": 426,
+    "io_uring_register": 427,
+}
+
+
+class _SockFilter(ctypes.Structure):
+    """Classical seccomp BPF instruction; Linux sock_filter layout."""
+
+    _fields_ = [
+        ("code", ctypes.c_ushort),
+        ("jt", ctypes.c_ubyte),
+        ("jf", ctypes.c_ubyte),
+        ("k", ctypes.c_uint32),
+    ]
+
+
+class _SockFprog(ctypes.Structure):
+    """Linux sock_fprog with an owned array held alive for prctl()."""
+
+    _fields_ = [
+        ("len", ctypes.c_ushort),
+        ("filter", ctypes.POINTER(_SockFilter)),
+    ]
+
+
+def enforce_pdf_network_filter() -> None:
+    """Attach the pinned seccomp filter to this single disposable worker.
+
+    This must execute after startup and Landlock setup but before any PDF
+    request is processed. Unsupported architectures, filtered prctl() and
+    unexpected kernel responses fail closed. No host/global policy is changed.
+    """
+    if sys.platform != "linux" or platform.machine() != "x86_64":
+        raise RuntimeError("pdf_network_filter_unavailable")
+    try:
+        # Load seccomp_data.arch and reject all non-AMD64 syscall ABI values.
+        # Reject x32 syscall-bit invocations to avoid filtering only one ABI.
+        instructions = [
+            (0x20, 0, 0, 4),                 # LD W ABS arch
+            (0x15, 1, 0, 0xC000003E),       # JEQ AUDIT_ARCH_X86_64
+            (0x06, 0, 0, 0x80000000),       # RET KILL_PROCESS
+            (0x20, 0, 0, 0),               # LD W ABS syscall_nr
+            (0x45, 0, 1, 0x40000000),       # JSET x32_syscall_bit
+            (0x06, 0, 0, 0x80000000),       # RET KILL_PROCESS
+        ]
+        for syscall in sorted(_DENIED_NETWORK_SYSCALLS.values()):
+            instructions.extend([
+                (0x15, 0, 1, syscall),        # JEQ network syscall
+                (0x06, 0, 0, 0x00050000 | 1), # RET ERRNO(EPERM)
+            ])
+        instructions.append((0x06, 0, 0, 0x7FFF0000))  # RET ALLOW
+        filters = (_SockFilter * len(instructions))(
+            *(_SockFilter(*row) for row in instructions)
+        )
+        program = _SockFprog(len(instructions), filters)
+        libc = ctypes.CDLL(None, use_errno=True)
+        if libc.prctl(
+            ctypes.c_int(38), ctypes.c_ulong(1), ctypes.c_ulong(0),
+            ctypes.c_ulong(0), ctypes.c_ulong(0),
+        ) != 0:
+            raise RuntimeError("pdf_network_filter_unavailable")
+        if libc.prctl(
+            ctypes.c_int(22), ctypes.c_ulong(2), ctypes.byref(program),
+            ctypes.c_ulong(0), ctypes.c_ulong(0),
+        ) != 0:
+            raise RuntimeError("pdf_network_filter_unavailable")
+    except (OSError, TypeError, ValueError, ctypes.ArgumentError) as exc:
+        raise RuntimeError("pdf_network_filter_unavailable") from exc

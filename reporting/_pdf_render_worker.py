@@ -173,10 +173,15 @@ def main(argv: list[str] | None = None) -> int:
             # -I excludes the worker script directory from sys.path; restore
             # only the fixed, resolved and trusted sibling module directory.
             sys.path.insert(0, str(Path(__file__).resolve().parent))
-            from _pdf_process_sandbox import enforce_pdf_landlock
+            from _pdf_process_sandbox import (
+                enforce_pdf_landlock, enforce_pdf_network_filter,
+            )
         else:
-            from reporting._pdf_process_sandbox import enforce_pdf_landlock
+            from reporting._pdf_process_sandbox import (
+                enforce_pdf_landlock, enforce_pdf_network_filter,
+            )
         enforce_pdf_landlock(Path(__file__))
+        enforce_pdf_network_filter()
     except Exception:
         return 70
     try:
