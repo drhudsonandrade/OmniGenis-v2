@@ -5,6 +5,7 @@ import hashlib
 from importlib.metadata import version
 from io import BytesIO
 import json
+from pathlib import Path
 import sys
 
 MAX_PDF_BYTES = 8 * 1024 * 1024
@@ -137,7 +138,7 @@ def inspect_document(pdf: bytes) -> dict:
 
 
 def main() -> None:
-    """Install Linux resource limits before reading or parsing candidate bytes."""
+    """Apply fixed resource and kernel guards before reading candidate bytes."""
     try:
         if sys.platform != "linux":
             raise OSError("unsupported execution profile")
@@ -145,7 +146,20 @@ def main() -> None:
         resource.setrlimit(resource.RLIMIT_AS, (MEMORY_BYTES, MEMORY_BYTES))
         resource.setrlimit(resource.RLIMIT_CPU, (CPU_SECONDS, CPU_SECONDS))
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-    except (ImportError, OSError, ValueError):
+        if __name__ == "__main__":
+            # Isolated Python omits the script directory. Restore only the
+            # resolved, trusted sibling directory, never CWD or PYTHONPATH.
+            sys.path.insert(0, str(Path(__file__).resolve(strict=True).parent))
+            from _pdf_process_sandbox import (
+                enforce_pdf_landlock, enforce_pdf_network_filter,
+            )
+        else:
+            from reporting._pdf_process_sandbox import (
+                enforce_pdf_landlock, enforce_pdf_network_filter,
+            )
+        enforce_pdf_landlock(Path(__file__))
+        enforce_pdf_network_filter()
+    except (ImportError, OSError, ValueError, RuntimeError):
         response = blocked("pdf_safety_worker_unavailable")
     else:
         try:
