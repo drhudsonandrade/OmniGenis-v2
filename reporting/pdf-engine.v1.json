@@ -143,6 +143,25 @@
       "No cgroup or namespace isolation is established.",
       "Standalone validators and other PDF workers are out of scope."
     ],
-    "disable_path": "existing PDF renderer/validation disable environments fail closed"
+    "disable_path": "existing PDF renderer/validation disable environments fail closed",
+    "network_syscall_guard": {
+      "profile_id": "omnigenis-generated-pdf-seccomp-network-v1",
+      "kernel_api": "seccomp-BPF / prctl",
+      "architecture": "Linux x86_64",
+      "audit_arch": "AUDIT_ARCH_X86_64",
+      "denied_syscall_count": 21,
+      "fail_closed": true,
+      "no_external_runtime_dependency": true,
+      "source_of_syscall_map": "linux x86_64 asm/unistd_64.h; fixed syscall numbers",
+      "no_new_privileges_required": true,
+      "inherited_network_descriptors_claimed_blocked": false,
+      "complete_network_isolation_claimed": false,
+      "aggregate_resource_closure_claimed": false,
+      "known_issues": [
+        "The seccomp syscall denylist does not block all network use via inherited descriptors or direct write(2).",
+        "This profile does not isolate process namespaces, UDP operations on inherited sockets, arbitrary descendants or aggregate resource use.",
+        "A different kernel architecture or inability to load the filter fails closed; there is no unsafe opt-out."
+      ]
+    }
   }
 }
