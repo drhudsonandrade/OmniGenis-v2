@@ -74,6 +74,30 @@ def edge_ink_pdf() -> bytes:
     return serialize(writer)
 
 
+class PopplerSecurityPatchIdentityTests(unittest.TestCase):
+    """Bind the approved Ubuntu security patch without expanding the raster profile."""
+
+    def test_security_patched_raster_executor_identity_is_exact(self):
+        """Require the reviewed binary and package hashes before accepting the executor."""
+        from reporting import _pdf_visual_worker as worker
+
+        manifest=json.loads(ENGINE.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["tool_version"],"24.02.0")
+        self.assertEqual(manifest["package_version"],"24.02.0-1ubuntu9.10")
+        self.assertEqual(manifest["binary_sha256"],
+                         "ab7c91f0f144335ad7696f4f23aefbd564ef67c099290bd8f813cdbb47cd1e9e")
+        self.assertEqual(manifest["package_sha256"],
+                         "19ce4557ad89350506a0f1c33ad4c5a6aa7469e48c78aacae351a59b43ee20c6")
+        self.assertEqual(worker.TOOL_VERSION,manifest["tool_version"])
+        self.assertEqual(worker.TOOL_SHA256,manifest["binary_sha256"])
+        self.assertEqual(manifest["license"],"GPL-2 or GPL-3")
+        self.assertFalse(manifest["binary_vendored"])
+        self.assertFalse(manifest["source_copied"])
+        self.assertEqual(manifest["profile"]["dpi"],96)
+        self.assertEqual(manifest["resource_budget"]["worker_wall_seconds"],30)
+        self.assertIn("disable_path",manifest)
+
+
 class Rpt12PdfVisualTests(unittest.TestCase):
     """Validate deterministic raster geometry without claiming human visual equivalence."""
 
@@ -220,11 +244,11 @@ class Rpt12PdfVisualTests(unittest.TestCase):
         manifest=json.loads(ENGINE.read_text())
         self.assertEqual(manifest["engine_id"],"poppler-pdftoppm-raster-v1")
         self.assertEqual(manifest["tool_version"],"24.02.0")
-        self.assertEqual(manifest["package_version"],"24.02.0-1ubuntu9.9")
+        self.assertEqual(manifest["package_version"],"24.02.0-1ubuntu9.10")
         self.assertEqual(manifest["binary_sha256"],
-                         "207dcabcaeea0ce572aefc498d07d44d56a9ca06a85b3ae1fecd050476a34bf8")
+                         "ab7c91f0f144335ad7696f4f23aefbd564ef67c099290bd8f813cdbb47cd1e9e")
         self.assertEqual(manifest["package_sha256"],
-                         "fb936375b183a9d8ecb5b1fc5665a44110ca130c445946fb575c0b800b1dc0f4")
+                         "19ce4557ad89350506a0f1c33ad4c5a6aa7469e48c78aacae351a59b43ee20c6")
         self.assertEqual(manifest["license"],"GPL-2 or GPL-3")
         self.assertEqual(manifest["integration_class"],"USE_VIA_ADAPTER")
         self.assertFalse(manifest["source_copied"])
