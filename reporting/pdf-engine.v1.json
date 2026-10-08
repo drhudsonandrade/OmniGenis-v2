@@ -136,12 +136,12 @@
     "aggregate_resource_closure_claimed": false,
     "complete_network_isolation_claimed": false,
     "inherited_open_descriptors_restricted": false,
-    "scope": "native PDF renderer and fixed PDF metadata/structure/accessibility workers only",
+    "scope": "native PDF renderer and fixed PDF metadata/structure/accessibility/content/object-safety workers",
     "known_issues": [
       "UDP and non-TCP networking are not restricted by Landlock ABI 4.",
       "Previously opened file descriptors remain usable.",
       "No cgroup or namespace isolation is established.",
-      "Standalone validators and other PDF workers are out of scope."
+      "Standalone low-level APIs and the raster visual worker remain out of scope."
     ],
     "disable_path": "existing PDF renderer/validation disable environments fail closed",
     "network_syscall_guard": {
@@ -162,6 +162,28 @@
         "This profile does not isolate process namespaces, UDP operations on inherited sockets, arbitrary descendants or aggregate resource use.",
         "A different kernel architecture or inability to load the filter fails closed; there is no unsafe opt-out."
       ]
+    },
+    "auxiliary_parser_workers": {
+      "workers": [
+        "_pdf_content_worker.py",
+        "_pdf_safety_worker.py"
+      ],
+      "guard_order": [
+        "landlock",
+        "seccomp"
+      ],
+      "boundary": "before candidate stdin read and parser invocation",
+      "memory_bytes": 268435456,
+      "cpu_seconds": 5,
+      "supervisor_wall_seconds": 10,
+      "fail_closed": true,
+      "parser_semantics_changed": false,
+      "new_dependency": false,
+      "full_os_sandbox_claimed": false,
+      "aggregate_resource_closure_claimed": false,
+      "visual_raster_worker_covered": false,
+      "protocol": "existing bounded stdin/stdout JSON evidence",
+      "lifecycle_controls_changed": false
     }
   }
 }
