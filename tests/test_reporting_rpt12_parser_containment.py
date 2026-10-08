@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import resource
+import signal
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from reporting import _pdf_process_sandbox as guards
+from reporting import _pdf_render_worker as lifetime
 from reporting.adapters import build_html_css_and_pdf_adapter
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +64,8 @@ class ParserContainmentTests(unittest.TestCase):
         elif failure == "seccomp":
             network.side_effect = RuntimeError("SYNTHETIC_PRIVATE_GUARD_DETAIL")
         with ExitStack() as stack:
+            stack.enter_context(patch.object(lifetime, "_arm_worker_lifetime", Mock()))
+            stack.enter_context(patch.object(signal, "setitimer", Mock()))
             stack.enter_context(patch.object(resource, "setrlimit", limits))
             stack.enter_context(patch.object(guards, "enforce_pdf_landlock", landlock))
             stack.enter_context(patch.object(guards, "enforce_pdf_network_filter", network))
@@ -69,7 +73,7 @@ class ParserContainmentTests(unittest.TestCase):
             stack.enter_context(patch.object(sys, "platform", platform))
             stack.enter_context(patch.object(sys, "stdin", SimpleNamespace(buffer=source)))
             stack.enter_context(patch.object(sys, "stdout", output))
-            worker.main()
+            worker.main(os.getpid())
         return worker, json.loads(output.getvalue()), events, source, parser, landlock, network
 
     def test_manifest_declares_only_the_two_new_guarded_entrypoints(self):
@@ -196,7 +200,7 @@ def probe(data):
             result[label+"_denied"]=False
     return result
 setattr(worker,sys.argv[3],probe)
-worker.main()
+worker.main(int(sys.argv[5]))
 '''
         with tempfile.TemporaryDirectory(prefix="omnigenis-parser-guard-") as directory:
             forbidden = Path(directory) / "unapproved-synthetic.txt"
@@ -204,7 +208,7 @@ worker.main()
             for name, parser, _ in WORKERS:
                 with self.subTest(worker=name):
                     child = subprocess.run(
-                        [sys.executable, "-I", "-c", script, str(ROOT), name, parser, str(forbidden)],
+                        [sys.executable, "-I", "-c", script, str(ROOT), name, parser, str(forbidden), str(os.getpid())],
                         input=b"%PDF-SYNTHETIC", capture_output=True, timeout=10, cwd=ROOT,
                     )
                     self.assertEqual(child.returncode, 0, child.stderr[-400:])
@@ -224,7 +228,7 @@ worker.main()
                 expected = getattr(worker, parser)(pdf)
                 self.assertEqual(expected["status"], "PASS")
                 child = subprocess.run(
-                    [sys.executable, "-I", str(ROOT / "reporting" / (name + ".py"))],
+                    [sys.executable, "-I", str(ROOT / "reporting" / (name + ".py")), str(os.getpid())],
                     input=pdf, capture_output=True, timeout=10, cwd=ROOT,
                 )
                 self.assertEqual(child.returncode, 0, child.stderr[-400:])
@@ -238,13 +242,14 @@ worker.main()
             marker = root / "untrusted-import-ran"
             malicious = "from pathlib import Path\nPath(" + repr(str(marker)) + ").write_text('SYNTHETIC')\n"
             (root / "_pdf_process_sandbox.py").write_text(malicious)
+            (root / "_pdf_render_worker.py").write_text(malicious)
             (root / "sitecustomize.py").write_text(malicious)
             environment = dict(os.environ, PYTHONPATH=str(root), PYTHONHOME=str(root))
             for name, parser, _ in WORKERS:
                 with self.subTest(worker=name):
                     worker = importlib.import_module("reporting." + name)
                     child = subprocess.run(
-                        [sys.executable, "-I", str(ROOT / "reporting" / (name + ".py"))],
+                        [sys.executable, "-I", str(ROOT / "reporting" / (name + ".py")), str(os.getpid())],
                         input=pdf, capture_output=True, timeout=10, cwd=root, env=environment,
                     )
                     self.assertEqual(child.returncode, 0, child.stderr[-400:])

@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -149,7 +150,7 @@ def validate_pdf_text_content(
         return fail("pdf_digest_mismatch")
     try:
         process = subprocess.run(
-            [sys.executable, "-I", str(_WORKER)], input=pdf_bytes,
+            [sys.executable, "-I", str(_WORKER), str(os.getpid())], input=pdf_bytes,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             timeout=WALL_SECONDS, check=False,
         )

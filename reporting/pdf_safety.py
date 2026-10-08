@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -98,7 +99,7 @@ def validate_pdf_object_safety(*, pdf_bytes: object, expected_pdf_sha256: object
     if pdf_digest != expected_pdf_sha256:
         return fail("pdf_digest_mismatch")
     try:
-        child = subprocess.run([sys.executable, "-I", str(_WORKER)], input=pdf_bytes,
+        child = subprocess.run([sys.executable, "-I", str(_WORKER), str(os.getpid())], input=pdf_bytes,
                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                timeout=WALL_SECONDS, check=False)
     except subprocess.TimeoutExpired:
