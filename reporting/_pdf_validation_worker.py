@@ -16,6 +16,7 @@ if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
+from reporting._pdf_process_sandbox import enforce_pdf_landlock
 
 PROFILE_ID = "generated-pdf-validation-envelope-v1"
 PROTOCOL_VERSION = 1
@@ -163,6 +164,7 @@ def main(argv: list[str] | None = None) -> int:
             return 64
         limits = _limits()
         _lifetime(parent_pid)
+        enforce_pdf_landlock(Path(__file__))
         operation, digest, pdf = _read_request(request_fd)
         decision = _evaluate(operation, pdf, digest)
         errors = decision["errors"]

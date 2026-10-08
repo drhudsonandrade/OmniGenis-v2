@@ -125,5 +125,24 @@
       "FONTCONFIG_FILE",
       "FONTCONFIG_PATH"
     ]
+  },
+  "process_local_sandbox": {
+    "profile_id": "omnigenis-generated-pdf-landlock-v1",
+    "landlock_abi_minimum": 4,
+    "filesystem": "deny unapproved new path access",
+    "network": "deny TCP bind/connect only",
+    "supported_environment": "Linux x86_64; Landlock ABI 4 or newer",
+    "unsupported_os_behavior": "fail_closed",
+    "aggregate_resource_closure_claimed": false,
+    "complete_network_isolation_claimed": false,
+    "inherited_open_descriptors_restricted": false,
+    "scope": "native PDF renderer and fixed PDF metadata/structure/accessibility workers only",
+    "known_issues": [
+      "UDP and non-TCP networking are not restricted by Landlock ABI 4.",
+      "Previously opened file descriptors remain usable.",
+      "No cgroup or namespace isolation is established.",
+      "Standalone validators and other PDF workers are out of scope."
+    ],
+    "disable_path": "existing PDF renderer/validation disable environments fail closed"
   }
 }
