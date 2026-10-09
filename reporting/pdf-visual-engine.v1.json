@@ -1,35 +1,49 @@
 {
-  "engine_id": "poppler-pdftoppm-raster-v1",
-  "tool": "pdftoppm",
-  "tool_version": "24.02.0",
-  "package": "poppler-utils",
-  "package_version": "24.02.0-1ubuntu9.10",
   "binary_sha256": "ab7c91f0f144335ad7696f4f23aefbd564ef67c099290bd8f813cdbb47cd1e9e",
-  "package_sha256": "19ce4557ad89350506a0f1c33ad4c5a6aa7469e48c78aacae351a59b43ee20c6",
-  "license": "GPL-2 or GPL-3",
-  "source": "https://poppler.freedesktop.org/",
-  "integration_class": "USE_VIA_ADAPTER",
-  "source_copied": false,
   "binary_vendored": false,
-  "profile": {
-    "output_format": "PNG",
-    "dpi": 96,
-    "color_mode": "RGB",
-    "minimum_edge_margin_px": 2
-  },
-  "resource_budget": {
-    "pdf_bytes": 8388608,
-    "pages": 32,
-    "pixels_per_page": 4000000,
-    "total_pixels": 32000000,
-    "worker_memory_bytes": 536870912,
-    "worker_cpu_seconds": 20,
-    "worker_wall_seconds": 30,
-    "page_wall_seconds": 8
-  },
+  "disable_path": "Do not use raster visual evidence and keep downstream release authorization blocked.",
+  "engine_id": "poppler-pdftoppm-raster-v1",
+  "integration_class": "USE_VIA_ADAPTER",
   "known_issues": [
     "Raster geometry checks do not establish semantic visual equivalence, reading order, color accuracy, font correctness, or human review.",
-    "This profile supports newly generated OmniGenis report candidates only, not arbitrary uploaded PDFs."
+    "This profile supports newly generated OmniGenis report candidates only, not arbitrary uploaded PDFs.",
+    "Parent-death binding covers the visual worker, not its native rasterizer descendants. Native executor sandbox and complete-operation aggregate limits remain unresolved."
   ],
-  "disable_path": "Do not use raster visual evidence and keep downstream release authorization blocked."
+  "license": "GPL-2 or GPL-3",
+  "package": "poppler-utils",
+  "package_sha256": "19ce4557ad89350506a0f1c33ad4c5a6aa7469e48c78aacae351a59b43ee20c6",
+  "package_version": "24.02.0-1ubuntu9.10",
+  "profile": {
+    "color_mode": "RGB",
+    "dpi": 96,
+    "minimum_edge_margin_px": 2,
+    "output_format": "PNG"
+  },
+  "resource_budget": {
+    "page_wall_seconds": 8,
+    "pages": 32,
+    "pdf_bytes": 8388608,
+    "pixels_per_page": 4000000,
+    "total_pixels": 32000000,
+    "worker_cpu_seconds": 20,
+    "worker_memory_bytes": 536870912,
+    "worker_wall_seconds": 30
+  },
+  "source": "https://poppler.freedesktop.org/",
+  "source_copied": false,
+  "tool": "pdftoppm",
+  "tool_version": "24.02.0",
+  "worker_lifecycle": {
+    "aggregate_resource_closure_claimed": false,
+    "arbitrary_descendant_cleanup_claimed": false,
+    "independent_wall_seconds": 30,
+    "os_sandbox_claimed": false,
+    "parent_death_signal": "SIGKILL; bound to launching thread",
+    "parent_identity": "explicit launching process PID",
+    "profile_id": "omnigenis-pdf-visual-worker-parent-lifecycle-v1",
+    "raster_executor_inherits_parent_death_signal": false,
+    "resource_limits_unchanged": true,
+    "startup_before_registration_covered": false,
+    "timer": "ITIMER_REAL / SIGALRM default action"
+  }
 }
