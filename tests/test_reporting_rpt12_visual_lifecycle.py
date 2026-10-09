@@ -21,6 +21,7 @@ from unittest.mock import Mock, patch
 
 from reporting import _pdf_visual_worker as worker
 from reporting import _pdf_render_worker as lifetime
+from reporting import _pdf_process_sandbox as guards
 from reporting import pdf_visual
 from reporting.adapters import build_html_css_and_pdf_adapter
 
@@ -87,11 +88,19 @@ class VisualRasterLifecycleTests(unittest.TestCase):
             if failure == "timer":
                 raise OSError("SYNTHETIC_PRIVATE_TIMER_DETAIL")
         parser = Mock(side_effect=lambda b: events.append("parse") or {"status":"PASS"})
-        with ExitStack() as stack:
+        with tempfile.TemporaryDirectory(
+            prefix="omnigenis-pdf-visual-supervisor-", dir="/tmp"
+        ) as scratch, ExitStack() as stack:
+            def trusted():
+                events.append("scratch")
+                return Path(scratch), os.open(scratch, os.O_PATH | os.O_DIRECTORY)
             for target, name, replacement in (
                 (resource, "setrlimit", limit),
                 (lifetime, "_arm_worker_lifetime", bind),
                 (signal, "setitimer", timer),
+                (worker, "_open_trusted_scratch", trusted),
+                (guards, "enforce_pdf_landlock", Mock(side_effect=lambda *a, **kw: events.append("landlock"))),
+                (guards, "enforce_pdf_network_filter", Mock(side_effect=lambda: events.append("seccomp"))),
                 (worker, "inspect_visual_geometry", parser),
                 (sys, "stdin", SimpleNamespace(buffer=stream)),
                 (sys, "stdout", output),
@@ -104,7 +113,8 @@ class VisualRasterLifecycleTests(unittest.TestCase):
         """All admission and lifetime prerequisites run before candidate reads."""
         record, events, stream, parser = self.mocked_main()
         self.assertEqual(record, {"status":"PASS"})
-        self.assertEqual(events, ["limit"] * 5 + ["lifetime", "timer", "read", "parse"])
+        self.assertEqual(events, ["limit"] * 5 + ["lifetime", "timer", "scratch",
+                                  "landlock", "seccomp", "read", "parse"])
         stream.read.assert_called_once_with(worker.MAX_PDF_BYTES + 1)
         parser.assert_called_once_with(b"%PDF-SYNTHETIC")
 
@@ -153,10 +163,15 @@ class VisualRasterLifecycleTests(unittest.TestCase):
 
     def test_independent_timer_terminates_blocked_native_code(self):
         """A kernel SIGALRM interrupts native code without a Python callback."""
-        child = subprocess.run(
-            [sys.executable, "-I", "-c", STALLED_WORKER, str(ROOT), str(os.getpid()), "0.25"],
-            input=b"%PDF-SYNTHETIC", capture_output=True, timeout=4, cwd=ROOT,
-        )
+        with tempfile.TemporaryDirectory(
+            prefix="omnigenis-pdf-visual-supervisor-", dir="/tmp"
+        ) as scratch:
+            child = subprocess.run(
+                [sys.executable, "-I", "-c", STALLED_WORKER, str(ROOT),
+                 str(os.getpid()), "0.25"],
+                input=b"%PDF-SYNTHETIC", capture_output=True, timeout=4,
+                cwd=ROOT, env=dict(os.environ, TMPDIR=scratch),
+            )
         self.assertEqual(child.stdout, b"READY\n", child.stderr[-300:])
         self.assertEqual(child.returncode, -signal.SIGALRM)
 
@@ -175,9 +190,13 @@ os._exit(0)
 '''
         child_pid = None
         identity = None
+        scratch = tempfile.TemporaryDirectory(
+            prefix="omnigenis-pdf-visual-supervisor-", dir="/tmp"
+        )
         parent = subprocess.Popen(
             [sys.executable, "-I", "-c", parent_code, STALLED_WORKER, str(ROOT)],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ROOT,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            cwd=ROOT, env=dict(os.environ, TMPDIR=scratch.name),
         )
         try:
             self.assertTrue(select.select([parent.stdout], [], [], 5)[0])
@@ -211,6 +230,7 @@ os._exit(0)
                         os.kill(child_pid, signal.SIGKILL)
                     except ProcessLookupError:
                         pass
+            scratch.cleanup()
 
     def test_manifest_limits_truthful_lifecycle_claims(self):
         """Worker lifetime is not arbitrary-descendant cleanup or an OS sandbox."""
@@ -235,12 +255,16 @@ os._exit(0)
             malicious = "from pathlib import Path\nPath(" + repr(str(marker)) + ").write_text('SYNTHETIC')\n"
             (root / "_pdf_render_worker.py").write_text(malicious)
             (root / "sitecustomize.py").write_text(malicious)
-            env = dict(os.environ, PYTHONPATH=str(root), PYTHONHOME=str(root))
-            child = subprocess.run(
-                [sys.executable, "-I", str(ROOT/"reporting/_pdf_visual_worker.py"),
-                 str(os.getpid())],
-                input=b"%PDF-SYNTHETIC", capture_output=True, timeout=5, cwd=root, env=env,
-            )
+            with tempfile.TemporaryDirectory(
+                prefix="omnigenis-pdf-visual-supervisor-", dir="/tmp"
+            ) as scratch:
+                env = dict(os.environ, PYTHONPATH=str(root), PYTHONHOME=str(root),
+                           TMPDIR=scratch)
+                child = subprocess.run(
+                    [sys.executable, "-I", str(ROOT/"reporting/_pdf_visual_worker.py"),
+                     str(os.getpid())],
+                    input=b"%PDF-SYNTHETIC", capture_output=True, timeout=5, cwd=root, env=env,
+                )
             self.assertEqual(child.returncode, 0, child.stderr[-300:])
             self.assertFalse(marker.exists())
             self.assertNotIn("pdf_visual_worker_unavailable",
