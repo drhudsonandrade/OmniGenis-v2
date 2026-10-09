@@ -6,6 +6,7 @@ from importlib.metadata import version
 from io import BytesIO
 import json
 import math
+import signal
 from pathlib import Path
 import shutil
 import subprocess
@@ -169,8 +170,8 @@ def inspect_visual_geometry(pdf: bytes) -> dict:
     }
 
 
-def main() -> None:
-    """Apply Linux limits before parsing or invoking the external rasterizer."""
+def main(expected_parent: int | None = None) -> None:
+    """Bind the worker to the parent and a kernel timer before reading input."""
     try:
         if sys.platform!="linux":
             raise OSError("unsupported execution profile")
@@ -180,7 +181,16 @@ def main() -> None:
         resource.setrlimit(resource.RLIMIT_FSIZE,(64*1024*1024,64*1024*1024))
         resource.setrlimit(resource.RLIMIT_NOFILE,(64,64))
         resource.setrlimit(resource.RLIMIT_CORE,(0,0))
-    except (ImportError,OSError,ValueError):
+        if __name__ == "__main__":
+            # Isolated startup omits this directory. Trust only the resolved
+            # worker sibling, never the inherited CWD or PYTHONPATH.
+            sys.path.insert(0, str(Path(__file__).resolve(strict=True).parent))
+            from _pdf_render_worker import _arm_worker_lifetime
+        else:
+            from reporting._pdf_render_worker import _arm_worker_lifetime
+        _arm_worker_lifetime(expected_parent)
+        signal.setitimer(signal.ITIMER_REAL, WALL_SECONDS)
+    except (ImportError,OSError,ValueError,RuntimeError,TypeError):
         response=blocked("pdf_visual_worker_unavailable")
     else:
         try:
@@ -191,4 +201,10 @@ def main() -> None:
 
 
 if __name__=="__main__":
-    main()
+    parent = (
+        int(sys.argv[1])
+        if len(sys.argv) == 2 and sys.argv[1].isascii()
+        and sys.argv[1].isdecimal() and len(sys.argv[1]) <= 20
+        else None
+    )
+    main(parent)
