@@ -183,7 +183,24 @@
       "aggregate_resource_closure_claimed": false,
       "visual_raster_worker_covered": false,
       "protocol": "existing bounded stdin/stdout JSON evidence",
-      "lifecycle_controls_changed": false
+      "lifecycle_controls_changed": false,
+      "lifecycle": {
+        "parent_identity": "explicit launching process PID",
+        "parent_death_signal": "SIGKILL; bound to launching thread",
+        "independent_wall_seconds": 10,
+        "timer": "ITIMER_REAL / SIGALRM default action",
+        "registration": "reuse approved renderer parent-death registration and narrow timer before input read",
+        "arbitrary_descendant_cleanup_claimed": false,
+        "startup_before_registration_covered": false,
+        "aggregate_resource_closure_claimed": false,
+        "visual_raster_worker_covered": false,
+        "missing_or_mismatched_parent": "existing content-free worker-unavailable response",
+        "known_issues": [
+          "The registration is bound to the launching Linux thread, not arbitrary descendants.",
+          "Interpreter startup before registration is bounded only by the existing parent supervisor timeout.",
+          "Independent timer and parent-death checks do not establish total-operation resource closure."
+        ]
+      }
     }
   }
 }

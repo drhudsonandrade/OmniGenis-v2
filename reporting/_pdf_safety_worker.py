@@ -5,6 +5,7 @@ import hashlib
 from importlib.metadata import version
 from io import BytesIO
 import json
+import signal
 from pathlib import Path
 import sys
 
@@ -137,9 +138,11 @@ def inspect_document(pdf: bytes) -> dict:
         return blocked("pdf_safety_structure_invalid", pdf_digest)
 
 
-def main() -> None:
-    """Apply fixed resource and kernel guards before reading candidate bytes."""
+def main(parent_pid: int | None = None) -> None:
+    """Bind lifetime and kernel guards before reading any candidate bytes."""
     try:
+        if type(parent_pid) is not int or parent_pid <= 1:
+            raise ValueError("invalid worker parent")
         if sys.platform != "linux":
             raise OSError("unsupported execution profile")
         import resource
@@ -153,10 +156,14 @@ def main() -> None:
             from _pdf_process_sandbox import (
                 enforce_pdf_landlock, enforce_pdf_network_filter,
             )
+            from _pdf_render_worker import _arm_worker_lifetime
         else:
             from reporting._pdf_process_sandbox import (
                 enforce_pdf_landlock, enforce_pdf_network_filter,
             )
+            from reporting._pdf_render_worker import _arm_worker_lifetime
+        _arm_worker_lifetime(parent_pid)
+        signal.setitimer(signal.ITIMER_REAL, WALL_SECONDS)
         enforce_pdf_landlock(Path(__file__))
         enforce_pdf_network_filter()
     except (ImportError, OSError, ValueError, RuntimeError):
@@ -170,4 +177,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        expected_parent = int(sys.argv[1]) if len(sys.argv) == 2 else None
+    except ValueError:
+        expected_parent = None
+    main(expected_parent)
