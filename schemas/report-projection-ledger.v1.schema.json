@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-projection-ledger:1.0.0",
+  "title": "ReportProjectionLedger",
+  "description": "Job-private declared projection accounting. This structural schema does not prove source inventory completeness, policy authenticity, scientific validity or rendered content. Runtime checks enforce exact source/plan hashes, cross-record uniqueness, dispositions, order, section requirements, counts and aggregate metadata budgets. Existing report and renderer contracts are not replaced.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "status", "conformance_scope", "release_authorization", "source_inventory_validated", "rendered_content_validated", "source_binding_sha256", "plan_sha256", "plan", "represented", "section_states", "counts"],
+  "$defs": {
+    "identifier": {
+      "type": "string", "minLength": 1, "maxLength": 256,
+      "pattern": "^[A-Za-z0-9]", "not": {"pattern": "[^A-Za-z0-9._:-]"}
+    },
+    "digest": {
+      "type": "string", "minLength": 64, "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "identifiers": {
+      "type": "array", "maxItems": 100000, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "artifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_id", "sha256"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/identifier"},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "exclusion": {
+      "type": "object", "additionalProperties": false,
+      "required": ["finding_id", "policy_record", "reason_code"],
+      "properties": {
+        "finding_id": {"$ref": "#/$defs/identifier"},
+        "policy_record": {"$ref": "#/$defs/artifact"},
+        "reason_code": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "projection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["finding_id", "section_id", "component_ids"],
+      "properties": {
+        "finding_id": {"$ref": "#/$defs/identifier"},
+        "section_id": {"$ref": "#/$defs/identifier"},
+        "component_ids": {"$ref": "#/$defs/identifiers", "minItems": 1}
+      }
+    },
+    "section_state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["section_id", "availability", "reason_code"],
+      "properties": {
+        "section_id": {"$ref": "#/$defs/identifier"},
+        "availability": {"enum": ["PRESENT", "NOT_MEASURED", "NOT_AVAILABLE", "NOT_APPLICABLE"]},
+        "reason_code": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/identifier"}]}
+      },
+      "if": {"properties": {"availability": {"const": "PRESENT"}}, "required": ["availability"]},
+      "then": {"properties": {"reason_code": {"type": "null"}}},
+      "else": {"properties": {"reason_code": {"$ref": "#/$defs/identifier"}}}
+    },
+    "plan": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "source_binding_sha256", "expected_finding_ids", "expected_section_ids", "required_section_ids", "upstream_exclusions"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "source_binding_sha256": {"$ref": "#/$defs/digest"},
+        "expected_finding_ids": {"$ref": "#/$defs/identifiers"},
+        "expected_section_ids": {"$ref": "#/$defs/identifiers", "minItems": 1},
+        "required_section_ids": {"$ref": "#/$defs/identifiers"},
+        "upstream_exclusions": {"type": "array", "maxItems": 100000, "uniqueItems": true, "items": {"$ref": "#/$defs/exclusion"}}
+      }
+    },
+    "count": {"type": "integer", "minimum": 0, "maximum": 100000}
+  },
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "report_id": {"const": "e1a-small-variant-report"},
+    "status": {"const": "ACCOUNTED"},
+    "conformance_scope": {"const": "DECLARED_PROJECTION_ACCOUNTING_ONLY"},
+    "release_authorization": {"const": "NOT_ESTABLISHED"},
+    "source_inventory_validated": {"const": false},
+    "rendered_content_validated": {"const": false},
+    "source_binding_sha256": {"$ref": "#/$defs/digest"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "plan": {"$ref": "#/$defs/plan"},
+    "represented": {"type": "array", "maxItems": 100000, "uniqueItems": true, "items": {"$ref": "#/$defs/projection"}},
+    "section_states": {"type": "array", "minItems": 1, "maxItems": 100000, "uniqueItems": true, "items": {"$ref": "#/$defs/section_state"}},
+    "counts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expected_findings", "represented_findings", "upstream_excluded_findings", "expected_sections", "required_sections", "present_required_sections"],
+      "properties": {
+        "expected_findings": {"$ref": "#/$defs/count"},
+        "represented_findings": {"$ref": "#/$defs/count"},
+        "upstream_excluded_findings": {"$ref": "#/$defs/count"},
+        "expected_sections": {"$ref": "#/$defs/count", "minimum": 1},
+        "required_sections": {"$ref": "#/$defs/count"},
+        "present_required_sections": {"$ref": "#/$defs/count"}
+      }
+    }
+  }
+}
