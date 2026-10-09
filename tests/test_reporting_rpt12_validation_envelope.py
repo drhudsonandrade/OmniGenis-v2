@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import select
 import subprocess
 import sys
 import tempfile
@@ -20,6 +21,19 @@ from reporting import adapters, pdf_candidate_qa as qa
 from reporting import pdf_validation as boundary
 from reporting import _pdf_validation_worker as worker
 from reporting.pdf_qa import GENERATED_PDF_AUTHOR, GENERATED_PDF_METADATA_PROFILE
+
+
+def observe_worker_exit(pidfd: int, timeout: float) -> bool:
+    """Wait for the exact kernel process handle; timeout alone is not exit."""
+    return bool(select.select([pidfd], [], [], timeout)[0])
+
+
+def cleanup_observed_worker(pidfd: int) -> None:
+    """Signal only an identity-verified child; allow concurrent disappearance."""
+    try:
+        signal.pidfd_send_signal(pidfd, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
 
 
 class ValidationEnvelopeTests(unittest.TestCase):
@@ -310,22 +324,139 @@ class ValidationEnvelopeTests(unittest.TestCase):
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
         self.assertEqual(result.returncode, -signal.SIGALRM)
 
+    def parent_death_observed(self, *, guarded: bool) -> bool:
+        """Observe a pinned child before releasing its parent, then clean up separately."""
+        child = """import os,signal,sys,time
+from reporting import _pdf_validation_worker as worker
+if sys.argv[1] == "guarded":
+    worker.WALL_SECONDS = 20
+    worker._lifetime(os.getppid())
+else:
+    signal.signal(signal.SIGALRM, signal.SIG_DFL)
+    signal.setitimer(signal.ITIMER_REAL, 20)
+print("READY", flush=True)
+time.sleep(20)
+"""
+        parent_code = """import json,os,select,subprocess,sys
+from pathlib import Path
+child = subprocess.Popen([sys.executable, "-u", "-c", sys.argv[1], sys.argv[2]],
+    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+    start_new_session=True)
+try:
+    if not select.select([child.stdout], [], [], 5)[0] or child.stdout.readline() != b"READY\\n":
+        raise RuntimeError("worker readiness failed")
+    start = Path(f"/proc/{child.pid}/stat").read_text().rsplit(")", 1)[1].split()[19]
+    assert child.poll() is None
+    print(json.dumps({"pid": child.pid, "start": start}), flush=True)
+    if sys.stdin.buffer.read(1) == b"X":
+        os._exit(0)
+finally:
+    if child.poll() is None:
+        child.kill()
+    child.wait(timeout=3)
+    child.stdout.close()
+"""
+        parent = subprocess.Popen(
+            [sys.executable, "-u", "-c", parent_code, child,
+             "guarded" if guarded else "unguarded"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            cwd=Path(__file__).resolve().parents[1],
+        )
+        pidfd = None
+        identity_verified = False
+        try:
+            self.assertTrue(select.select([parent.stdout], [], [], 5)[0],
+                            "parent did not report a ready worker")
+            record = json.loads(parent.stdout.readline(512))
+            self.assertIs(type(record["pid"]), int)
+            self.assertGreater(record["pid"], 1)
+            pidfd = os.pidfd_open(record["pid"])
+            start = Path(f"/proc/{record['pid']}/stat").read_text().rsplit(")", 1)[1].split()[19]
+            self.assertEqual(start, record["start"], "worker identity changed before observation")
+            self.assertFalse(observe_worker_exit(pidfd, 0), "worker exited before its parent")
+            identity_verified = True
+            parent.stdin.write(b"X")
+            parent.stdin.flush()
+            self.assertEqual(parent.wait(timeout=3), 0)
+            return observe_worker_exit(pidfd, 3)
+        finally:
+            try:
+                try:
+                    parent.stdin.close()
+                except BrokenPipeError:
+                    pass
+                try:
+                    parent.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    parent.kill()
+                    parent.wait(timeout=3)
+                parent.stdout.close()
+            finally:
+                if pidfd is not None:
+                    try:
+                        if identity_verified:
+                            cleanup_observed_worker(pidfd)
+                            self.assertTrue(observe_worker_exit(pidfd, 3),
+                                            "test-owned worker did not terminate during cleanup")
+                    finally:
+                        os.close(pidfd)
+
     def test_worker_terminates_when_parent_exits(self):
-        """The reused kernel lifecycle guard applies to the validation worker."""
-        child = ("import os,time;from reporting._pdf_validation_worker import _lifetime;"
-                 "_lifetime(os.getppid());print('READY',flush=True);time.sleep(20)")
-        parent = ("import os,subprocess,sys;"
-                  f"p=subprocess.Popen([sys.executable,'-u','-c',{child!r}],stdout=subprocess.PIPE,start_new_session=True);"
-                  "assert p.stdout.readline().strip()==b'READY';print(p.pid,flush=True);os._exit(0)")
-        result = subprocess.run([sys.executable, "-u", "-c", parent], cwd=Path(__file__).resolve().parents[1],
-                                capture_output=True, text=True, timeout=5, check=True)
-        pid = int(result.stdout.strip())
-        deadline = time.monotonic() + 3
-        while self.process_running(pid) and time.monotonic() < deadline:
-            time.sleep(0.02)
-        if self.process_running(pid):
-            os.killpg(pid, signal.SIGKILL)
-            self.fail("validation worker survived parent death")
+        """The unchanged kernel guard ends the observed child before its fallback timer."""
+        self.assertTrue(self.parent_death_observed(guarded=True),
+                        "validation worker survived parent death")
+
+    def test_parent_death_observation_does_not_poll_recycled_pids(self):
+        """The lifecycle proof cannot depend on a bare PID after parent exit."""
+        result = subprocess.CompletedProcess([], 0, stdout="123456789\n", stderr="")
+        with patch.object(subprocess, "run", return_value=result), \
+                patch.object(self, "process_running", side_effect=AssertionError("PID-only observation")), \
+                patch.object(os, "killpg", side_effect=AssertionError("unpinned group cleanup")):
+            self.test_worker_terminates_when_parent_exits()
+
+    def test_parent_death_probe_rejects_an_unguarded_child(self):
+        """Cleanup must not turn a surviving unguarded worker into proof of exit."""
+        probe = getattr(self, "parent_death_observed", None)
+        self.assertTrue(callable(probe), "exact-child parent-death probe is missing")
+        self.assertFalse(probe(guarded=False))
+
+    def test_observed_child_cleanup_preserves_real_errors(self):
+        """Disappearance is idempotent; permission failures remain test failures."""
+        cleanup = globals().get("cleanup_observed_worker")
+        self.assertTrue(callable(cleanup), "pidfd cleanup is missing")
+        with patch.object(signal, "pidfd_send_signal", side_effect=ProcessLookupError) as send:
+            cleanup(123)
+        send.assert_called_once_with(123, signal.SIGKILL)
+        with patch.object(signal, "pidfd_send_signal", side_effect=PermissionError):
+            with self.assertRaises(PermissionError):
+                cleanup(123)
+
+    def test_observed_exit_requires_readiness_not_just_a_deadline(self):
+        """Elapsed waiting alone never establishes that the observed child exited."""
+        import select
+        observe = globals().get("observe_worker_exit")
+        self.assertTrue(callable(observe), "pidfd observer is missing")
+        with patch.object(select, "select", return_value=([], [], [])):
+            self.assertFalse(observe(123, 0.01))
+        with patch.object(select, "select", return_value=([123], [], [])):
+            self.assertTrue(observe(123, 0.01))
+
+    def test_parent_death_probe_closes_its_process_descriptor(self):
+        """A successful lifecycle check must not retain the kernel process handle."""
+        probe = getattr(self, "parent_death_observed", None)
+        self.assertTrue(callable(probe), "exact-child parent-death probe is missing")
+        opened = []
+        original = os.pidfd_open
+        def record(pid, flags=0):
+            """Retain descriptor numbers for post-probe close verification."""
+            fd = original(pid, flags)
+            opened.append(fd)
+            return fd
+        with patch.object(os, "pidfd_open", side_effect=record):
+            self.assertTrue(probe(guarded=True))
+        self.assertEqual(len(opened), 1)
+        with self.assertRaises(OSError):
+            os.fstat(opened[0])
 
     def test_manifest_matches_actual_budgets(self):
         """Declared limits match the code without claiming an OS sandbox."""
