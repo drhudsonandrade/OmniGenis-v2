@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-source-binding:1.0.0",
+  "title": "ReportSourceBinding",
+  "description": "Single-sample source metadata for the existing technical report. Structural validity does not establish source ownership, payload validity or release authority. Cross-role artifact uniqueness and resolved-byte integrity require the runtime binding boundary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "identity", "input_artifact", "canonical_result", "evidence_snapshot", "reference_bundle_sha256"],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9]",
+      "not": {"pattern": "[^A-Za-z0-9._:-]"}
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "sha256"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/identifier"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "report_id": {"const": "e1a-small-variant-report"},
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace_id", "case_id", "subject_id", "sample_id", "analysis_id", "analysis_revision", "specimen_id"],
+      "properties": {
+        "namespace_id": {"$ref": "#/$defs/identifier"},
+        "case_id": {"$ref": "#/$defs/identifier"},
+        "subject_id": {"$ref": "#/$defs/identifier"},
+        "sample_id": {"$ref": "#/$defs/identifier"},
+        "analysis_id": {"$ref": "#/$defs/identifier"},
+        "analysis_revision": {"$ref": "#/$defs/identifier"},
+        "specimen_id": {"anyOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]}
+      }
+    },
+    "input_artifact": {"$ref": "#/$defs/artifact"},
+    "canonical_result": {"$ref": "#/$defs/artifact"},
+    "evidence_snapshot": {"$ref": "#/$defs/artifact"},
+    "reference_bundle_sha256": {"$ref": "#/$defs/sha256"}
+  }
+}
