@@ -6,7 +6,9 @@ from importlib.metadata import version
 from io import BytesIO
 import json
 import math
+import os
 import signal
+import stat
 from pathlib import Path
 import shutil
 import subprocess
@@ -77,6 +79,42 @@ def _expected_pixels(page) -> tuple[int,int]:
     if px[0]<=0 or px[1]<=0 or px[0]*px[1]>MAX_PIXELS_PER_PAGE:
         raise OverflowError("page pixel budget")
     return px
+
+
+SCRATCH_PARENT = Path("/tmp")
+SCRATCH_PREFIX = "omnigenis-pdf-visual-supervisor-"
+
+
+def _open_trusted_scratch() -> tuple[Path, int]:
+    """Bind a private supervisor directory to an O_PATH descriptor, not a hint."""
+    value = os.environ.get("TMPDIR", "")
+    if not value or len(value) > 4096:
+        raise RuntimeError("pdf_visual_sandbox_unavailable")
+    path = Path(value)
+    if (not path.is_absolute() or path.parent != SCRATCH_PARENT
+            or not path.name.startswith(SCRATCH_PREFIX)):
+        raise RuntimeError("pdf_visual_sandbox_unavailable")
+    try:
+        parent = os.stat(SCRATCH_PARENT, follow_symlinks=False)
+        if not stat.S_ISDIR(parent.st_mode) or not parent.st_mode & stat.S_ISVTX:
+            raise RuntimeError("pdf_visual_sandbox_unavailable")
+        fd = os.open(path, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try:
+            live = os.fstat(fd)
+            linked = os.stat(path, follow_symlinks=False)
+            if (
+                not stat.S_ISDIR(live.st_mode)
+                or live.st_uid != os.geteuid()
+                or stat.S_IMODE(live.st_mode) != 0o700
+                or (live.st_dev, live.st_ino) != (linked.st_dev, linked.st_ino)
+            ):
+                raise RuntimeError("pdf_visual_sandbox_unavailable")
+            return path, fd
+        except Exception:
+            os.close(fd)
+            raise
+    except (OSError, ValueError, TypeError) as exc:
+        raise RuntimeError("pdf_visual_sandbox_unavailable") from exc
 
 
 def inspect_visual_geometry(pdf: bytes) -> dict:
@@ -186,17 +224,34 @@ def main(expected_parent: int | None = None) -> None:
             # worker sibling, never the inherited CWD or PYTHONPATH.
             sys.path.insert(0, str(Path(__file__).resolve(strict=True).parent))
             from _pdf_render_worker import _arm_worker_lifetime
+            from _pdf_process_sandbox import (
+                enforce_pdf_landlock, enforce_pdf_network_filter,
+            )
         else:
             from reporting._pdf_render_worker import _arm_worker_lifetime
+            from reporting._pdf_process_sandbox import (
+                enforce_pdf_landlock, enforce_pdf_network_filter,
+            )
         _arm_worker_lifetime(expected_parent)
         signal.setitimer(signal.ITIMER_REAL, WALL_SECONDS)
+        trusted_scratch, scratch_fd = _open_trusted_scratch()
+        try:
+            enforce_pdf_landlock(Path(__file__), writable_scratch_fd=scratch_fd)
+            enforce_pdf_network_filter()
+        finally:
+            os.close(scratch_fd)
     except (ImportError,OSError,ValueError,RuntimeError,TypeError):
         response=blocked("pdf_visual_worker_unavailable")
     else:
+        previous_tempdir=tempfile.tempdir
         try:
+            # Only the already-bound scratch may contain generated PDF/PNG files.
+            tempfile.tempdir=str(trusted_scratch)
             response=inspect_visual_geometry(sys.stdin.buffer.read(MAX_PDF_BYTES+1))
         except Exception:
             response=blocked("pdf_visual_structure_invalid")
+        finally:
+            tempfile.tempdir=previous_tempdir
     sys.stdout.write(json.dumps(response,sort_keys=True)+"\n")
 
 

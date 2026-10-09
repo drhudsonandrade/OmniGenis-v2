@@ -93,7 +93,7 @@ class PdfVisualValidation:
 
 def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
     """Own the worker process group and temporary files through every exit."""
-    with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-") as scratch:
+    with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-", dir="/tmp") as scratch:
         with subprocess.Popen(
             [sys.executable,"-I",str(_WORKER),str(os.getpid())],
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,

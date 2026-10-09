@@ -11,6 +11,7 @@ import ctypes
 import os
 from pathlib import Path
 import platform
+import stat
 import sys
 
 
@@ -19,6 +20,11 @@ MIN_LANDLOCK_ABI = 4
 _HANDLED_FS = (1 << 15) - 1  # ABI 4: EXECUTE through TRUNCATE
 _READ_DIR_ACCESS = (1 << 0) | (1 << 2) | (1 << 3)
 _READ_FILE_ACCESS = (1 << 0) | (1 << 2)
+# Visual raster scratch grants only file creation/read/write/removal below one
+# 0700 owner-controlled directory; no execution, symlink creation or REFER.
+_SCRATCH_ACCESS = sum(1 << bit for bit in (1, 2, 3, 4, 5, 7, 8, 14))
+# Child-process DEVNULL redirection needs only this fixed harmless sink.
+_DEV_NULL_ACCESS = (1 << 1) | (1 << 2)
 _HANDLED_NET = (1 << 0) | (1 << 1)  # TCP bind and connect, not UDP
 
 
@@ -81,14 +87,19 @@ def _read_roots(worker_script: Path) -> tuple[Path, ...]:
         except FileNotFoundError:
             continue  # Optional OS asset not present in the fixed profile.
         if not resolved.is_dir() and not resolved.is_file():
-            continue
+            # /dev/null and /dev/urandom are character devices, not files.
+            # Admit only these explicit fixed roots; never arbitrary devices.
+            if resolved not in (Path("/dev/null"), Path("/dev/urandom")):
+                continue
+            if not resolved.is_char_device():
+                continue
         unique[str(resolved)] = resolved
     if str(source_root) not in unique or str(prefix) not in unique:
         raise RuntimeError("pdf_sandbox_unavailable")
     return tuple(unique.values())
 
 
-def enforce_pdf_landlock(worker_script: Path) -> None:
+def enforce_pdf_landlock(worker_script: Path, *, writable_scratch_fd: int | None = None) -> None:
     """Fail closed unless kernel-enforced read roots and TCP restrictions apply.
 
     Called only inside one disposable PDF worker after lifecycle and resource
@@ -99,6 +110,11 @@ def enforce_pdf_landlock(worker_script: Path) -> None:
         raise RuntimeError("pdf_sandbox_unavailable")
     try:
         roots = _read_roots(worker_script)
+        if writable_scratch_fd is not None:
+            if type(writable_scratch_fd) is not int or writable_scratch_fd < 3:
+                raise RuntimeError("pdf_sandbox_unavailable")
+            if not stat.S_ISDIR(os.fstat(writable_scratch_fd).st_mode):
+                raise RuntimeError("pdf_sandbox_unavailable")
         ruleset_attr = _Ruleset(_HANDLED_FS, _HANDLED_NET)
         ruleset_fd = _linux_syscall(
             444, ctypes.byref(ruleset_attr), ctypes.c_size_t(ctypes.sizeof(ruleset_attr)),
@@ -110,7 +126,10 @@ def enforce_pdf_landlock(worker_script: Path) -> None:
             for root in roots:
                 path_fd = os.open(root, os.O_PATH | os.O_CLOEXEC)
                 try:
-                    access = _READ_DIR_ACCESS if root.is_dir() else _READ_FILE_ACCESS
+                    if root == Path("/dev/null").resolve(strict=True):
+                        access = _DEV_NULL_ACCESS
+                    else:
+                        access = _READ_DIR_ACCESS if root.is_dir() else _READ_FILE_ACCESS
                     rule = _PathBeneath(access, path_fd, 0)
                     if _linux_syscall(
                         445, ctypes.c_int(ruleset_fd), ctypes.c_int(1),
@@ -119,6 +138,13 @@ def enforce_pdf_landlock(worker_script: Path) -> None:
                         raise RuntimeError("pdf_sandbox_unavailable")
                 finally:
                     os.close(path_fd)
+            if writable_scratch_fd is not None:
+                scratch_rule = _PathBeneath(_SCRATCH_ACCESS, writable_scratch_fd, 0)
+                if _linux_syscall(
+                    445, ctypes.c_int(ruleset_fd), ctypes.c_int(1),
+                    ctypes.byref(scratch_rule), ctypes.c_uint(0),
+                ) < 0:
+                    raise RuntimeError("pdf_sandbox_unavailable")
             libc = ctypes.CDLL(None, use_errno=True)
             if libc.prctl(
                 ctypes.c_int(38), ctypes.c_ulong(1), ctypes.c_ulong(0),

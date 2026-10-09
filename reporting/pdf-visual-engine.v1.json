@@ -7,7 +7,7 @@
   "known_issues": [
     "Raster geometry checks do not establish semantic visual equivalence, reading order, color accuracy, font correctness, or human review.",
     "This profile supports newly generated OmniGenis report candidates only, not arbitrary uploaded PDFs.",
-    "Parent-death binding covers the visual worker, not its native rasterizer descendants. Native executor sandbox and complete-operation aggregate limits remain unresolved."
+    "Parent-death binding covers the visual worker, not its native rasterizer descendants. Landlock/seccomp provide limited process-local filesystem/network confinement; inherited descriptors, arbitrary descendants, complete OS isolation and aggregate resource limits remain unresolved."
   ],
   "license": "GPL-2 or GPL-3",
   "package": "poppler-utils",
@@ -33,6 +33,28 @@
   "source_copied": false,
   "tool": "pdftoppm",
   "tool_version": "24.02.0",
+  "process_local_sandbox": {
+    "profile_id": "omnigenis-pdf-visual-process-local-confinement-v1",
+    "platform": "linux-x86_64",
+    "minimum_landlock_abi": 4,
+    "filesystem_profile": "omnigenis-generated-pdf-landlock-v1",
+    "network_profile": "omnigenis-generated-pdf-seccomp-network-v1",
+    "scratch_directory_prefix": "omnigenis-pdf-visual-supervisor-",
+    "scratch_parent": "/tmp",
+    "scratch_mode": "0700",
+    "guard_order": ["landlock", "seccomp"],
+    "scope": "visual worker and its spawned raster executable",
+    "kernel_enforced": true,
+    "fail_closed": true,
+    "full_os_sandbox_claimed": false,
+    "aggregate_resources_claimed": false,
+    "inherited_descriptor_revocation_claimed": false,
+    "arbitrary_descendant_cleanup_claimed": false,
+    "new_external_dependency": false,
+    "allow_executables_from_scratch": false,
+    "allow_writes_outside_private_scratch": false,
+    "disable_behavior": "reject raster validation if any required process guard is unavailable"
+  },
   "worker_lifecycle": {
     "aggregate_resource_closure_claimed": false,
     "arbitrary_descendant_cleanup_claimed": false,
