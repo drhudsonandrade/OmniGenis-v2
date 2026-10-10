@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-request-snapshot:1.0.0",
+  "title": "ReportRequestSnapshot",
+  "description": "Job-private request metadata for the existing technical report. Embedded source definitions match report-source-binding v1 and are checked for exact structural parity. All references are local. Schema validity is not authenticity, scientific validity, locale qualification or final authorization. Runtime additionally binds expected/resolved metadata, distinct artifact roles, sealed sources and the plan. Unready states may be recorded but cannot bind a usable request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "requester_id",
+    "source_binding",
+    "completeness_plan_sha256",
+    "report_contract_bundle_sha256",
+    "locale_id",
+    "intended_use_id",
+    "locale_pack",
+    "policy_record",
+    "consent_status",
+    "consent_record",
+    "review_state",
+    "review_record"
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9]",
+      "not": {
+        "pattern": "[^A-Za-z0-9._:-]"
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "sha256"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "source_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "report_id",
+        "identity",
+        "input_artifact",
+        "canonical_result",
+        "evidence_snapshot",
+        "reference_bundle_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "report_id": {
+          "const": "e1a-small-variant-report"
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "namespace_id",
+            "case_id",
+            "subject_id",
+            "sample_id",
+            "analysis_id",
+            "analysis_revision",
+            "specimen_id"
+          ],
+          "properties": {
+            "namespace_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "case_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "subject_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "sample_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "analysis_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "analysis_revision": {
+              "$ref": "#/$defs/identifier"
+            },
+            "specimen_id": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/identifier"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "input_artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "canonical_result": {
+          "$ref": "#/$defs/artifact"
+        },
+        "evidence_snapshot": {
+          "$ref": "#/$defs/artifact"
+        },
+        "reference_bundle_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "request_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "requester_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "source_binding": {
+      "$ref": "#/$defs/source_binding"
+    },
+    "completeness_plan_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "report_contract_bundle_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "locale_id": {
+      "const": "en-US"
+    },
+    "intended_use_id": {
+      "const": "e1a-technical-validation"
+    },
+    "locale_pack": {
+      "$ref": "#/$defs/artifact"
+    },
+    "policy_record": {
+      "$ref": "#/$defs/artifact"
+    },
+    "consent_status": {
+      "enum": [
+        "NOT_VERIFIED",
+        "VERIFIED",
+        "WITHDRAWN"
+      ]
+    },
+    "consent_record": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/artifact"
+        }
+      ]
+    },
+    "review_state": {
+      "enum": [
+        "PENDING",
+        "IN_REVIEW",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "review_record": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/artifact"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "consent_status": {
+            "const": "VERIFIED"
+          }
+        },
+        "required": [
+          "consent_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "consent_record": {
+            "$ref": "#/$defs/artifact"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "consent_record": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "review_state": {
+            "const": "APPROVED"
+          }
+        },
+        "required": [
+          "review_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "review_record": {
+            "$ref": "#/$defs/artifact"
+          }
+        }
+      }
+    }
+  ]
+}
