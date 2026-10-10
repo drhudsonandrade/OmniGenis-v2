@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-typed-projection:1.0.0",
+  "title": "TypedReportProjection",
+  "description": "Closed job-private typed content. Structural validity does not prove source authenticity, scientific/translation correctness, rendered output or release authority. Runtime validation additionally enforces request/content/ledger digests, global IDs, exact row widths and order, locator/section coverage, protected-token retention and aggregate expanded-item/UTF-8 budgets. Current semantic-section renderer does not accept this unqualified profile.",
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9]",
+      "not": {
+        "pattern": "[^A-Za-z0-9._:-]"
+      }
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536,
+      "pattern": "\\S",
+      "not": {
+        "pattern": "[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f\\ud800-\\udfff\\u202a-\\u202e\\u2066-\\u2069]"
+      }
+    },
+    "digest": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "tokens": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/text"
+      },
+      "uniqueItems": true
+    },
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "column_id",
+        "label"
+      ],
+      "properties": {
+        "column_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "cells",
+        "protected_tokens"
+      ],
+      "properties": {
+        "finding_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "cells": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "protected_tokens": {
+          "$ref": "#/$defs/tokens"
+        }
+      }
+    },
+    "text_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_id",
+        "section_id",
+        "component_type",
+        "locale_id",
+        "availability",
+        "text_format",
+        "text",
+        "protected_tokens"
+      ],
+      "properties": {
+        "component_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "section_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "component_type": {
+          "enum": [
+            "document_title",
+            "section_heading",
+            "paragraph"
+          ]
+        },
+        "locale_id": {
+          "const": "en-US"
+        },
+        "availability": {
+          "const": "PRESENT"
+        },
+        "text_format": {
+          "const": "plain"
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        },
+        "protected_tokens": {
+          "$ref": "#/$defs/tokens"
+        }
+      }
+    },
+    "table_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_id",
+        "section_id",
+        "component_type",
+        "locale_id",
+        "availability",
+        "text_format",
+        "caption",
+        "columns",
+        "rows"
+      ],
+      "properties": {
+        "component_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "section_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "component_type": {
+          "const": "findings_table"
+        },
+        "locale_id": {
+          "const": "en-US"
+        },
+        "availability": {
+          "const": "PRESENT"
+        },
+        "text_format": {
+          "const": "plain"
+        },
+        "caption": {
+          "$ref": "#/$defs/text"
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "items": {
+            "$ref": "#/$defs/column"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100000,
+          "items": {
+            "$ref": "#/$defs/row"
+          }
+        }
+      }
+    },
+    "section_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "section_id",
+        "availability",
+        "reason_code"
+      ],
+      "properties": {
+        "section_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "availability": {
+          "enum": [
+            "PRESENT",
+            "NOT_MEASURED",
+            "NOT_AVAILABLE",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/identifier"
+            }
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "availability": {
+            "const": "PRESENT"
+          }
+        },
+        "required": [
+          "availability"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reason_code": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "reason_code": {
+            "$ref": "#/$defs/identifier"
+          }
+        }
+      }
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "release_authorization",
+    "source_semantics_validated",
+    "rendered_content_validated",
+    "report_id",
+    "locale_id",
+    "request_sha256",
+    "source_binding_sha256",
+    "plan_sha256",
+    "ledger_sha256",
+    "content_sha256",
+    "counts",
+    "section_states",
+    "components"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "const": "typed-report-projection-v1"
+    },
+    "status": {
+      "const": "PROJECTED"
+    },
+    "conformance_scope": {
+      "const": "DECLARED_TYPED_PROJECTION_ONLY"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "source_semantics_validated": {
+      "const": false
+    },
+    "rendered_content_validated": {
+      "const": false
+    },
+    "report_id": {
+      "const": "e1a-small-variant-report"
+    },
+    "locale_id": {
+      "const": "en-US"
+    },
+    "request_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "source_binding_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "plan_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "ledger_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "content_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "components",
+        "represented_findings",
+        "table_rows"
+      ],
+      "properties": {
+        "components": {
+          "$ref": "#/$defs/count"
+        },
+        "represented_findings": {
+          "$ref": "#/$defs/count"
+        },
+        "table_rows": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "section_states": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "items": {
+        "$ref": "#/$defs/section_state"
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/text_component"
+          },
+          {
+            "$ref": "#/$defs/table_component"
+          }
+        ]
+      }
+    }
+  }
+}
