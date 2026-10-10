@@ -494,3 +494,22 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
         conformance,
         (),
     )
+
+
+def build_typed_html_adapter(*, localized_ir: object, expected_ir_sha256: object) -> AdapterResult:
+    """Prepare and verify semantic HTML only; the typed native PDF path stays disabled.
+
+    Handoff: localize_typed_projection(...).to_dict()['localized_ir'] with its
+    exact digest. HTML and its containing result are job-private report content,
+    not public diagnostic data. Conformance covers structure and literal text,
+    not visual layout, source authenticity, PDF accessibility or final delivery.
+    """
+    from reporting.typed_html import TypedHtmlError, prepare_typed_html
+
+    try:
+        html, proof = prepare_typed_html(presentation_ir=localized_ir,
+                                        expected_ir_sha256=expected_ir_sha256)
+    except TypedHtmlError:
+        return _failure('typed_html_invalid')
+    return AdapterResult(html, proof.html_sha256, None, None, None, 'DISABLED',
+                         'typed_pdf_profile_not_qualified', proof.to_dict(), ())

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-typed-html-evidence:1.0.0",
+  "title": "TypedHtmlValidation",
+  "description": "Digest-bound semantic HTML structure/text evidence only. It does not establish scientific correctness, complete report assembly, visual layout, PDF validation, accessibility certification or release authorization. Absent section states remain in the pinned projection sidecar.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "locale_id",
+    "release_authorization",
+    "pdf_validated",
+    "visual_layout_validated",
+    "source_semantics_validated",
+    "ir_sha256",
+    "html_sha256",
+    "semantic_sha256",
+    "counts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "const": "typed-report-html-preparation-v1"
+    },
+    "status": {
+      "const": "PASS"
+    },
+    "conformance_scope": {
+      "const": "TYPED_HTML_STRUCTURE_AND_TEXT_ONLY"
+    },
+    "locale_id": {
+      "const": "en-US"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "pdf_validated": {
+      "const": false
+    },
+    "visual_layout_validated": {
+      "const": false
+    },
+    "source_semantics_validated": {
+      "const": false
+    },
+    "ir_sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "html_sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "semantic_sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "components",
+        "represented_findings",
+        "table_rows",
+        "not_present_sections"
+      ],
+      "properties": {
+        "components": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "represented_findings": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "table_rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "not_present_sections": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        }
+      }
+    }
+  }
+}
