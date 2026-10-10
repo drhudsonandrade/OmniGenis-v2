@@ -296,8 +296,13 @@ class _EventChecker(HTMLParser):
 def _check_html_events(doc: dict, html: str) -> str:
     """Inspect all emitted structure/text through an independent parser path."""
     checker = _EventChecker(doc)
-    checker.feed(html)
-    return checker.finish()
+    try:
+        checker.feed(html)
+        return checker.finish()
+    except TypedHtmlError:
+        raise
+    except Exception:
+        raise TypedHtmlError('typed_html_markup_not_supported') from None
 
 
 @dataclass(frozen=True, slots=True, repr=False)

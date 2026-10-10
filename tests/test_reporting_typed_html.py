@@ -372,6 +372,31 @@ class TypedHtmlTests(unittest.TestCase):
             self.verify(html=html)
         self.assertNotIn('PRIVATE-PARSER-MARKER', str(caught.exception))
 
+    def test_unexpected_stdlib_parser_failures_are_content_free(self):
+        """Fallible parser feed and close calls expose only a fixed domain error."""
+        html = self.build().html
+        for method in ('feed', 'close'):
+            for failure in (AssertionError, ValueError):
+                with self.subTest(method=method, failure=failure.__name__):
+                    with patch.object(self.m.HTMLParser, method,
+                                      side_effect=failure('PRIVATE-PARSER-DETAIL')):
+                        with self.assertRaisesRegex(self.m.TypedHtmlError,
+                                                    '^typed_html_markup_not_supported$') as caught:
+                            self.verify(html=html)
+                    self.assertTrue(caught.exception.__suppress_context__)
+                    self.assertIsNone(caught.exception.__cause__)
+                    self.assertNotIn('PRIVATE-PARSER-DETAIL', str(caught.exception))
+
+    def test_existing_domain_parser_errors_are_preserved(self):
+        """Already classified errors keep their exact identity and reason."""
+        html = self.build().html
+        for method in ('feed', 'finish'):
+            expected = self.m.TypedHtmlError('typed_html_content_mismatch')
+            with patch.object(self.m._EventChecker, method, side_effect=expected):
+                with self.assertRaises(self.m.TypedHtmlError) as caught:
+                    self.verify(html=html)
+            self.assertIs(caught.exception, expected)
+
 
 if __name__ == '__main__':
     unittest.main()
