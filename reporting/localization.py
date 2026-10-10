@@ -140,3 +140,23 @@ def localize_presentation_ir(
     except (TypeError, ValueError):
         return _failure("localized_ir_not_canonical", locale_id)
     return LocalizationResult(locale_id, _freeze(localized_ir), digest, ())
+
+
+def localize_typed_projection(
+    *, presentation_ir: object, expected_projection_sha256: object, locale_id: object,
+) -> LocalizationResult:
+    """Preserve an already localized sealed typed projection in the en-US profile.
+
+    This explicit path does not translate content, load a label catalog, qualify
+    a language pack or enable the legacy PDF adapter. The expected digest must
+    come from the upstream sealed projection, not a concurrently mutable object.
+    """
+    from reporting.typed_html import TypedHtmlError, capture_typed_document
+
+    if type(locale_id) is not str or locale_id != 'en-US' or not is_supported_report_locale(locale_id):
+        return _failure('locale_not_supported')
+    try:
+        document = capture_typed_document(presentation_ir, expected_projection_sha256)
+    except TypedHtmlError:
+        return _failure('typed_projection_invalid', locale_id)
+    return LocalizationResult(locale_id, _freeze(document), expected_projection_sha256, ())
