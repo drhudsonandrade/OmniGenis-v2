@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "asset": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "media_type": {
+              "const": "image/svg+xml"
+            },
+            "role": {
+              "const": "brand-logo"
+            }
+          }
+        },
+        {
+          "properties": {
+            "media_type": {
+              "const": "image/png"
+            },
+            "role": {
+              "const": "dna-illustration"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "asset_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+          "type": "string"
+        },
+        "declared_height_px": {
+          "maximum": 16384,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "declared_width_px": {
+          "maximum": 16384,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "media_type": {
+          "enum": [
+            "image/png",
+            "image/svg+xml"
+          ]
+        },
+        "rights_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "role": {
+          "enum": [
+            "brand-logo",
+            "dna-illustration"
+          ]
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "size_bytes": {
+          "maximum": 4194304,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_reference": {
+          "$ref": "#/$defs/reference"
+        }
+      },
+      "required": [
+        "asset_id",
+        "role",
+        "media_type",
+        "sha256",
+        "size_bytes",
+        "declared_width_px",
+        "declared_height_px",
+        "source_reference",
+        "rights_reference"
+      ],
+      "type": "object"
+    },
+    "reference": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "sha256"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:omnigenis:report-staged-asset-inventory:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "asset_count": {
+      "maximum": 2,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/asset"
+      },
+      "maxItems": 2,
+      "minItems": 1,
+      "type": "array"
+    },
+    "conformance_scope": {
+      "const": "OPAQUE_ASSET_BYTE_INTEGRITY_ONLY"
+    },
+    "dimensions_verified": {
+      "const": false
+    },
+    "font_profile_qualified": {
+      "const": false
+    },
+    "links_activated": {
+      "const": false
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "media_sanitized": {
+      "const": false
+    },
+    "profile_id": {
+      "const": "staged-editorial-brand-assets-v1"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "renderer_activated": {
+      "const": false
+    },
+    "rights_verified": {
+      "const": false
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "source_bytes_retained": {
+      "const": false
+    },
+    "status": {
+      "const": "PINNED_UNQUALIFIED"
+    },
+    "total_bytes": {
+      "maximum": 8388608,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "manifest_sha256",
+    "asset_count",
+    "total_bytes",
+    "assets",
+    "source_bytes_retained",
+    "rights_verified",
+    "media_sanitized",
+    "dimensions_verified",
+    "renderer_activated",
+    "font_profile_qualified",
+    "links_activated",
+    "release_authorization"
+  ],
+  "title": "Staged, unqualified editorial asset byte-integrity evidence",
+  "type": "object"
+}
