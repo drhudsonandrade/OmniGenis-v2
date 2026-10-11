@@ -1,0 +1,119 @@
+{
+  "$id": "urn:omnigenis:report-reference-candidate:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "catalog_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "conformance_scope": {
+      "const": "HTTPS_CANDIDATE_SYNTAX_AND_BINDING_ONLY"
+    },
+    "declared_host_count": {
+      "maximum": 16,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "host_policy_authenticated": {
+      "const": false
+    },
+    "links_activated": {
+      "const": false
+    },
+    "network_access_performed": {
+      "const": false
+    },
+    "pdf_annotation_profile_qualified": {
+      "const": false
+    },
+    "profile_id": {
+      "const": "staged-https-reference-candidates-v1"
+    },
+    "reference_count": {
+      "maximum": 128,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "references": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "host_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "href_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "policy_reference_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "reference_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "type": "string"
+          },
+          "source_reference_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference_id",
+          "href_sha256",
+          "host_sha256",
+          "source_reference_sha256",
+          "policy_reference_sha256"
+        ],
+        "type": "object"
+      },
+      "maxItems": 128,
+      "minItems": 1,
+      "type": "array"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "renderer_activated": {
+      "const": false
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "source_authenticity_verified": {
+      "const": false
+    },
+    "source_relevance_reviewed": {
+      "const": false
+    },
+    "source_rights_verified": {
+      "const": false
+    },
+    "status": {
+      "const": "STAGED_UNQUALIFIED"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "catalog_sha256",
+    "reference_count",
+    "declared_host_count",
+    "references",
+    "source_authenticity_verified",
+    "source_relevance_reviewed",
+    "source_rights_verified",
+    "host_policy_authenticated",
+    "pdf_annotation_profile_qualified",
+    "renderer_activated",
+    "links_activated",
+    "network_access_performed",
+    "release_authorization"
+  ],
+  "title": "Inert syntactic HTTPS reference candidate evidence",
+  "type": "object"
+}
