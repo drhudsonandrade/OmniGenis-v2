@@ -59,6 +59,56 @@ def _paint(value: object) -> None:
         _reject("svg_paint_not_in_static_subset")
 
 
+_PATH_OPERANDS = {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6,
+                  "S": 4, "Q": 4, "T": 2, "A": 7, "Z": 0}
+_PATH_TOKEN = re.compile(
+    r"[MmLlHhVvCcSsQqTtAaZz]|[+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)",
+    re.ASCII,
+)
+_PATH_SEPARATOR = re.compile(r"[ \t\r\n]*(?:,[ \t\r\n]*)?\Z", re.ASCII)
+_PATH_WHITESPACE = re.compile(r"[ \t\r\n]*\Z", re.ASCII)
+
+
+def _validate_path_commands(value: str) -> None:
+    """Check every bounded command group, without rewriting or rendering paths.
+
+    The existing subset excludes exponent notation. Decimal points and signs
+    can delimit adjacent numbers; a comma can separate only two operands.
+    """
+    if type(value) is not str or not 1 <= len(value) <= MAX_PATH_CHARS:
+        _reject("svg_path_budget_invalid")
+    command: str | None = None
+    required = count = end = 0
+    previous_operand = False
+    for match in _PATH_TOKEN.finditer(value):
+        token = match.group()
+        is_command = token in _PATH_OPERANDS or token.upper() in _PATH_OPERANDS
+        gap = value[end:match.start()]
+        if (not _PATH_SEPARATOR.fullmatch(gap)
+                or ("," in gap and (not previous_operand or is_command))):
+            _reject("svg_path_token_separator_invalid")
+        if is_command:
+            if command is None and token not in ("M", "m"):
+                _reject("svg_path_initial_move_required")
+            if required and (not count or count % required):
+                _reject("svg_path_command_operands_incomplete")
+            command = token.upper()
+            required = _PATH_OPERANDS[command]
+            count = 0
+        else:
+            if command is None or not required:
+                _reject("svg_path_operand_without_command")
+            if command == "A" and count % 7 in (3, 4) and token not in ("0", "1"):
+                _reject("svg_path_arc_flag_invalid")
+            count += 1
+        previous_operand = not is_command
+        end = match.end()
+    if command is None or not _PATH_WHITESPACE.fullmatch(value[end:]):
+        _reject("svg_path_trailing_token_invalid")
+    if required and (not count or count % required):
+        _reject("svg_path_command_operands_incomplete")
+
+
 def _validate_element(element: ET.Element, name: str, width: int, height: int) -> int:
     attrs = element.attrib
     allowed = {
@@ -85,6 +135,7 @@ def _validate_element(element: ET.Element, name: str, width: int, height: int) -
             _reject("svg_path_budget_invalid")
         if not _PATH_CHARS.fullmatch(value) or value[0] not in ("M", "m"):
             _reject("svg_path_syntax_outside_subset")
+        _validate_path_commands(value)
         return len(value)
     if name == "rect":
         if not {"x", "y", "width", "height"} <= attrs.keys():

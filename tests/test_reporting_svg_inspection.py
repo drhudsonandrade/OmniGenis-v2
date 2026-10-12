@@ -224,6 +224,86 @@ class SvgPreflightTests(unittest.TestCase):
                   'M0 0 e 1','M0 0 url(#x)'):
             self.reject(svg(f'<path d="{d}" fill="#112233"/>'))
 
+    def test_path_rejects_incomplete_trailing_commands_with_whitespace(self):
+        for data in ("M0 0 L", "M0 0 L ", "M0 0 L\t", "M0 0 L\n",
+                     "M0 0 L1", "M0 0 Z M1", "M0 0 H", "M0 0 V"):
+            with self.subTest(data=data):
+                self.reject(svg(f'<path d="{data}" fill="#112233"/>'))
+
+    def test_path_rejects_incomplete_groups_before_later_commands(self):
+        for data in ("M0 0 L M0 0", "M0 0 C1 2 3 4 5 L1 1",
+                     "M0 0 Q1 2 3 Z", "M0 0 H V1", "M0 0 Z L M1 1",
+                     "M0 0 A1 2 3 0 1 M1 1", "M0 0 M1 L2 2"):
+            with self.subTest(data=data):
+                self.reject(svg(f'<path d="{data}" fill="#112233"/>'))
+
+    def test_each_nonclose_command_requires_whole_operand_groups(self):
+        arities = {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6,
+                   "S": 4, "Q": 4, "T": 2, "A": 7}
+        for command, count in arities.items():
+            for letter in (command, command.lower()):
+                for operands in (count - 1, 0):
+                    data = "M0 0 " + letter + " ".join(["0"] * operands)
+                    with self.subTest(command=letter, operands=operands):
+                        self.reject(svg(f'<path d="{data}" fill="#112233"/>'))
+                if count > 1:
+                    data = "M0 0 " + letter + " ".join(["0"] * (count + 1))
+                    with self.subTest(command=letter, repeated_incomplete=True):
+                        self.reject(svg(f'<path d="{data}" fill="#112233"/>'))
+        self.reject(svg('<path d="M0 0 Z 1 2" fill="#112233"/>'))
+
+    def test_path_accepts_complete_explicit_and_repeated_groups(self):
+        arguments = {"M": "1 2", "L": "1 2", "H": "1", "V": "2",
+                     "C": "1 2 3 4 5 6", "S": "1 2 3 4", "Q": "1 2 3 4",
+                     "T": "1 2", "A": "1 2 3 0 1 4 5"}
+        for command, args in arguments.items():
+            for letter in (command, command.lower()):
+                for repeated in (args, args + " " + args):
+                    data = "M0 0 " + letter + repeated + " Z"
+                    with self.subTest(command=letter, args=repeated):
+                        self.assertEqual(self.inspect(svg(
+                            f'<path d="{data}" fill="#112233"/>')).to_dict()["path_count"], 1)
+        self.assertEqual(self.inspect(svg(
+            '<path d="M0 0 Z M1 1 L2 2 Z " fill="#112233"/>')).to_dict()["path_count"], 1)
+
+    def test_path_rejects_invalid_separators_and_unconsumed_tokens(self):
+        for data in ("M,0 0", "M0 0,L1 2", "M0 0 L,1 2", "M0 0 L1,,2",
+                     "M0 0 L1 2,", "M0 0 L+ 1", "M0 0 L1 .", "M0 0 L1 --2",
+                     "M0 0 L1..2", "M0 0 L1. 2", "M0 0 Z,", "M0 0 Z,L1 2"):
+            with self.subTest(data=data):
+                self.reject(svg(f'<path d="{data}" fill="#112233"/>'))
+
+    def test_path_keeps_supported_compact_signed_and_decimal_numbers(self):
+        for data in ("M0.6.5", "M.5 .5 L1.25,2.5", "M0 0L+1-2",
+                     "M0 0L1.2.3", "M0 0 L-1,-2", "m0 0l16 16z",
+                     "M0 0 L1 1\n\t", "M0 0 H1 2 3 V4 5 6"):
+            with self.subTest(data=data):
+                self.assertEqual(self.inspect(svg(
+                    f'<path d="{data}" fill="#112233"/>')).to_dict()["path_count"], 1)
+
+    def test_path_arc_flags_are_literal_zero_or_one_in_each_group(self):
+        for args in ("1 2 3 2 1 4 5", "1 2 3 0 2 4 5", "1 2 3 -1 0 4 5",
+                     "1 2 3 0.0 1 4 5", "1 2 3 0 1.0 4 5"):
+            for prefix in ("M0 0 A", "M0 0 A1 2 3 0 1 4 5 "):
+                with self.subTest(args=args, prefix=prefix):
+                    self.reject(svg(f'<path d="{prefix}{args}" fill="#112233"/>'))
+
+    def test_path_grammar_preserves_exact_input_binding_without_rewriting(self):
+        raw = svg('<path d="M0 0 L1 1 2 2 Z " fill="#112233"/>')
+        expected = self.manifest(raw)
+        before = (sha(raw), expected.manifest_sha256)
+        evidence = self.inspect(raw, expected=expected, resolved=expected).to_dict()
+        self.assertEqual(evidence["input_sha256"], before[0])
+        self.assertEqual(evidence["asset_manifest_sha256"], before[1])
+        self.assertEqual(before, (sha(raw), expected.manifest_sha256))
+        self.assertFalse(evidence["renderer_activated"])
+
+    def test_path_operand_scanning_respects_original_character_budget(self):
+        data = "M0 0" + " " * (4096 - 4)
+        result = self.inspect(svg(f'<path d="{data}" fill="#112233"/>')).to_dict()
+        self.assertEqual(result["total_path_chars"], 4096)
+        self.reject(svg(f'<path d="{data} " fill="#112233"/>'))
+
     def test_path_length_and_total_budget(self):
         self.reject(svg('<path d="M'+ '0 '*2200 +'" fill="#112233"/>'))
         body=''.join('<path d="M'+ '0 '*2000 +'" fill="#112233"/>' for _ in range(9))
