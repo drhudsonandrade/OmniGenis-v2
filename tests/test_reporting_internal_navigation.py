@@ -136,6 +136,40 @@ class InternalNavigationTests(unittest.TestCase):
                    self.m.NavigationIntent("title", "finding", "F1"))
         self.assertEqual(self.bind(intents=choices).to_dict()["intent_count"], 2)
 
+    @staticmethod
+    def _unheaded_projection(count):
+        from test_reporting_typed_projection import context
+        from reporting import components
+        request, ledger = context(count)
+        items = [
+            components.TextComponent("title", "identity", "document_title", "Technical report"),
+            components.TextComponent("intro", "findings", "paragraph", "Synthetic findings."),
+        ]
+        if count:
+            items.append(components.FindingsTable("table", "findings", "Synthetic findings",
+                (components.TableColumn("variant", "Variant"),
+                 components.TableColumn("value", "Value")),
+                tuple(components.FindingRow(f, (f"NM_000001.1:c.{i+1}A>G", "0.123"))
+                      for i, f in enumerate(request.plan.expected_finding_ids))))
+        parts = tuple(items)
+        return components.build_typed_report_projection(
+            request=request, ledger=ledger,
+            projection_request_sha256=request.request.request_sha256,
+            expected_content_sha256=components.component_content_sha256(parts),
+            components=parts).to_dict()
+
+    def test_unheaded_multi_component_section_is_ambiguous(self):
+        doc = self._unheaded_projection(2)
+        targets = (self.m.NavigationIntent("title", "section", "findings"),)
+        with self.assertRaises(self.m.NavigationError):
+            self.bind(doc=doc, projection_sha=digest(doc), intents=targets)
+
+    def test_unheaded_single_component_section_retains_exact_fallback(self):
+        doc = self._unheaded_projection(0)
+        targets = (self.m.NavigationIntent("title", "section", "findings"),)
+        result = self.bind(doc=doc, projection_sha=digest(doc), intents=targets).to_dict()
+        self.assertEqual(result["intents"][0]["target_component_id"], "intro")
+
     def test_section_target_without_present_section_is_rejected(self):
         self.reject(intents=(self.m.NavigationIntent("title", "section", "unknown"),))
 

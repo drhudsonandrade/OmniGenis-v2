@@ -202,6 +202,8 @@ def bind_internal_navigation(
             targets = headings or section_components.get(intent.target_id, [])
             if not targets:
                 raise NavigationError("navigation_section_anchor_missing")
+            if not headings and len(targets) > 1:
+                raise NavigationError("navigation_section_anchor_ambiguous")
             target = targets[0]
         else:
             targets = findings.get(intent.target_id, [])
