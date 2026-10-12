@@ -1,0 +1,182 @@
+{
+  "$id": "urn:omnigenis:report-png-inspection:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "color_type": {
+            "const": 2
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "channels": {
+            "const": 3
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "color_type": {
+            "const": 6
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "channels": {
+            "const": 4
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "asset_activated": {
+      "const": false
+    },
+    "asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+      "type": "string"
+    },
+    "asset_manifest_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "bit_depth": {
+      "const": 8
+    },
+    "channels": {
+      "enum": [
+        3,
+        4
+      ],
+      "type": "integer"
+    },
+    "chunk_count": {
+      "maximum": 1024,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "color_type": {
+      "enum": [
+        2,
+        6
+      ],
+      "type": "integer"
+    },
+    "conformance_scope": {
+      "const": "PNG_CHUNK_CRC_ZLIB_FILTER_STRUCTURE_ONLY"
+    },
+    "encoded_size_bytes": {
+      "maximum": 4194304,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "full_os_sandbox_claim": {
+      "const": false
+    },
+    "height_px": {
+      "maximum": 16384,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "idat_chunk_count": {
+      "maximum": 1022,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "image_pixels_decoded": {
+      "const": false
+    },
+    "image_sanitized": {
+      "const": false
+    },
+    "input_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "interlaced": {
+      "const": false
+    },
+    "metadata_qualified": {
+      "const": false
+    },
+    "original_bytes_retained": {
+      "const": false
+    },
+    "pixel_count": {
+      "maximum": 4000000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "profile_id": {
+      "const": "staged-png-structure-v1"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "renderer_activated": {
+      "const": false
+    },
+    "rights_verified": {
+      "const": false
+    },
+    "scanline_bytes": {
+      "maximum": 16777216,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "source_authenticated": {
+      "const": false
+    },
+    "status": {
+      "const": "PNG_STRUCTURALLY_INSPECTED_UNQUALIFIED"
+    },
+    "width_px": {
+      "maximum": 16384,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "asset_id",
+    "asset_manifest_sha256",
+    "input_sha256",
+    "encoded_size_bytes",
+    "width_px",
+    "height_px",
+    "pixel_count",
+    "color_type",
+    "channels",
+    "bit_depth",
+    "interlaced",
+    "scanline_bytes",
+    "idat_chunk_count",
+    "chunk_count",
+    "original_bytes_retained",
+    "image_pixels_decoded",
+    "image_sanitized",
+    "metadata_qualified",
+    "rights_verified",
+    "source_authenticated",
+    "renderer_activated",
+    "asset_activated",
+    "full_os_sandbox_claim",
+    "release_authorization"
+  ],
+  "title": "Inert bounded PNG media preflight evidence",
+  "type": "object"
+}
