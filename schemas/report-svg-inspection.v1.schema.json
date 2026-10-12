@@ -1,0 +1,124 @@
+{
+  "$id": "urn:omnigenis:report-static-svg-preflight:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accessibility_qualified": {
+      "const": false
+    },
+    "asset_activated": {
+      "const": false
+    },
+    "asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+      "type": "string"
+    },
+    "asset_manifest_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "brand_rights_verified": {
+      "const": false
+    },
+    "conformance_scope": {
+      "const": "BOUNDED_STATIC_SVG_SUBSET_STRUCTURE_ONLY"
+    },
+    "element_count": {
+      "maximum": 512,
+      "minimum": 2,
+      "type": "integer"
+    },
+    "encoded_size_bytes": {
+      "maximum": 524288,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "full_os_sandbox_claim": {
+      "const": false
+    },
+    "height_px": {
+      "maximum": 16384,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "input_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "original_bytes_retained": {
+      "const": false
+    },
+    "path_count": {
+      "maximum": 256,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "profile_id": {
+      "const": "staged-static-svg-subset-v1"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "renderer_activated": {
+      "const": false
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "shape_count": {
+      "maximum": 511,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "source_authenticated": {
+      "const": false
+    },
+    "status": {
+      "const": "SVG_STRUCTURALLY_INSPECTED_UNQUALIFIED"
+    },
+    "svg_sanitized": {
+      "const": false
+    },
+    "total_path_chars": {
+      "maximum": 32768,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "visual_fidelity_verified": {
+      "const": false
+    },
+    "width_px": {
+      "maximum": 16384,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "asset_id",
+    "asset_manifest_sha256",
+    "input_sha256",
+    "encoded_size_bytes",
+    "width_px",
+    "height_px",
+    "element_count",
+    "path_count",
+    "shape_count",
+    "total_path_chars",
+    "original_bytes_retained",
+    "svg_sanitized",
+    "brand_rights_verified",
+    "source_authenticated",
+    "visual_fidelity_verified",
+    "accessibility_qualified",
+    "renderer_activated",
+    "asset_activated",
+    "full_os_sandbox_claim",
+    "release_authorization"
+  ],
+  "title": "Inert bounded static SVG structure receipt",
+  "type": "object"
+}
