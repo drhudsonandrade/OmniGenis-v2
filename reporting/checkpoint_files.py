@@ -2,24 +2,26 @@
 
 The caller supplies an already authorized private directory descriptor and an
 independently pinned directory/job identity. Only digest basenames are resolved.
-A new object is written to private scratch, file-synced, linked without replacing
-an existing name, read back, and directory-synced before acknowledgment.
+New bytes are staged in an anonymous Linux O_TMPFILE inode, checked by positional
+reads, file-synced and atomically given one final name without replacement. The
+only followed link is the kernel self-FD path for that owned descriptor; callers
+cannot supply a source path. Directory sync and final readback precede acknowledgment.
 
-Supported scope is local Linux/POSIX descriptor-relative storage. The caller must
-control the directory, serialize job operations, authenticate expected digests and
-manage retention. Read-only mode is not filesystem immutability or protection
-against a malicious same-UID writer. This adapter has no latest pointer, rollback
-protection, tenant authentication, native PDF execution or release authority.
-On error, a complete but unacknowledged final entry may remain; exact retry checks
-it without replacement. Process death can leave private scratch for job-owned
-recovery. No directory scan or automatic deletion of unrelated files is performed.
+The caller must control the directory, serialize job operations, authenticate
+expected digests and manage retention. Read-only mode is not immutability or
+protection against a malicious same-UID writer. There is no latest pointer,
+rollback protection, tenant authentication, native PDF execution or release.
+O_TMPFILE and kernel procfs publication must work on the local filesystem; an
+unsupported environment is rejected without named-staging fallback. Before
+publication, process death closes the unnamed inode without leaving a path.
+After publication, a complete single-link but unacknowledged object can remain;
+exact retry validates it without replacement. No scan or unlink cleanup is used.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
 import os
-import secrets
 import stat
 import sys
 
@@ -33,8 +35,8 @@ from reporting.page_windows import PageWindowPlan
 _READ_CHUNK_BYTES = 64 * 1024
 _SUPPORTED = (
     sys.platform == 'linux' and os.name == 'posix'
-    and all(hasattr(os, name) for name in ('O_NOFOLLOW', 'O_NONBLOCK', 'O_CLOEXEC', 'geteuid', 'fsync'))
-    and all(fn in os.supports_dir_fd for fn in (os.open, os.stat, os.link, os.unlink))
+    and all(hasattr(os, name) for name in ('O_NOFOLLOW', 'O_NONBLOCK', 'O_CLOEXEC', 'O_TMPFILE', 'pread', 'geteuid', 'fsync'))
+    and all(fn in os.supports_dir_fd for fn in (os.open, os.stat, os.link))
     and all(fn in os.supports_follow_symlinks for fn in (os.stat, os.link))
 )
 
@@ -158,16 +160,11 @@ def _restore(raw: bytes, digest: str, plan: PageWindowPlan,
 
 def _publish(root: int, name: str, raw: bytes,
              expected: CheckpointDirectoryIdentity) -> None:
-    """Stage bounded bytes and link without clobber; clean only this invocation's name."""
-    temporary = '.checkpoint-' + secrets.token_hex(16)
-    fd: int | None = None
-    owned: tuple[int, int] | None = None
+    """Publish a fully checked anonymous inode with one no-clobber final link."""
+    fd = os.open('.', os.O_RDWR | os.O_TMPFILE | os.O_CLOEXEC, 0o600, dir_fd=root)
     try:
-        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
-                     | os.O_CLOEXEC, 0o600, dir_fd=root)
         initial = os.fstat(fd)
-        owned = (initial.st_dev, initial.st_ino)
-        if (not stat.S_ISREG(initial.st_mode) or initial.st_nlink != 1
+        if (not stat.S_ISREG(initial.st_mode) or initial.st_nlink != 0
                 or initial.st_dev != expected.device_id or initial.st_uid != expected.owner_uid
                 or initial.st_size != 0):
             _reject('checkpoint_staging_file_invalid')
@@ -180,26 +177,30 @@ def _publish(root: int, name: str, raw: bytes,
             offset += written
         os.fchmod(fd, 0o400)
         os.fsync(fd)
-        _directory(root, expected)
-        if _read_file(root, temporary, expected) != raw:
+        before = os.fstat(fd)
+        if (before.st_size != len(raw) or before.st_nlink != 0
+                or stat.S_IMODE(before.st_mode) != 0o400
+                or (before.st_dev, before.st_ino, before.st_uid)
+                != (initial.st_dev, initial.st_ino, initial.st_uid)):
+            _reject('checkpoint_staging_file_changed')
+        parts: list[bytes] = []
+        offset = 0
+        while offset <= before.st_size:
+            piece = os.pread(fd, min(_READ_CHUNK_BYTES, before.st_size + 1 - offset), offset)
+            if not piece:
+                break
+            parts.append(piece)
+            offset += len(piece)
+        if b''.join(parts) != raw or _file_identity(before) != _file_identity(os.fstat(fd)):
             _reject('checkpoint_staging_readback_mismatch')
-        if _file_identity(os.fstat(fd)) != _file_identity(os.stat(temporary, dir_fd=root, follow_symlinks=False)):
-            _reject('checkpoint_staging_entry_changed')
+        _directory(root, expected)
         try:
-            os.link(temporary, name, src_dir_fd=root, dst_dir_fd=root, follow_symlinks=False)
+            os.link(f'/proc/self/fd/{fd}', name, dst_dir_fd=root, follow_symlinks=True)
         except FileExistsError:
-            # The caller verifies the existing object after owned scratch cleanup.
+            # The caller verifies the existing final object, never replaces it.
             pass
     finally:
-        try:
-            if fd is not None:
-                os.close(fd)
-        finally:
-            if owned is not None:
-                entry = os.stat(temporary, dir_fd=root, follow_symlinks=False)
-                if (entry.st_dev, entry.st_ino) != owned:
-                    _reject('checkpoint_staging_cleanup_identity_changed')
-                os.unlink(temporary, dir_fd=root)
+        os.close(fd)
 
 
 def store_page_checkpoint(

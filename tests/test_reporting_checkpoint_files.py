@@ -85,7 +85,12 @@ if d['action']=='read':
  c=load_page_checkpoint(**args,expected_plan=plan);print(c.checkpoint_sha256)
 else:
  c=resume_page_checkpoint(checkpoint_bytes=d['checkpoint'].encode(),expected_checkpoint_sha256=d['digest'],expected_plan=plan,namespace_id=root.namespace_id,job_id=root.job_id,expected_request_sha256=root.request_sha256,expected_resource_profile_sha256=root.resource_profile_sha256)
- with patch('reporting.checkpoint_files.os.link',side_effect=lambda *a,**k:os._exit(41)):
+ original_link=os.link
+ def stop_at_link(*a,**k):
+  if d['action']=='crash-after':
+   original_link(*a,**k);os._exit(42)
+  os._exit(41)
+ with patch('reporting.checkpoint_files.os.link',side_effect=stop_at_link):
   store_page_checkpoint(**args,checkpoint=c)
 '''
         data = dict(action=action, fd=self.fd, directory=asdict(self.directory),
@@ -348,13 +353,86 @@ else:
         self.assertEqual(os.listdir(self.root), ['unrelated'])
 
     def test_killed_writer_cannot_publish_a_partial_final_file(self):
-        """Process death before linking leaves only private untrusted scratch, not a final."""
+        """Process death before linking leaves no directory entry or valid final object."""
         result = self.child('crash')
         self.assertEqual(result.returncode, 41, result.stderr)
         self.assertFalse((self.root / self.digest).exists())
         with self.assertRaises(self.m.CheckpointFileError):
             self.load()
-        self.assertTrue(os.listdir(self.root))
+        self.assertEqual(os.listdir(self.root), [])
+
+    def test_killed_writer_after_link_is_loadable_and_retryable(self):
+        """Death after publication leaves a single-link object requiring no scratch cleanup."""
+        result = self.child('crash-after')
+        self.assertEqual(result.returncode, 42, result.stderr)
+        target = self.root / self.digest
+        self.assertEqual(target.stat().st_nlink, 1)
+        self.assertEqual(os.listdir(self.root), [self.digest])
+        self.assertEqual(self.load().to_bytes(), self.cp.to_bytes())
+        inode = target.stat().st_ino
+        self.assertEqual(self.store(), self.digest)
+        self.assertEqual(target.stat().st_ino, inode)
+
+    def test_unsupported_anonymous_filesystem_has_no_named_fallback(self):
+        """Missing filesystem support rejects the operation rather than creating named scratch."""
+        original = os.open
+        def unsupported(path, flags, *args, **kwargs):
+            """Reject the anonymous-open operation in this synthetic filesystem probe."""
+            if flags & os.O_TMPFILE == os.O_TMPFILE:
+                raise OSError('synthetic O_TMPFILE unsupported')
+            return original(path, flags, *args, **kwargs)
+        with patch.object(self.m.os, 'open', side_effect=unsupported):
+            with self.assertRaises(self.m.CheckpointFileError):
+                self.store()
+        self.assertEqual(os.listdir(self.root), [])
+
+    def test_publication_uses_only_its_owned_anonymous_descriptor(self):
+        """The only followed link is the kernel self-FD path for this zero-link staging inode."""
+        original = os.link
+        observed = []
+        def inspect_link(src, dst, **kwargs):
+            """Inspect the actual publication descriptor before the no-clobber link call."""
+            self.assertRegex(src, r'^/proc/self/fd/[0-9]+$')
+            fd = int(src.rsplit('/', 1)[1])
+            value = os.fstat(fd)
+            self.assertEqual(value.st_nlink, 0)
+            self.assertEqual(stat.S_IMODE(value.st_mode), 0o400)
+            self.assertEqual(os.pread(fd, len(self.cp.to_bytes()) + 1, 0), self.cp.to_bytes())
+            self.assertIs(kwargs.get('follow_symlinks'), True)
+            self.assertEqual(dst, self.digest)
+            self.assertNotIn('src_dir_fd', kwargs)
+            observed.append(value.st_ino)
+            return original(src, dst, **kwargs)
+        with patch.object(self.m.os, 'link', side_effect=inspect_link):
+            self.store()
+        self.assertEqual(observed, [(self.root / self.digest).stat().st_ino])
+
+    def test_anonymous_publication_never_needs_unlink_cleanup(self):
+        """A normal new write never depends on removing a named temporary entry."""
+        with patch.object(self.m.os, 'unlink', side_effect=AssertionError('named cleanup')):
+            self.assertEqual(self.store(), self.digest)
+        self.assertEqual(os.listdir(self.root), [self.digest])
+
+    def test_short_staging_pread_is_completed_without_moving_offset(self):
+        """Positive short positional reads reconstruct the entire staged byte sequence."""
+        original = os.pread
+        counts = []
+        def short(fd, size, offset):
+            """Limit each real positional read while checking the established chunk cap."""
+            self.assertLessEqual(size, 64 * 1024)
+            counts.append(size)
+            return original(fd, min(size, 23), offset)
+        with patch.object(self.m.os, 'pread', side_effect=short):
+            self.store()
+        self.assertGreater(len(counts), 1)
+        self.assertEqual(self.load().to_bytes(), self.cp.to_bytes())
+
+    def test_corrupt_staging_pread_never_publishes(self):
+        """Failed anonymous-descriptor readback cannot create the final digest entry."""
+        with patch.object(self.m.os, 'pread', side_effect=[b'corrupt', b'']):
+            with self.assertRaises(self.m.CheckpointFileError):
+                self.store()
+        self.assertEqual(os.listdir(self.root), [])
 
     def test_entry_replacement_during_read_is_rejected(self):
         """A new inode with even equal bytes cannot replace the opened entry unnoticed."""
