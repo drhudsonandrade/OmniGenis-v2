@@ -1,0 +1,72 @@
+{
+  "copyright_notices": [
+    "Copyright (c) 2006-2008, Mathieu Fenniak",
+    "Some contributions copyright (c) 2007, Ashish Kulkarni <kulkarni.ashish@gmail.com>",
+    "Some contributions copyright (c) 2014, Steve Witham <switham_github@mac-guyver.com>"
+  ],
+  "default_pipeline_activated": false,
+  "disable_behavior": "fail_closed",
+  "disable_environment": "OMNIGENIS_PDF_DOCUMENT_METADATA_DISABLED=1",
+  "expected_language": "en-US",
+  "input_domain": "Sealed generated PDF 1.7 with independently pinned PDF/IR/plan digests, physical page count and the existing en-US expectation",
+  "integration_mode": "USE_VIA_ADAPTER",
+  "known_issues": [
+    "Checks only Info keys/values, catalog language, document-level controlled XMP, MarkInfo and StructTreeRoot type; not general PDF sanitization or all metadata channels.",
+    "Catalog tag prerequisites do not validate semantic tag trees, complete per-page tagging, reading order, alternate text, fonts or full PDF/UA conformance.",
+    "The existing validators parse the candidate separately; parser and XML initialization can allocate before post-parse structure checks. Mandatory process limits remain necessary.",
+    "Unsigned metadata and hashes do not authenticate a job, generating source or transferable execution attestation.",
+    "Whole-file effective-object safety, all-page text/raster coverage, scientific/source equivalence, aggregate resources and release remain separately gated.",
+    "Only the already activated en-US profile is admitted. No language, default pipeline, schema or report-delivery activation occurs.",
+    "Existing default 32-page/8-MiB routes and optional 512-page/8-MiB classes remain unchanged. Expanded synthetic page-tree fixtures are not qualification of fully tagged long reports."
+  ],
+  "license": "BSD-3-Clause",
+  "metadata_profile_id": "omnigenis-generated-pdf-metadata-v1",
+  "output_scope": "CONTROLLED_INFO_DOCUMENT_XMP_AND_CATALOG_PREREQUISITES_ONLY",
+  "parser_id": "pypdf",
+  "parser_version": "6.19.0",
+  "parser_wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
+  "process_profile": {
+    "aggregate_job_resources_claimed": false,
+    "arbitrary_descendant_cleanup_claimed": false,
+    "full_os_sandbox_claimed": false,
+    "guard_order": [
+      "limits",
+      "direct-parent lifetime",
+      "independent kernel timer",
+      "Landlock",
+      "network syscall filter",
+      "request read"
+    ],
+    "platform": "linux-x86_64",
+    "protocol_storage": "two distinct anonymous owned regular file descriptors"
+  },
+  "profile_id": "generated-pdf-document-metadata-v1",
+  "protocol_version": 1,
+  "resource_budget": {
+    "core_bytes": 0,
+    "cpu_seconds": 5,
+    "decoded_document_xmp_bytes": 65536,
+    "memory_bytes": 268435456,
+    "open_files": 128,
+    "pages": 512,
+    "pdf_bytes": 8388608,
+    "result_bytes": 4096,
+    "wall_seconds": 10,
+    "xmp_depth": 8,
+    "xmp_nodes": 128
+  },
+  "reused_source_sha256": {
+    "reporting/_pdf_object_graph_worker.py": "c250b4e5afda399695108920ca1cdd03311d76eec3ae3343c49c42142bf504f4",
+    "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
+    "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
+    "reporting/localization.py": "808d48d73ee5bbddb1dab4b5fc8d8fc012c0b008a7d097c6c65ea4abd56b8522",
+    "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
+    "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
+    "reporting/pdf_object_graph.py": "82f844dba9d17a954a48f3d82f6ee1c0d3e8c572204479e008fa77dee2c736d8",
+    "reporting/pdf_qa.py": "ea8e895590468829d1ed0bdcb22b06ef47dfd3801f3ed5fac6d5266bc6002c97"
+  },
+  "schema_version": "1.0.0",
+  "source_code_copied": false,
+  "source_repository": "py-pdf/pypdf",
+  "whole_report_qualified": false
+}
