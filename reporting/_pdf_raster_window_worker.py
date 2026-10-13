@@ -102,10 +102,10 @@ def _geometry(page) -> tuple[int, int]:
 
 
 def _raster_page(tool: str, source: Path, prefix: Path, number: int) -> Path:
-    """Run the pinned raster executable for one physical page without inherited protocol FDs."""
+    """Launch the pinned native rasterizer through its isolated direct-parent lifetime guard."""
     result = subprocess.run(
-        [tool, "-f", str(number), "-l", str(number), "-singlefile", "-r", str(DPI),
-         "-png", str(source), str(prefix)], stdin=subprocess.DEVNULL,
+        [sys.executable, "-I", str(Path(__file__).resolve().with_name("_pdf_raster_executor.py")),
+         str(os.getpid()), tool, str(source), str(prefix), str(number)], stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
         timeout=PAGE_WALL_SECONDS, check=False, shell=False,
     )

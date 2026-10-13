@@ -422,6 +422,10 @@ class PdfRasterWindowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td, patch.object(self.w.subprocess, "run", return_value=Mock(returncode=0)) as native:
             self.w._raster_page("/usr/bin/pdftoppm", Path(td) / "candidate.pdf", Path(td) / "page", 3)
             self.assertIs(native.call_args.kwargs["close_fds"], True)
+            command = native.call_args.args[0]
+            self.assertEqual(command[:2], [sys.executable, "-I"])
+            self.assertEqual(Path(command[2]).name, "_pdf_raster_executor.py")
+            self.assertEqual(command[3], str(os.getpid()))
             self.assertNotIn("pass_fds", native.call_args.kwargs)
             self.assertFalse(native.call_args.kwargs.get("shell", False))
 
