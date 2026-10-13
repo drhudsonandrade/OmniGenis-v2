@@ -27,6 +27,7 @@ class PageWindowError(ValueError):
 
 
 def _sha(value: object) -> None:
+    """Reject noncanonical SHA-256 values without normalizing caller input."""
     try:
         _digest(value)
     except ReportBindingError:
@@ -34,6 +35,7 @@ def _sha(value: object) -> None:
 
 
 def _profile(value: object) -> None:
+    """Require a bounded opaque inspector identifier without authenticating it."""
     try:
         _identity(value)
     except ReportBindingError:
@@ -41,11 +43,13 @@ def _profile(value: object) -> None:
 
 
 def _count(value: object, lower: int, upper: int) -> None:
+    """Require a native integer within the declared finite admission interval."""
     if type(value) is not int or not lower <= value <= upper:
         raise PageWindowError("page_window_resource_budget_invalid")
 
 
 def _canonical_sha256(value: object) -> str:
+    """Hash sorted compact UTF-8 metadata using the established JSON encoding."""
     return hashlib.sha256(json.dumps(
         value, sort_keys=True, separators=(",", ":"),
         ensure_ascii=False, allow_nan=False,
@@ -61,6 +65,7 @@ class WindowSpan:
     last_page: int
 
     def __post_init__(self) -> None:
+        """Validate the ordinal, positive page bounds and maximum window width."""
         _count(self.index, 0, MAX_WINDOWS - 1)
         _count(self.first_page, 1, MAX_DECLARED_PAGES)
         _count(self.last_page, 1, MAX_DECLARED_PAGES)
@@ -68,6 +73,7 @@ class WindowSpan:
             raise PageWindowError("page_window_range_invalid")
 
     def to_dict(self) -> dict[str, int]:
+        """Revalidate and return detached metadata for this inclusive page range."""
         self.__post_init__()
         return {
             "index": self.index,
@@ -77,6 +83,7 @@ class WindowSpan:
 
 
 def _expected_spans(page_count: int, pages_per_window: int) -> tuple[WindowSpan, ...]:
+    """Partition an admitted page count into ordered inclusive windows."""
     return tuple(
         WindowSpan(index=index, first_page=start + 1,
                    last_page=min(page_count, start + pages_per_window))
@@ -98,6 +105,7 @@ class PageWindowPlan:
     _plan_sha256: str = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
+        """Enforce admission, exact contiguous spans and the retained plan digest."""
         _sha(self.pdf_sha256)
         _sha(self.ir_sha256)
         _profile(self.inspector_profile_id)
@@ -123,6 +131,7 @@ class PageWindowPlan:
         object.__setattr__(self, "_plan_sha256", computed)
 
     def _identity_record(self) -> dict[str, object]:
+        """Build the canonical metadata record that determines the plan identity."""
         return {
             "pdf_sha256": self.pdf_sha256,
             "ir_sha256": self.ir_sha256,
@@ -135,13 +144,16 @@ class PageWindowPlan:
 
     @property
     def plan_sha256(self) -> str:
+        """Return the retained digest of this declared planning snapshot."""
         return self._plan_sha256
 
     @property
     def window_count(self) -> int:
+        """Return the number of retained spans, not a measured PDF page count."""
         return len(self.windows)
 
     def to_dict(self) -> dict[str, object]:
+        """Revalidate the plan and serialize its explicitly unqualified metadata."""
         self.__post_init__()
         return {
             "schema_version": SCHEMA_VERSION,
@@ -170,6 +182,7 @@ class WindowObservation:
     observation_sha256: str
 
     def __post_init__(self) -> None:
+        """Validate range and digest syntax without claiming a worker executed."""
         WindowSpan(self.index, self.first_page, self.last_page)
         _sha(self.pdf_sha256)
         _sha(self.plan_sha256)
@@ -177,6 +190,7 @@ class WindowObservation:
         _profile(self.inspector_profile_id)
 
     def to_dict(self) -> dict[str, object]:
+        """Revalidate and detach the externally asserted observation metadata."""
         self.__post_init__()
         return {
             "index": self.index,
@@ -197,6 +211,7 @@ class BoundPageWindowLedger:
     observations: tuple[WindowObservation, ...]
 
     def __post_init__(self) -> None:
+        """Reject any missing, foreign, reordered or mismatched window observation."""
         if type(self.plan) is not PageWindowPlan:
             raise PageWindowError("page_window_plan_required")
         self.plan.__post_init__()
@@ -218,6 +233,7 @@ class BoundPageWindowLedger:
                 raise PageWindowError("page_window_observation_binding_mismatch")
 
     def to_dict(self) -> dict[str, object]:
+        """Serialize complete declared range agreement without granting qualification."""
         self.__post_init__()
         observation_records = [item.to_dict() for item in self.observations]
         return {

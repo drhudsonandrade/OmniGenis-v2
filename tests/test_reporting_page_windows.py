@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, replace
 import hashlib
+import ast
 import importlib
 import importlib.util
 import json
@@ -19,11 +20,13 @@ IR_SHA = "b" * 64
 
 
 def digest(payload: bytes) -> str:
+    """Hash deterministic synthetic fixture bytes for metadata-only test claims."""
     return hashlib.sha256(payload).hexdigest()
 
 
 class PageWindowLedgerTests(unittest.TestCase):
     def setUp(self):
+        """Create a fresh synthetic 33-page declaration with three bounded windows."""
         self.assertIsNotNone(
             importlib.util.find_spec("reporting.page_windows"),
             "inert PDF page-window contract is missing",
@@ -36,6 +39,7 @@ class PageWindowLedgerTests(unittest.TestCase):
         )
 
     def observations(self, plan=None):
+        """Build synthetic observation identifiers without invoking a PDF worker."""
         plan = self.plan if plan is None else plan
         return tuple(
             self.m.WindowObservation(
@@ -48,13 +52,25 @@ class PageWindowLedgerTests(unittest.TestCase):
         )
 
     def bind(self, plan=None, observations=None):
+        """Exercise the public evidence binder with explicit fixture overrides."""
         plan = self.plan if plan is None else plan
         return self.m.bind_pdf_page_window_evidence(
             plan=plan,
             observations=self.observations(plan) if observations is None else observations,
         )
 
+    def test_changed_functions_have_docstrings(self):
+        """Require descriptive documentation for each function in the changed modules."""
+        for relative in ("reporting/page_windows.py", "tests/test_reporting_page_windows.py"):
+            with self.subTest(path=relative):
+                tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
+                missing = [node.name for node in ast.walk(tree)
+                           if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                           and not ast.get_docstring(node)]
+                self.assertEqual(missing, [], "Every changed function requires a docstring")
+
     def test_33_page_plan_covers_every_page_without_truncation(self):
+        """Account for both full windows and the final single-page remainder."""
         self.assertEqual(
             [(w.index, w.first_page, w.last_page) for w in self.plan.windows],
             [(0, 1, 16), (1, 17, 32), (2, 33, 33)],
@@ -63,6 +79,7 @@ class PageWindowLedgerTests(unittest.TestCase):
         self.assertEqual(self.plan.window_count, 3)
 
     def test_64_129_and_300_pages_are_windowed_completely(self):
+        """Preserve every declared page across multiple synthetic workload sizes."""
         for count in (64, 129, 300):
             with self.subTest(count=count):
                 plan = self.m.plan_pdf_page_windows(
@@ -75,6 +92,7 @@ class PageWindowLedgerTests(unittest.TestCase):
                 self.assertEqual(self.bind(plan).to_dict()["window_count"], len(plan.windows))
 
     def test_one_page_and_exact_boundary(self):
+        """Handle minimal and exact-window workloads without empty trailing spans."""
         for count in (1, 16, 32):
             plan = self.m.plan_pdf_page_windows(
                 pdf_sha256=PDF_SHA, ir_sha256=IR_SHA, page_count=count,
@@ -85,6 +103,7 @@ class PageWindowLedgerTests(unittest.TestCase):
             self.assertEqual(plan.windows[-1].last_page, count)
 
     def test_empty_and_unadmitted_jobs_are_rejected_not_truncated(self):
+        """Reject empty or over-budget declarations instead of returning partial plans."""
         for count, admitted in ((0, 300), (301, 300), (300, 0), (32769, 32769)):
             with self.subTest(count=count, admitted=admitted):
                 with self.assertRaises(self.m.PageWindowError):
@@ -95,6 +114,7 @@ class PageWindowLedgerTests(unittest.TestCase):
                     )
 
     def test_bools_floats_and_strings_cannot_be_page_counts(self):
+        """Reject count lookalikes rather than coercing them to page identities."""
         for value in (True, False, 1.0, "33", None, -1):
             with self.subTest(value=value):
                 with self.assertRaises(self.m.PageWindowError):
@@ -105,6 +125,7 @@ class PageWindowLedgerTests(unittest.TestCase):
                     )
 
     def test_window_budget_is_finite_and_strict(self):
+        """Enforce both per-window bounds and the aggregate window-count budget."""
         for width in (0, -1, True, 33, "16", 1.0):
             with self.subTest(width=width):
                 with self.assertRaises(self.m.PageWindowError):
@@ -121,6 +142,7 @@ class PageWindowLedgerTests(unittest.TestCase):
             )
 
     def test_sha_and_inspector_inputs_are_strict(self):
+        """Reject malformed digests and unsafe inspector identifier spellings."""
         for bad_pdf, bad_ir, bad_profile in (
             ("A" * 64, IR_SHA, "synthetic-v1"),
             (PDF_SHA, "0" * 63, "synthetic-v1"),
@@ -136,6 +158,7 @@ class PageWindowLedgerTests(unittest.TestCase):
                     )
 
     def test_valid_observations_bind_exact_plan_and_digest(self):
+        """Bind all synthetic observations to the declared PDF and complete plan."""
         receipt = self.bind()
         record = receipt.to_dict()
         self.assertEqual(record["window_count"], 3)
@@ -146,6 +169,7 @@ class PageWindowLedgerTests(unittest.TestCase):
         self.assertEqual(record["coverage_scope"], "DECLARED_RANGES_COMPLETE_ONLY")
 
     def test_missing_duplicate_reordered_or_extra_window_rejected(self):
+        """Reject every tested deviation from the exact ordered observation set."""
         obs = self.observations()
         for values in (obs[:-1], obs + (obs[-1],), obs[::-1], (obs[0], obs[0], obs[2])):
             with self.subTest(count=len(values)):
@@ -153,6 +177,7 @@ class PageWindowLedgerTests(unittest.TestCase):
                     self.bind(observations=values)
 
     def test_foreign_pdf_or_plan_observation_rejected(self):
+        """Reject altered range, ordinal, digest or inspector-profile bindings."""
         obs = self.observations()
         for change in (
             {"pdf_sha256": "c" * 64},
@@ -168,6 +193,7 @@ class PageWindowLedgerTests(unittest.TestCase):
                     self.bind(observations=(obs[0], altered, obs[2]))
 
     def test_bad_observation_hash_or_type_rejected(self):
+        """Require canonical observation digests and an immutable tuple container."""
         obs = self.observations()
         for value in ("not-digest", True, "D" * 64, None):
             with self.subTest(value=value):
@@ -177,6 +203,7 @@ class PageWindowLedgerTests(unittest.TestCase):
             self.bind(observations=[*obs])
 
     def test_direct_constructor_cannot_bypass_completeness(self):
+        """Apply the same completeness invariants to direct dataclass construction."""
         obs = self.observations()
         with self.assertRaises(self.m.PageWindowError):
             self.m.BoundPageWindowLedger(plan=self.plan, observations=obs[:-1])
@@ -184,6 +211,7 @@ class PageWindowLedgerTests(unittest.TestCase):
             replace(self.plan, windows=self.plan.windows[:-1])
 
     def test_structures_are_frozen_and_detached(self):
+        """Prevent ordinary mutation and isolate exported dictionaries from the ledger."""
         receipt = self.bind()
         with self.assertRaises(FrozenInstanceError):
             receipt.plan = None
@@ -194,6 +222,7 @@ class PageWindowLedgerTests(unittest.TestCase):
         self.assertEqual(receipt.to_dict()["observations"][0]["first_page"], 1)
 
     def test_deterministic_repeat_has_same_digest(self):
+        """Produce identical plan and observation identities for equivalent inputs."""
         other = self.m.plan_pdf_page_windows(
             pdf_sha256=PDF_SHA, ir_sha256=IR_SHA, page_count=33,
             admitted_page_budget=300, pages_per_window=16,
@@ -204,6 +233,7 @@ class PageWindowLedgerTests(unittest.TestCase):
                          self.bind(other).to_dict()["observations_sha256"])
 
     def test_receipt_does_not_claim_native_or_release_success(self):
+        """Keep all runtime-verification and release-authority claims unestablished."""
         payload = self.bind().to_dict()
         for key in (
             "worker_results_authenticated", "whole_pdf_safety_qualified",
@@ -215,6 +245,7 @@ class PageWindowLedgerTests(unittest.TestCase):
         self.assertNotIn("PASS", json.dumps(payload))
 
     def test_no_pdf_bytes_or_runtime_io_required(self):
+        """Bind fixture metadata without connecting to a network or supplying PDF bytes."""
         with patch.object(socket, "create_connection", side_effect=AssertionError("network")):
             payload = self.bind().to_dict()
         self.assertNotIn("pdf_bytes", json.dumps(payload))
@@ -222,6 +253,7 @@ class PageWindowLedgerTests(unittest.TestCase):
         self.assertEqual(payload["pdf_sha256"], PDF_SHA)
 
     def test_receipt_is_closed_under_2020_12_schema(self):
+        """Accept actual receipts while rejecting extra fields and false qualification."""
         schema_path = ROOT / "schemas" / "report-page-window-ledger.v1.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(schema)
@@ -239,6 +271,7 @@ class PageWindowLedgerTests(unittest.TestCase):
         self.assertTrue(list(validator.iter_errors(bad)))
 
     def test_maximum_declared_workload_is_finite(self):
+        """Account for the maximum admitted metadata workload with 1,024 windows."""
         plan = self.m.plan_pdf_page_windows(
             pdf_sha256=PDF_SHA, ir_sha256=IR_SHA, page_count=32768,
             admitted_page_budget=32768, pages_per_window=32,
