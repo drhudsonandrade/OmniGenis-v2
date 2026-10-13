@@ -1,0 +1,61 @@
+{
+  "copyright_notices": [
+    "Copyright (c) 2006-2008, Mathieu Fenniak",
+    "Some contributions copyright (c) 2007, Ashish Kulkarni <kulkarni.ashish@gmail.com>",
+    "Some contributions copyright (c) 2014, Steve Witham <switham_github@mac-guyver.com>"
+  ],
+  "default_pipeline_activated": false,
+  "disable_behavior": "fail_closed",
+  "disable_environment": "OMNIGENIS_PDF_OBJECT_GRAPH_DISABLED=1",
+  "input_domain": "Sealed generated PDF 1.7 with independently pinned PDF/IR/plan digests and physical page count",
+  "integration_mode": "USE_VIA_ADAPTER",
+  "known_issues": [
+    "Only effective trailer-reachable objects are examined; unreachable objects, previous file revisions and opaque stream payload semantics are not certified.",
+    "Parser initialization and page-tree expansion may allocate before explicit visit counts; mandatory process limits remain the resource boundary.",
+    "Passive object policy remains restrictive: actions, URI/GoTo annotations, forms, attachments and interactive media are not enabled.",
+    "No text/source equivalence, metadata correctness, tag semantics, accessibility, raster geometry or final report release is qualified.",
+    "Unsigned counts and hashes are not transferable proof of execution, job/source authentication or complete aggregate resource closure.",
+    "The host preparation and repeated multi-stage job remain under caller supervision; no native profile beyond the measured generated fixtures is guaranteed.",
+    "Existing default whole-document 32-page and 8-MiB routes remain unchanged."
+  ],
+  "license": "BSD-3-Clause",
+  "output_scope": "EFFECTIVE_TRAILER_REACHABLE_OBJECTS_ONLY",
+  "parser_id": "pypdf",
+  "parser_version": "6.19.0",
+  "parser_wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
+  "policy_id": "passive-report-pdf-v1",
+  "policy_source": "reporting/_pdf_safety_worker.py",
+  "policy_source_sha256": "ec910b2e12a645eed38b65ac43cd90767322a6e9978dff42d95f2d9f98dd7c37",
+  "process_profile": {
+    "aggregate_job_resources_claimed": false,
+    "arbitrary_descendant_cleanup_claimed": false,
+    "core_bytes": 0,
+    "full_os_sandbox_claimed": false,
+    "guards": [
+      "existing parent-death signal",
+      "independent kernel timer",
+      "Landlock ABI >= 4",
+      "existing seccomp network filter"
+    ],
+    "inherited_descriptor_revocation_claimed": false,
+    "platform": "linux-x86_64",
+    "protocol_storage": "two distinct anonymous regular file descriptors"
+  },
+  "profile_id": "generated-pdf-effective-object-graph-v1",
+  "protocol_version": 1,
+  "resource_budget": {
+    "cpu_seconds": 5,
+    "graph_depth": 64,
+    "memory_bytes": 268435456,
+    "object_visits": 20000,
+    "open_files": 128,
+    "pages": 512,
+    "pdf_bytes": 8388608,
+    "result_bytes": 4096,
+    "wall_seconds": 10
+  },
+  "schema_version": "1.0.0",
+  "source_code_copied": false,
+  "source_repository": "py-pdf/pypdf",
+  "whole_report_qualified": false
+}
