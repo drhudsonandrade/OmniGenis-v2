@@ -31,8 +31,10 @@ from reporting._pdf_text_window_worker import (
 )
 from reporting._pdf_visual_worker import (
     DPI, MIN_EDGE_MARGIN_PX, MAX_PIXELS_PER_PAGE, PARSER_VERSION, PILLOW_VERSION,
-    TOOL_SHA256, TOOL_VERSION, _expected_pixels, _open_trusted_scratch, _tool_identity,
+    TOOL_SHA256, TOOL_VERSION, _expected_pixels, _open_trusted_scratch,
 )
+
+from reporting._pdf_raster_probe import _tool_identity
 
 PROFILE_ID = "generated-pdf-raster-window-v1"
 PROTOCOL_VERSION = 1
