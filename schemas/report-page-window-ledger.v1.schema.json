@@ -1,0 +1,156 @@
+{
+  "$id": "urn:omnigenis:report-page-window-ledger:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Inert exact metadata agreement for fully declared PDF page windows. Not PDF validation or release authorization.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "const": "inert-pdf-page-window-ledger-v1"
+    },
+    "status": {
+      "const": "STAGED_UNQUALIFIED"
+    },
+    "conformance_scope": {
+      "const": "EXACT_PAGE_RANGE_AND_DIGEST_BINDING_ONLY"
+    },
+    "coverage_scope": {
+      "const": "DECLARED_RANGES_COMPLETE_ONLY"
+    },
+    "pdf_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ir_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "page_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32768
+    },
+    "admitted_page_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32768
+    },
+    "pages_per_window": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32
+    },
+    "inspector_profile_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+    },
+    "window_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1024
+    },
+    "window_plan_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "observations_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1023
+          },
+          "first_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32768
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32768
+          },
+          "pdf_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "plan_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "inspector_profile_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "observation_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "index",
+          "first_page",
+          "last_page",
+          "pdf_sha256",
+          "plan_sha256",
+          "inspector_profile_id",
+          "observation_sha256"
+        ]
+      }
+    },
+    "worker_results_authenticated": {
+      "const": false
+    },
+    "whole_pdf_safety_qualified": {
+      "const": false
+    },
+    "raster_pages_validated": {
+      "const": false
+    },
+    "renderer_activated": {
+      "const": false
+    },
+    "release_authorized": {
+      "const": false
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "coverage_scope",
+    "pdf_sha256",
+    "ir_sha256",
+    "page_count",
+    "admitted_page_budget",
+    "pages_per_window",
+    "inspector_profile_id",
+    "window_count",
+    "window_plan_sha256",
+    "observations_sha256",
+    "observations",
+    "worker_results_authenticated",
+    "whole_pdf_safety_qualified",
+    "raster_pages_validated",
+    "renderer_activated",
+    "release_authorized",
+    "release_authorization"
+  ]
+}
