@@ -1,0 +1,117 @@
+{
+  "$id": "urn:omnigenis:report-internal-navigation:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "conformance_scope": {
+      "const": "EXACT_SECTION_AND_FINDING_ID_BINDING_ONLY"
+    },
+    "html_links_activated": {
+      "const": false
+    },
+    "intent_count": {
+      "maximum": 100000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "intents": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "source_component_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "type": "string"
+          },
+          "source_section_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "type": "string"
+          },
+          "target_component_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "type": "string"
+          },
+          "target_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "type": "string"
+          },
+          "target_kind": {
+            "enum": [
+              "section",
+              "finding"
+            ]
+          },
+          "target_section_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_component_id",
+          "source_section_id",
+          "target_kind",
+          "target_id",
+          "target_component_id",
+          "target_section_id"
+        ],
+        "type": "object"
+      },
+      "maxItems": 100000,
+      "minItems": 0,
+      "type": "array"
+    },
+    "page_numbers_resolved": {
+      "const": false
+    },
+    "pdf_annotations_qualified": {
+      "const": false
+    },
+    "pdf_destinations_activated": {
+      "const": false
+    },
+    "plan_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "profile_id": {
+      "const": "inert-internal-navigation-v1"
+    },
+    "projection_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "renderer_activated": {
+      "const": false
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "source_semantics_validated": {
+      "const": false
+    },
+    "status": {
+      "const": "STAGED_UNQUALIFIED"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "projection_sha256",
+    "plan_sha256",
+    "intent_count",
+    "intents",
+    "pdf_destinations_activated",
+    "html_links_activated",
+    "page_numbers_resolved",
+    "source_semantics_validated",
+    "pdf_annotations_qualified",
+    "renderer_activated",
+    "release_authorization"
+  ],
+  "title": "Inert exact typed report section/finding navigation evidence",
+  "type": "object"
+}
