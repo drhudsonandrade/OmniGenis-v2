@@ -1,0 +1,169 @@
+{
+  "$id": "urn:omnigenis:report-page-checkpoint:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Job-bound canonical checkpoint of a declared window prefix; not authenticated worker, storage or release evidence. Cross-field consistency is enforced by the runtime codec.",
+  "properties": {
+    "admitted_page_budget": {
+      "maximum": 32768,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "checkpoint_storage_authenticated": {
+      "const": false
+    },
+    "conformance_scope": {
+      "const": "EXACT_JOB_PLAN_AND_PREFIX_METADATA_ONLY"
+    },
+    "inspector_profile_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+      "type": "string"
+    },
+    "ir_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "job_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+      "type": "string"
+    },
+    "namespace_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+      "type": "string"
+    },
+    "native_resume_performed": {
+      "const": false
+    },
+    "observations": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "first_page": {
+            "maximum": 32768,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "index": {
+            "maximum": 1023,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "inspector_profile_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+            "type": "string"
+          },
+          "last_page": {
+            "maximum": 32768,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "observation_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "pdf_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "plan_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "first_page",
+          "last_page",
+          "pdf_sha256",
+          "plan_sha256",
+          "inspector_profile_id",
+          "observation_sha256"
+        ],
+        "type": "object"
+      },
+      "maxItems": 1024,
+      "minItems": 0,
+      "type": "array"
+    },
+    "page_count": {
+      "maximum": 32768,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "pages_per_window": {
+      "maximum": 32,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "pdf_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "profile_id": {
+      "const": "job-bound-page-checkpoint-v1"
+    },
+    "recorded_window_count": {
+      "maximum": 1024,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "request_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "resource_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "status": {
+      "const": "STAGED_UNQUALIFIED"
+    },
+    "whole_pdf_safety_qualified": {
+      "const": false
+    },
+    "window_count": {
+      "maximum": 1024,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "window_plan_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "worker_results_authenticated": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "namespace_id",
+    "job_id",
+    "request_sha256",
+    "resource_profile_sha256",
+    "pdf_sha256",
+    "ir_sha256",
+    "window_plan_sha256",
+    "inspector_profile_id",
+    "page_count",
+    "admitted_page_budget",
+    "pages_per_window",
+    "window_count",
+    "recorded_window_count",
+    "observations",
+    "worker_results_authenticated",
+    "checkpoint_storage_authenticated",
+    "native_resume_performed",
+    "whole_pdf_safety_qualified",
+    "release_authorization"
+  ],
+  "type": "object"
+}
