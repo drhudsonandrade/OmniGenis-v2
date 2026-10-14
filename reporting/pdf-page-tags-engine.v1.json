@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "generated-pdf-page-tag-parenttree-v1",
+  "policy_id": "page-tag-parenttree-references-v1",
+  "parser_id": "pypdf",
+  "parser_version": "6.19.0",
+  "parser_wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
+  "pdf_version": "1.7",
+  "expected_language": "en-US",
+  "integration_mode": "USE_VIA_ADAPTER",
+  "default_pipeline_activated": false,
+  "disable_environment": "OMNIGENIS_PDF_PAGE_TAGS_DISABLED=1",
+  "disable_behavior": "fail_closed",
+  "input_domain": "One sealed generated PDF 1.7, exact PDF and IR and window-plan digests, physical page count and existing en-US accessibility prerequisites",
+  "output_scope": "PAGE_STRUCTPARENTS_PARENTTREE_REFERENCE_COHERENCE_ONLY",
+  "supported_parent_tree_profile": "Flat /ParentTree /Nums mapping one sorted unique page key per physical /StructParents; strict indirect structure elements with matching /Pg and bounded /P ancestry",
+  "process_profile": {
+    "platform": "linux-x86_64",
+    "protocol_storage": "two distinct anonymous owned regular file descriptors",
+    "guard_order": [
+      "limits",
+      "direct-parent lifetime",
+      "independent kernel timer",
+      "Landlock",
+      "network syscall filter",
+      "request read"
+    ],
+    "full_os_sandbox_claimed": false,
+    "aggregate_job_resources_claimed": false,
+    "arbitrary_descendant_cleanup_claimed": false
+  },
+  "resource_budget": {
+    "pages": 512,
+    "pdf_bytes": 8388608,
+    "memory_bytes": 268435456,
+    "cpu_seconds": 5,
+    "wall_seconds": 10,
+    "open_files": 128,
+    "result_bytes": 4096,
+    "total_object_visits": 20000,
+    "parent_chain_depth": 64,
+    "core_bytes": 0
+  },
+  "known_issues": [
+    "This profile inspects only page /StructParents identity, a flat /ParentTree /Nums page mapping and referenced ancestor chains; it does not validate all structural tag edges, content stream MCIDs, tag roles, reading order or every glyph.",
+    "Non-flat number trees and otherwise valid PDFs with annotation-specific parent keys are outside the accepted profile and fail closed.",
+    "A valid page slot can still omit content or misrepresent semantics; successful inspection never certifies PDF/UA or source/text equivalence.",
+    "The existing PDF parser and accessibility validator separately parse candidates; mandatory worker resource isolation remains necessary.",
+    "Unsigned receipts are observations and cannot authenticate job origin, source assertions or external reviewer approval.",
+    "The default 32-page whole-file route is unchanged; the optional 512-page/8-MiB class does not qualify complete long reports or aggregate job resources.",
+    "Only the existing en-US locale is admitted; no release delivery, scientific qualification, new dependency or host privilege is activated."
+  ],
+  "license": "BSD-3-Clause",
+  "source_repository": "py-pdf/pypdf",
+  "source_code_copied": false,
+  "whole_report_qualified": false,
+  "release_authorized": false,
+  "reused_source_sha256": {
+    "reporting/_pdf_object_graph_worker.py": "c250b4e5afda399695108920ca1cdd03311d76eec3ae3343c49c42142bf504f4",
+    "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
+    "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
+    "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
+    "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
+    "reporting/pdf_object_graph.py": "82f844dba9d17a954a48f3d82f6ee1c0d3e8c572204479e008fa77dee2c736d8"
+  }
+}
