@@ -210,14 +210,38 @@ class PdfMcidCoverageTests(unittest.TestCase):
         self.assertNotIn("SYNTHETIC_PRIVATE_TEXT",str(result.exception))
 
     def test_guard_failure_precedes_candidate_read(self):
+        """Run the native entrypoint: rejected guards prevent even request reads."""
+        from tempfile import TemporaryFile
         from unittest.mock import patch as mock
-        with ExitStack() as stack:
-            stack.enter_context(mock.object(self.worker,"_read_request",side_effect=AssertionError("read")))
-            stack.enter_context(mock.object(self.worker,"enforce_pdf_landlock",side_effect=OSError("denied")))
-            # Guard ordering is inspected by source as well as tested through mocked native main.
-            self.assertLess(
-                Path(self.worker.__file__).read_text().index("enforce_pdf_landlock(Path(__file__))"),
-                Path(self.worker.__file__).read_text().index("_read_request(first)"))
+        for failing_guard in ("landlock", "network"):
+            with self.subTest(guard=failing_guard):
+                with ExitStack() as stack:
+                    source=stack.enter_context(TemporaryFile())
+                    result=stack.enter_context(TemporaryFile())
+                    read=stack.enter_context(mock.object(
+                        self.worker, "_read_request",
+                        side_effect=AssertionError("untrusted candidate was read")))
+                    stack.enter_context(mock.object(self.worker, "_limits", return_value={}))
+                    stack.enter_context(mock.object(self.worker, "_lifetime"))
+                    landlock=stack.enter_context(mock.object(
+                        self.worker, "enforce_pdf_landlock",
+                        side_effect=OSError("landlock blocked")
+                        if failing_guard=="landlock" else None))
+                    network=stack.enter_context(mock.object(
+                        self.worker, "enforce_pdf_network_filter",
+                        side_effect=OSError("network blocked")
+                        if failing_guard=="network" else None))
+                    code=self.worker.main([
+                        "worker",str(source.fileno()),str(result.fileno()),
+                        str(os.getpid())])
+                    self.assertEqual(code,70)
+                    read.assert_not_called()
+                    landlock.assert_called_once()
+                    if failing_guard=="network":
+                        network.assert_called_once()
+                    else:
+                        network.assert_not_called()
+                    self.assertEqual(os.fstat(result.fileno()).st_size,0)
 
     def test_manifest_pinned_and_default_route_unchanged(self):
         from reporting._pdf_safety_worker import MAX_PAGES
