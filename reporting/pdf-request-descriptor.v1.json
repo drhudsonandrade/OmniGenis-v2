@@ -1,0 +1,62 @@
+{
+  "default_pipeline_activated": false,
+  "dependencies_changed": false,
+  "disable_environment": "OMNIGENIS_PDF_REQUEST_DESCRIPTOR_DISABLED=1",
+  "executor_activated": false,
+  "existing_profiles_changed": false,
+  "integration_mode": "OPTIONAL_ANONYMOUS_SEALED_DESCRIPTOR_HANDOFF_ONLY",
+  "known_issues": [
+    "Kernel seals protect content and length, not origin, authentication, replay protection, encryption or release authority. Resolve packet/context expectations independently upstream.",
+    "Unix permissions are checked, not sealed. Plaintext access, swap handling and transport authorization remain responsibilities of the separately qualified outer boundary.",
+    "The producer context owns its borrowed descriptor. Callers must not close or reassign it; detected replacement is rejected without closing the replacement inode. Hostile concurrent manipulation of the same process descriptor table is outside this API contract.",
+    "Receiver reads use a close-on-exec duplicate and preserve borrowed offsets. Independently copied or explicitly inherited descriptors persist until their owners close them; context exit is not revocation.",
+    "Finite packet and chunk bounds do not qualify aggregate memory, CPU, deadline or descendant supervision. No service, process launcher, filesystem path or socket endpoint is introduced.",
+    "The original codec and snapshot job still own complete request and source/PDF validation. A sealed request can contain opaque invalid source that the original inspection must reject.",
+    "The original 32-page renderer and optional 64-page/8-MiB inspection profiles remain unchanged. No scientific, accessibility or long-report release claim is added."
+  ],
+  "profile": {
+    "aggregate_job_resources_qualified": false,
+    "codec_profile_sha256": "24f7e7f65a95e0c071ffae4dcf51c38fc4c6a1aff8eff5a490e67e8f23cf5484",
+    "duplicate_revocation_qualified": false,
+    "executor_activated": false,
+    "file_mode": 384,
+    "file_type": "ANONYMOUS_REGULAR",
+    "hard_job_deadline_enforced": false,
+    "io_chunk_bytes": 65536,
+    "max_packet_bytes": 16781332,
+    "named_file_fallback": false,
+    "platform": "linux",
+    "producer_noninheritable": true,
+    "profile_id": "sealed-pdf-inspection-request-descriptor-v1",
+    "receiver_owned_cloexec_duplicate": true,
+    "receiver_preserves_borrowed_offset": true,
+    "release_authorized": false,
+    "required_seal_mask": 15,
+    "required_seals": [
+      "F_SEAL_WRITE",
+      "F_SEAL_GROW",
+      "F_SEAL_SHRINK",
+      "F_SEAL_SEAL"
+    ],
+    "schema_version": "1.0.0",
+    "source_and_pdf_semantics_validated": false,
+    "transport_authenticated": false
+  },
+  "profile_sha256": "b20fbf3f0325cd678aad69319c49f04bf8b96f4c6d07be81cab8c25537c3938a",
+  "release_authorized": false,
+  "reused_source_sha256": {
+    "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
+    "THIRD-PARTY-NOTICES.txt": "d08cd95ba4f026b427deb502a284aee6ba2159c0e372674bf5e1e384afa80788",
+    "reporting/bindings.py": "bdbc232cb0cfd507001731075ea9856cd421b60202f2871511d406aead09eb38",
+    "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
+    "reporting/pdf-inspection-request.v1.json": "b8d83106f0b004349a59fa5b28fdc876c0af1d530457dcaef6d3801d31111458",
+    "reporting/pdf-snapshot-inspection.v1.json": "b28879215cf354a6b578d034358a9cc582c36de69c681a449c4237c6bdfc629b",
+    "reporting/pdf-structured-source-job.v1.json": "288384071521cab0e4ab979624cc4194ee9862915551df4f282ae1752dfede4d",
+    "reporting/pdf_inspection_request.py": "a785d929c75f177d06eeb887c4cd145994d1ed1b657fb89e1fc72caef2899614",
+    "reporting/pdf_snapshot_inspection.py": "c8f9d9c1442a3ef4b1a0f1d4e7412a1585b822d4f2b445784e7dc9bb2d8ef971",
+    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
+    "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
+  },
+  "schema_version": "1.0.0",
+  "source_code_copied": false
+}
