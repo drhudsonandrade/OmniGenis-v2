@@ -1,0 +1,52 @@
+{
+  "default_pipeline_activated": false,
+  "disable_behavior": "fail_closed_at_admission_and_acceptance",
+  "disable_environment": "OMNIGENIS_PDF_STRUCTURE_TREE_DISABLED=1",
+  "inspection_scope": "Complete supported StructTreeRoot K hierarchy, unique indirect child ownership, immediate P links and exact bidirectional physical-page MCID membership",
+  "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
+  "known_issues": [
+    "Only effective root-reachable structural links are checked, not all unreachable or historical objects.",
+    "Existing page/MCID checks run first and keep their own finite visit, depth and decoded-content limits. The new 20000-visit tree budget is additional, not an aggregate job resource attestation.",
+    "Role names are required to be native PDF names, but role maps, attributes, alternate text quality, reading order and semantic accessibility are not qualified.",
+    "No full PDF/UA claim, visual/source-text equivalence, findings assessment, scientific validation, worker authentication or release authorization follows from linkage counts.",
+    "Unsupported but otherwise valid PDF structure forms fail closed; input is never rewritten or sanitized.",
+    "The existing 32-page default renderer, optional source-aware 64-page job and other inspectors are unchanged. This adapter is not automatically inserted into them."
+  ],
+  "language": "en-US",
+  "license": "BSD-3-Clause",
+  "parser_version": "6.19.0",
+  "parser_wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
+  "pdf_version": "1.7",
+  "policy_id": "forward-k-parent-and-mcid-linkage-v1",
+  "profile_id": "generated-pdf-forward-structure-tree-v1",
+  "release_authorized": false,
+  "required_prior_profile": "generated-pdf-mcid-parenttree-v1",
+  "resource_budget": {
+    "cpu_seconds": 5,
+    "memory_bytes": 268435456,
+    "open_files": 128,
+    "pages": 64,
+    "pdf_bytes": 8388608,
+    "result_bytes": 4096,
+    "tree_depth": 64,
+    "tree_visits": 20000,
+    "wall_seconds": 10
+  },
+  "reused_source_sha256": {
+    "reporting/_pdf_mcid_coverage_worker.py": "a51e90ac2e36c004f68fc972250507b75e09723f6ec1d99334c4309f4fd5475e",
+    "reporting/_pdf_object_graph_worker.py": "c250b4e5afda399695108920ca1cdd03311d76eec3ae3343c49c42142bf504f4",
+    "reporting/_pdf_page_tags_worker.py": "6d54979b76702a42820b608587dd59d57d628d7def14846d1bb45ded59a0f6ef",
+    "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
+    "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
+    "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
+    "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
+    "reporting/pdf_mcid_coverage.py": "7f7af447d9ba8154a589012522af8c076564de8c54a211990c6a3d0bcab326ae",
+    "reporting/pdf_object_graph.py": "82f844dba9d17a954a48f3d82f6ee1c0d3e8c572204479e008fa77dee2c736d8",
+    "reporting/pdf_source_inspection_job.py": "87523da1ca7eeacccede2a9c188575c831ea7c290d2d5492dfc3f1f0e9976520",
+    "reporting/pdf_text_windows.py": "eff177c4b203fdc30e9e4df196dbaff241d81512b9922218c094e2adc5b0c5cd"
+  },
+  "schema_version": "1.0.0",
+  "source_code_copied": false,
+  "source_job_changed": false,
+  "supported_structure": "Existing flat ParentTree profile; root K array; structure elements with nonempty K arrays, single indirect child or single integer MCID; numeric content requires an explicit physical Pg; dictionaries such as MCR/OBJR child records and nested arrays are unsupported"
+}
