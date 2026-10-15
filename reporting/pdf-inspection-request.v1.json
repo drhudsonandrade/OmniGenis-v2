@@ -1,0 +1,69 @@
+{
+  "default_pipeline_activated": false,
+  "dependencies_changed": false,
+  "disable_environment": "OMNIGENIS_PDF_INSPECTION_REQUEST_DISABLED=1",
+  "executor_activated": false,
+  "existing_profiles_changed": false,
+  "integration_mode": "OPTIONAL_CODEC_ONLY_NO_DISPATCH",
+  "known_issues": [
+    "Packets contain plaintext source and PDF contents. Use only authorized private transport/storage; never publish or log the packet.",
+    "Whole-packet hashes and independent context are integrity inputs, not authentication. Resolve all expectations through authenticated upstream control.",
+    "Body bytes are opaque. A decoded request is not a valid PDF or presentation: the unchanged snapshot entrypoint must still perform its full admission and inspection.",
+    "This codec does not read a stream, install a service, launch a worker, enforce job-wide resources, preempt work or handle descendant cleanup.",
+    "The existing source/resource/result profiles and 32-page default rendering path remain unchanged; optional inspection still has its original 64-page and 8-MiB PDF limits.",
+    "The frame has bounded copying overhead and is not zero-copy execution or hard aggregate memory/time supervision. No clinical, scientific, accessibility or release qualification is added."
+  ],
+  "profile": {
+    "aggregate_job_resources_qualified": false,
+    "executor_activated": false,
+    "hard_job_deadline_enforced": false,
+    "header_bytes": 20,
+    "header_format": ">8sIII",
+    "language": "en-US",
+    "magic": "OGPDFRQ1",
+    "max_metadata_bytes": 4096,
+    "max_packet_bytes": 16781332,
+    "max_pages": 64,
+    "max_pdf_bytes": 8388608,
+    "max_source_bytes": 8388608,
+    "metadata_encoding": "EXISTING_CANONICAL_COMPACT_UTF8_JSON",
+    "metadata_keys": [
+      "expected_ir_sha256",
+      "expected_language",
+      "expected_pdf_sha256",
+      "expected_resource_profile_sha256",
+      "expected_source_profile_sha256",
+      "job_id",
+      "namespace_id",
+      "page_count",
+      "request_sha256"
+    ],
+    "profile_id": "immutable-pdf-inspection-request-v1",
+    "release_authorized": false,
+    "resource_profile_sha256": "ef527ca30db7a034f6b11f896b11a09a9afedf4b91b899b9bceacfd4245828a5",
+    "schema_version": "1.0.0",
+    "segment_order": [
+      "metadata",
+      "presentation_ir",
+      "pdf"
+    ],
+    "source_and_pdf_semantics_validated": false,
+    "source_profile_sha256": "d9c1963782511051a1952df6f5f1a15f92966bd924b635b5023f5a7d88a32d7c",
+    "transport_authenticated": false
+  },
+  "profile_sha256": "24f7e7f65a95e0c071ffae4dcf51c38fc4c6a1aff8eff5a490e67e8f23cf5484",
+  "release_authorized": false,
+  "reused_source_sha256": {
+    "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
+    "THIRD-PARTY-NOTICES.txt": "d08cd95ba4f026b427deb502a284aee6ba2159c0e372674bf5e1e384afa80788",
+    "reporting/bindings.py": "bdbc232cb0cfd507001731075ea9856cd421b60202f2871511d406aead09eb38",
+    "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
+    "reporting/pdf-snapshot-inspection.v1.json": "b28879215cf354a6b578d034358a9cc582c36de69c681a449c4237c6bdfc629b",
+    "reporting/pdf-structured-source-job.v1.json": "288384071521cab0e4ab979624cc4194ee9862915551df4f282ae1752dfede4d",
+    "reporting/pdf_snapshot_inspection.py": "c8f9d9c1442a3ef4b1a0f1d4e7412a1585b822d4f2b445784e7dc9bb2d8ef971",
+    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
+    "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
+  },
+  "schema_version": "1.0.0",
+  "source_code_copied": false
+}
