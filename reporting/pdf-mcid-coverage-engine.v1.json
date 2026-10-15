@@ -1,0 +1,72 @@
+{
+  "accepted_marker_profile": "Only direct /Span BDC properties with one exact integer /MCID, balanced EMC; optional /Artifact BMC; per-page contiguous MCID-to-ParentTree slots and matching /K",
+  "default_pipeline_activated": false,
+  "disable_behavior": "fail_closed",
+  "disable_environment": "OMNIGENIS_PDF_MCID_COVERAGE_DISABLED=1",
+  "expected_language": "en-US",
+  "input_scope": "One exact digest-bound generated PDF 1.7 and sealed page-window plan; previous guarded page/ParentTree reference gate must pass",
+  "integration_mode": "USE_VIA_ADAPTER",
+  "known_issues": [
+    "Only parsed content-stream MCIDs, not raw-byte historical revisions or opaque payloads, are observed.",
+    "Rejects unsupported marked-property references, noncontiguous indexes, nonflat parent trees, annotation-parent profiles and indirect MCR child forms.",
+    "Content not represented by a BDC/MCID can exist; do not assert complete visual content coverage.",
+    "Text order, alternate text quality, role meanings, font/glyph correctness and full PDF/UA conformance remain unverified.",
+    "Two sequential finite traversal phases have distinct 20,000-visit bounds, not one proven aggregate job-resource budget.",
+    "Unsigned worker result is not an authenticated execution attestation or release authority.",
+    "The default 32-page validator and 8-MiB admission remain unchanged; optional class is not activated for report delivery.",
+    "Only existing en-US; synthetic examples cannot license other locales or clinical reporting."
+  ],
+  "license": "BSD-3-Clause",
+  "output_scope": "PARSED_PAGE_MCID_PARENTTREE_REFERENCE_LINKAGE_ONLY",
+  "parser_id": "pypdf",
+  "parser_version": "6.19.0",
+  "parser_wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
+  "pdf_version": "1.7",
+  "policy_id": "page-mcid-parenttree-consistency-v1",
+  "process_profile": {
+    "aggregate_job_resources_claimed": false,
+    "arbitrary_descendant_cleanup_claimed": false,
+    "full_os_sandbox_claimed": false,
+    "guard_order": [
+      "limits",
+      "direct-parent lifetime",
+      "independent kernel timer",
+      "Landlock",
+      "network syscall filter",
+      "request read"
+    ],
+    "platform": "linux-x86_64",
+    "protocol_storage": "two distinct anonymous owned regular descriptors",
+    "worker_process_isolation": true
+  },
+  "profile_id": "generated-pdf-mcid-parenttree-v1",
+  "release_authorized": false,
+  "resource_budget": {
+    "core_bytes": 0,
+    "cpu_seconds": 5,
+    "decoded_bytes": 8388608,
+    "marked_content_nesting": 64,
+    "marker_operations": 20000,
+    "memory_bytes": 268435456,
+    "open_files": 128,
+    "pages": 512,
+    "pdf_bytes": 8388608,
+    "prior_tag_reference_visits": 20000,
+    "result_bytes": 4096,
+    "wall_seconds": 10
+  },
+  "reused_source_sha256": {
+    "reporting/_pdf_object_graph_worker.py": "c250b4e5afda399695108920ca1cdd03311d76eec3ae3343c49c42142bf504f4",
+    "reporting/_pdf_page_tags_worker.py": "6d54979b76702a42820b608587dd59d57d628d7def14846d1bb45ded59a0f6ef",
+    "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
+    "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
+    "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
+    "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
+    "reporting/pdf_object_graph.py": "82f844dba9d17a954a48f3d82f6ee1c0d3e8c572204479e008fa77dee2c736d8",
+    "reporting/pdf_page_tags.py": "84b9edf1fe4aefed28029b87943c53dc8ba2b7a77ee78ebf72c158f15f2f0697"
+  },
+  "schema_version": "1.0.0",
+  "source_code_copied": false,
+  "source_repository": "py-pdf/pypdf",
+  "whole_report_qualified": false
+}
