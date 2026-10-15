@@ -1,0 +1,49 @@
+{
+  "coordinator_changed": false,
+  "default_pipeline_activated": false,
+  "disable_behavior": "fail_closed",
+  "disable_environment": "OMNIGENIS_PDF_DOCUMENT_CONTENT_DISABLED=1",
+  "integration_mode": "USE_VIA_ADAPTER",
+  "known_issues": [
+    "Only current semantic-section normalized text is compared; CR, LF and form-feed are removed while all other code points remain.",
+    "Text extraction cannot prove visible glyphs, order intended for assistive reading or scientific correctness.",
+    "No OCR; blank or image-only pages fail closed.",
+    "The caller supplies trusted source and job expectations; unsigned hashes do not authenticate execution.",
+    "All metadata, effective-object safety, accessibility, finding completeness, aggregate job resources and release gates remain separate.",
+    "Optional up-to-64-page parsing does not activate long report rendering or delivery."
+  ],
+  "language": "en-US",
+  "license": "BSD-3-Clause",
+  "normalization": "IGNORE_CR_LF_FORM_FEED_ONLY",
+  "parser_version": "6.19.0",
+  "parser_wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
+  "pdf_version": "1.7",
+  "policy_id": "semantic-section-normalized-whole-text-v1",
+  "profile_id": "generated-pdf-document-content-v1",
+  "release_authorized": false,
+  "resource_budget": {
+    "cpu_seconds": 5,
+    "decoded_bytes": 8388608,
+    "memory_bytes": 268435456,
+    "open_files": 128,
+    "pages": 64,
+    "pdf_bytes": 8388608,
+    "result_bytes": 4096,
+    "text_chars": 1048576,
+    "wall_seconds": 10
+  },
+  "reused_source_sha256": {
+    "reporting/_pdf_content_worker.py": "9962b160ba4f605cc3db8505778fbb2a82acece794470fde1c90d492854ab205",
+    "reporting/_pdf_object_graph_worker.py": "c250b4e5afda399695108920ca1cdd03311d76eec3ae3343c49c42142bf504f4",
+    "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
+    "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
+    "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
+    "reporting/pdf_content.py": "875a87b4fa029202093f4badc2273907405d0f27cf9be4446ed9e996e46a68fd",
+    "reporting/pdf_inspection_job.py": "4ed9ec1205b12574fa6a65b25e4577928375723d1ddabae9ede7cd5661a80fe8",
+    "reporting/pdf_object_graph.py": "82f844dba9d17a954a48f3d82f6ee1c0d3e8c572204479e008fa77dee2c736d8",
+    "reporting/pdf_text_windows.py": "eff177c4b203fdc30e9e4df196dbaff241d81512b9922218c094e2adc5b0c5cd"
+  },
+  "schema_version": "1.0.0",
+  "source_code_copied": false,
+  "source_projection": "Unchanged reporting.pdf_content._expected_content; current localized semantic-section PresentationIR only"
+}
