@@ -1,0 +1,41 @@
+{
+  "authentication_qualified": false,
+  "default_pipeline_activated": false,
+  "dependencies_changed": false,
+  "hard_job_deadline_enforced": false,
+  "new_executor_activated": false,
+  "production_resources_qualified": false,
+  "profile": {
+    "aggregate_job_resources_qualified": false,
+    "default_pipeline_activated": false,
+    "hard_job_deadline_enforced": false,
+    "header_bytes": 44,
+    "header_format": ">8sI32s",
+    "magic": "OGPDFRS1",
+    "max_frame_bytes": 294956,
+    "max_result_bytes": 294912,
+    "new_executor_activated": false,
+    "original_result_type": "PdfStructuredSourceResult",
+    "profile_id": "complete-pdf-inspection-result-frame-v1",
+    "reconstructed_typed_result": false,
+    "release_authorized": false,
+    "result_encoding": "EXACT_ORIGINAL_CANONICAL_JSON_BYTES",
+    "result_profile_sha256": "ef527ca30db7a034f6b11f896b11a09a9afedf4b91b899b9bceacfd4245828a5",
+    "schema_version": "1.0.0",
+    "sender_authenticated": false,
+    "source_job_profile_sha256": "4b29dc1c97227678b88b2d3d225e7e460c8d3523eabc764aa65c52e2a2a03d17"
+  },
+  "profile_sha256": "c994251417266d15ac74cca19b0fb145f868b83ce7f6ee0934218c4fa05dc9b5",
+  "provenance": "NEW_BOUNDED_TRANSPORT_FROM_EXISTING_RESULT_CONTRACT",
+  "release_authorized": false,
+  "reused_source_sha256": {
+    "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
+    "THIRD-PARTY-NOTICES.txt": "d08cd95ba4f026b427deb502a284aee6ba2159c0e372674bf5e1e384afa80788",
+    "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
+    "reporting/pdf_inspection_request.py": "a785d929c75f177d06eeb887c4cd145994d1ed1b657fb89e1fc72caef2899614",
+    "reporting/pdf_sealed_inspection.py": "09f0971ce8603ea16f1048c583f52f21dafaff5bdb8f5f1d4dc64efc0401bfd8",
+    "reporting/pdf_snapshot_inspection.py": "c8f9d9c1442a3ef4b1a0f1d4e7412a1585b822d4f2b445784e7dc9bb2d8ef971",
+    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c"
+  },
+  "schema_version": "1.0.0"
+}
