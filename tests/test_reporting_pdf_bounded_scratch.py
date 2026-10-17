@@ -48,6 +48,57 @@ class PdfBoundedScratchTests(unittest.TestCase):
             self.assertEqual(scratch.raster_child_environment("/tmp/private"),
                 {"PATH":os.defpath,"LANG":"C.UTF-8","TMPDIR":"/tmp/private"})
 
+    def test_default_raster_protocol_files_respect_configured_tmpdir(self):
+        """Without opt-in, anonymous protocol files retain TMPDIR selection."""
+        from reporting import pdf_raster_windows as raster
+
+        original_file=tempfile.TemporaryFile
+        opened=[]
+        identity={"pdf_sha256":"a"*64, "ir_sha256":"b"*64,
+                  "plan_sha256":"c"*64, "page_count":1,
+                  "window_index":0, "first_page":1, "last_page":1}
+
+        def track_file(*args, **kwargs):
+            """Observe real anonymous file placement before descriptor cleanup."""
+            handle=original_file(*args, **kwargs)
+            link=os.readlink(f"/proc/self/fd/{handle.fileno()}")
+            opened.append((kwargs, link))
+            return handle
+
+        with tempfile.TemporaryDirectory(prefix="omnigenis-tmpdir-test-") as chosen:
+            with patch.dict(os.environ, {"TMPDIR":chosen}, clear=True), \
+                 patch.object(tempfile, "tempdir", None), \
+                 patch.object(raster.tempfile, "TemporaryFile", side_effect=track_file), \
+                 patch.object(raster, "_start", side_effect=RuntimeError("protocol_ready")):
+                with self.assertRaisesRegex(RuntimeError, "protocol_ready"):
+                    raster._run_worker(b"%PDF-1.7\n", identity)
+            self.assertEqual(len(opened), 2)
+            for options, link in opened:
+                self.assertNotIn("dir", options)
+                self.assertTrue(link.startswith(chosen + "/"), link)
+
+    def test_optin_raster_protocol_files_use_verified_parent(self):
+        """Opt-in protocol descriptors remain on the admitted bounded mount."""
+        from reporting import pdf_raster_windows as raster
+
+        self.positive()
+        original_file=tempfile.TemporaryFile
+        opened=[]
+        identity={"pdf_sha256":"a"*64, "ir_sha256":"b"*64,
+                  "plan_sha256":"c"*64, "page_count":1,
+                  "window_index":0, "first_page":1, "last_page":1}
+
+        def track_file(*args, **kwargs):
+            """Observe the explicit destination of both anonymous descriptors."""
+            opened.append(dict(kwargs))
+            return original_file(*args, **kwargs)
+
+        with patch.object(raster.tempfile, "TemporaryFile", side_effect=track_file), \
+             patch.object(raster, "_start", side_effect=RuntimeError("protocol_ready")):
+            with self.assertRaisesRegex(RuntimeError, "protocol_ready"):
+                raster._run_worker(b"%PDF-1.7\n", identity)
+        self.assertEqual(opened, [{"dir":Path("/tmp")}, {"dir":Path("/tmp")}])
+
     def test_mountinfo_rejects_duplicate_or_absent_destination(self):
         one=("12 1 0:12 / /run/omnigenis-ed04-scratch rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
         with patch.object(Path,"read_text",return_value=one):

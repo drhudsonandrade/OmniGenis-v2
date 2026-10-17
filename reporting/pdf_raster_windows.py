@@ -19,7 +19,9 @@ import subprocess
 import sys
 import tempfile
 
-from reporting._pdf_bounded_scratch import bounded_scratch_parent, raster_child_environment
+from reporting._pdf_bounded_scratch import (
+    bounded_scratch_parent, bounded_scratch_requested, raster_child_environment,
+)
 from reporting._pdf_raster_window_worker import (
     CPU_SECONDS, FILE_BYTES, IDENTITY_FIELDS, MAX_DOCUMENT_PAGES, MAX_PDF_BYTES,
     MAX_PIXELS_PER_PAGE, MAX_TOTAL_PIXELS, MAX_WINDOW_PAGES, MEMORY_BYTES,
@@ -168,7 +170,11 @@ def _run_worker(pdf: bytes, identity: dict) -> bytes:
     with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-", dir=bounded_scratch_parent()) as scratch:
         scratch_fd = os.open(scratch, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
         try:
-            with tempfile.TemporaryFile(dir=bounded_scratch_parent()) as source, tempfile.TemporaryFile(dir=bounded_scratch_parent()) as result:
+            protocol_options = (
+                {"dir": bounded_scratch_parent()} if bounded_scratch_requested() else {}
+            )
+            with tempfile.TemporaryFile(**protocol_options) as source, \
+                    tempfile.TemporaryFile(**protocol_options) as result:
                 fds = source.fileno(), result.fileno(), scratch_fd
                 infos = [os.fstat(fd) for fd in fds[:2]]
                 if any(not stat.S_ISREG(i.st_mode) or i.st_nlink != 0 for i in infos):
