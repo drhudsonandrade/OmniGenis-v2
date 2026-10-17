@@ -92,9 +92,17 @@ def _open_trusted_scratch() -> tuple[Path, int]:
         raise RuntimeError("pdf_visual_sandbox_unavailable")
     path = Path(value)
     if __name__ == "__main__":
-        from _pdf_bounded_scratch import bounded_scratch_parent
+        from _pdf_bounded_scratch import (
+            _open_verified_bounded_child, bounded_scratch_parent,
+            bounded_scratch_requested,
+        )
     else:
-        from reporting._pdf_bounded_scratch import bounded_scratch_parent
+        from reporting._pdf_bounded_scratch import (
+            _open_verified_bounded_child, bounded_scratch_parent,
+            bounded_scratch_requested,
+        )
+    if bounded_scratch_requested():
+        return path, _open_verified_bounded_child(value)
     trusted_parent = bounded_scratch_parent()
     if (not path.is_absolute() or path.parent != trusted_parent
             or not path.name.startswith(SCRATCH_PREFIX)):

@@ -30,11 +30,11 @@
     "No user document, scientific interpretation, accessibility certification, or report delivery can be released based on this profile."
   ],
   "source_sha256": {
-    "reporting/_pdf_bounded_scratch.py": "0fa7c42e988ab67e6b520c0bf5077784e1f8849d5240cae46b5d3dfd12c51b9b",
-    "reporting/_pdf_visual_worker.py": "b908d9cc3e57dad17c8fbbe37cd31c4061daeab0cf327852a546121b9715cedc",
+    "reporting/_pdf_bounded_scratch.py": "1f07dec012c96d42939d1ce7a2a4696d8c6960d821276d8e96664d3e94cab4a5",
+    "reporting/_pdf_visual_worker.py": "c0af1c8ef1e6c0c3a7b1eb35d43f214f96f5bb0850fc963ad58f299106bb9011",
     "reporting/_pdf_fixed_inspection_worker.py": "815a5b188068ebe4c5b26557b62ea97113082393f7bf9c8ec5ada8778e62cca9",
     "reporting/pdf_visual.py": "3513eb36372c900eb96343a05327a9823242e69fa30f323f48f62b81c597a384",
-    "reporting/pdf_raster_windows.py": "ba06f219943ebd32f7d82405bf63c6440127fe430fb2b98cfe6cd53bd4260955"
+    "reporting/pdf_raster_windows.py": "8ffbfa520b204b368fb4463d18f0d893fdeb75124a1911387cec84d8a997ad68"
   },
   "release_authorized": false,
   "aggregate_resources_qualified": false,

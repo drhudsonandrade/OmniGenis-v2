@@ -20,6 +20,7 @@ import sys
 import tempfile
 
 from reporting._pdf_bounded_scratch import (
+    _open_verified_bounded_child, _require_same_bounded_mount,
     bounded_scratch_parent, bounded_scratch_requested, raster_child_environment,
 )
 from reporting._pdf_raster_window_worker import (
@@ -167,16 +168,26 @@ def _wait(process: subprocess.Popen) -> int:
 
 def _run_worker(pdf: bytes, identity: dict) -> bytes:
     """Own the exact scratch inode and anonymous request/result files for one invocation."""
-    with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-", dir=bounded_scratch_parent()) as scratch:
-        scratch_fd = os.open(scratch, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
-        try:
-            protocol_options = (
-                {"dir": bounded_scratch_parent()} if bounded_scratch_requested() else {}
+    opted_in = bounded_scratch_requested()
+    parent = bounded_scratch_parent()
+    with tempfile.TemporaryDirectory(
+        prefix="omnigenis-pdf-visual-supervisor-", dir=parent
+    ) as scratch:
+        scratch_fd = (
+            _open_verified_bounded_child(scratch)
+            if opted_in
+            else os.open(
+                scratch,
+                os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
             )
+        )
+        try:
+            protocol_options = {"dir": parent} if opted_in else {}
             with tempfile.TemporaryFile(**protocol_options) as source, \
                     tempfile.TemporaryFile(**protocol_options) as result:
                 fds = source.fileno(), result.fileno(), scratch_fd
                 infos = [os.fstat(fd) for fd in fds[:2]]
+                _require_same_bounded_mount(scratch_fd, *fds[:2])
                 if any(not stat.S_ISREG(i.st_mode) or i.st_nlink != 0 for i in infos):
                     raise ValueError("anonymous raster protocol required")
                 if (infos[0].st_dev, infos[0].st_ino) == (infos[1].st_dev, infos[1].st_ino):

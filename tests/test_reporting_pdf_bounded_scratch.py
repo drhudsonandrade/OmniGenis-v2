@@ -31,9 +31,10 @@ class PdfBoundedScratchTests(unittest.TestCase):
         stack.enter_context(patch.dict(os.environ,
             {SWITCH:"1", "TMPDIR":"/tmp"}, clear=False))
         stack.enter_context(patch.object(scratch, "_PARENT", Path("/tmp")))
+        stack.enter_context(patch.object(scratch, "_fd_mount_id", return_value=12))
         stack.enter_context(patch.object(scratch, "_mount_record",
             return_value=(fstype, frozenset(flags))))
-        stack.enter_context(patch.object(scratch.os, "statvfs",
+        stack.enter_context(patch.object(scratch.os, "fstatvfs",
             return_value=SimpleNamespace(f_blocks=blocks,
                 f_frsize=4096, f_files=inodes)))
         return stack
@@ -102,14 +103,47 @@ class PdfBoundedScratchTests(unittest.TestCase):
     def test_mountinfo_rejects_duplicate_or_absent_destination(self):
         one=("12 1 0:12 / /run/omnigenis-ed04-scratch rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
         with patch.object(Path,"read_text",return_value=one):
-            kind,flags=scratch._mount_record(scratch._PARENT)
+            kind,flags=scratch._mount_record(scratch._PARENT, os.makedev(0,12), 12)
         self.assertEqual(kind,"tmpfs")
         self.assertEqual(flags,FLAGS|{"rw"})
         for data in ("",one+one,"12 1 0:12 / /run/another rw - tmpfs tmpfs rw\n"):
             with self.subTest(data=data[:30]),patch.object(Path,"read_text",
                                                             return_value=data):
                 with self.assertRaises(scratch.PdfBoundedScratchError):
-                    scratch._mount_record(scratch._PARENT)
+                    scratch._mount_record(scratch._PARENT, os.makedev(0,12), 12)
+
+    def test_mountinfo_rejects_bind_subtree_or_foreign_source(self):
+        invalid = (
+            "77 61 0:99 /foreign-subtree /run/omnigenis-ed04-scratch "
+            "rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n",
+            "77 61 0:99 / /run/omnigenis-ed04-scratch "
+            "rw,nosuid,nodev,noexec - tmpfs foreign-tmpfs rw\n",
+        )
+        for line in invalid:
+            with self.subTest(line=line), patch.object(
+                Path, "read_text", return_value=line
+            ):
+                with self.assertRaises(scratch.PdfBoundedScratchError):
+                    scratch._mount_record(scratch._PARENT, os.makedev(0,99), 77)
+
+    def test_mountinfo_must_match_open_descriptor_identity(self):
+        one=("12 1 0:12 / /run/omnigenis-ed04-scratch "
+             "rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
+        for device,mount_id in ((os.makedev(0,13),12),(os.makedev(0,12),13)):
+            with self.subTest(device=device,mount_id=mount_id), \
+                 patch.object(Path,"read_text",return_value=one):
+                with self.assertRaises(scratch.PdfBoundedScratchError):
+                    scratch._mount_record(scratch._PARENT,device,mount_id)
+
+    def test_fdinfo_requires_one_canonical_positive_mount_id(self):
+        with patch.object(Path,"read_text",return_value="pos:\t0\nmnt_id:\t77\n"):
+            self.assertEqual(scratch._fd_mount_id(9),77)
+        invalid=("", "mnt_id:\t0\n", "mnt_id:\t-1\n",
+                 "mnt_id:\t1x\n", "mnt_id:\t2\nmnt_id:\t2\n")
+        for data in invalid:
+            with self.subTest(data=data),patch.object(Path,"read_text",return_value=data):
+                with self.assertRaises(scratch.PdfBoundedScratchError):
+                    scratch._fd_mount_id(9)
 
     def test_reject_every_foreign_switch_value(self):
         for value in ("", "0","yes","true","2","/tmp","1 "):
@@ -128,6 +162,18 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.positive()
         self.assertTrue(scratch.bounded_scratch_requested())
         self.assertEqual(scratch.bounded_scratch_parent(),Path("/tmp"))
+
+    def test_capacity_is_checked_on_the_still_open_parent_descriptor(self):
+        self.positive()
+        observed=[]
+
+        def inspect(fd):
+            observed.append(os.fstat(fd).st_ino)
+            return SimpleNamespace(f_blocks=32768,f_frsize=4096,f_files=4096)
+
+        with patch.object(scratch.os,"fstatvfs",side_effect=inspect):
+            self.assertEqual(scratch.bounded_scratch_parent(),Path("/tmp"))
+        self.assertEqual(len(observed),1)
 
     def test_only_complete_mount_flags_accepted(self):
         for removed in FLAGS:
@@ -186,6 +232,24 @@ class PdfBoundedScratchTests(unittest.TestCase):
             with self.subTest(path=path),self.assertRaises(scratch.PdfBoundedScratchError):
                 scratch.raster_child_environment(path)
 
+    def test_optin_rejects_child_or_protocol_descriptor_on_another_mount(self):
+        self.positive()
+        with tempfile.TemporaryDirectory(
+            prefix="omnigenis-pdf-visual-supervisor-",dir="/tmp"
+        ) as directory:
+            with patch.object(scratch,"_fd_mount_id",side_effect=(12,13)):
+                with self.assertRaises(scratch.PdfBoundedScratchError):
+                    scratch.raster_child_environment(directory)
+            child_fd=os.open(directory,os.O_PATH|os.O_DIRECTORY)
+            protocol_fd=os.open(__file__,os.O_RDONLY)
+            try:
+                with patch.object(scratch,"_fd_mount_id",side_effect=(12,13)):
+                    with self.assertRaises(scratch.PdfBoundedScratchError):
+                        scratch._require_same_bounded_mount(child_fd,protocol_fd)
+            finally:
+                os.close(protocol_fd)
+                os.close(child_fd)
+
     def test_default_raster_visual_supervisors_have_no_literal_tempdir(self):
         for name in ("reporting/pdf_visual.py","reporting/pdf_raster_windows.py"):
             text=(ROOT/name).read_text()
@@ -197,6 +261,29 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.assertEqual(worker.SCRATCH_PARENT,Path("/tmp"))
         self.assertEqual(worker.SCRATCH_PREFIX,
                          "omnigenis-pdf-visual-supervisor-")
+
+    def test_optin_workers_cannot_bypass_same_mount_guards(self):
+        from reporting import _pdf_visual_worker as worker
+        from reporting import pdf_raster_windows as raster
+
+        self.positive()
+        with tempfile.TemporaryDirectory(
+            prefix="omnigenis-pdf-visual-supervisor-",dir="/tmp"
+        ) as directory:
+            error=scratch.PdfBoundedScratchError("child_guard")
+            with patch.dict(os.environ,{"TMPDIR":directory}), \
+                 patch.object(scratch,"_open_verified_bounded_child",
+                              side_effect=error):
+                with self.assertRaisesRegex(scratch.PdfBoundedScratchError,
+                                            "child_guard"):
+                    worker._open_trusted_scratch()
+        identity={"pdf_sha256":"a"*64,"ir_sha256":"b"*64,
+                  "plan_sha256":"c"*64,"page_count":1,"window_index":0,
+                  "first_page":1,"last_page":1}
+        with patch.object(raster,"_require_same_bounded_mount",
+                          side_effect=RuntimeError("mount_guard")):
+            with self.assertRaisesRegex(RuntimeError,"mount_guard"):
+                raster._run_worker(b"%PDF-1.7\n",identity)
 
     def test_fixed_worker_activation_is_before_original_inspection(self):
         text=(ROOT/"reporting/_pdf_fixed_inspection_worker.py").read_text()
@@ -213,9 +300,31 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.assertEqual(manifest["qualified_scratch_parent"],str(scratch._PARENT))
         self.assertEqual(manifest["max_scratch_bytes"],scratch._MAX_BYTES)
         self.assertEqual(manifest["max_inodes"],scratch._MAX_INODES)
+        self.assertEqual(set(manifest["source_sha256"]),{
+            "reporting/_pdf_bounded_scratch.py",
+            "reporting/_pdf_visual_worker.py",
+            "reporting/_pdf_fixed_inspection_worker.py",
+            "reporting/pdf_visual.py",
+            "reporting/pdf_raster_windows.py",
+        })
         for name,digest in manifest["source_sha256"].items():
             with self.subTest(path=name):
                 self.assertEqual(hashlib.sha256((ROOT/name).read_bytes()).hexdigest(),digest)
+
+    def test_transitive_manifests_pin_changed_reused_sources(self):
+        bounded=json.loads(
+            (ROOT/"reporting/pdf-bounded-scratch.v1.json").read_text()
+        )["source_sha256"]
+        inspection=json.loads(
+            (ROOT/"reporting/pdf-inspection-job.v1.json").read_text()
+        )["reused_source_sha256"]
+        raster=json.loads(
+            (ROOT/"reporting/pdf-raster-window-engine.v1.json").read_text()
+        )["reused_source_sha256"]
+        self.assertEqual(inspection["reporting/pdf_raster_windows.py"],
+                         bounded["reporting/pdf_raster_windows.py"])
+        self.assertEqual(raster["reporting/_pdf_visual_worker.py"],
+                         bounded["reporting/_pdf_visual_worker.py"])
 
     def test_scratch_helper_never_uses_shell_or_external_process(self):
         text=(ROOT/"reporting/_pdf_bounded_scratch.py").read_text()
