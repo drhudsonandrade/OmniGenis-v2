@@ -112,6 +112,20 @@ class PdfBoundedScratchTests(unittest.TestCase):
                 with self.assertRaises(scratch.PdfBoundedScratchError):
                     scratch._mount_record(scratch._PARENT, os.makedev(0,12), 12)
 
+    def test_mountinfo_tolerates_non_ascii_bytes_only_in_unrelated_records(self):
+        target=(b"12 1 0:12 / /run/omnigenis-ed04-scratch "
+                b"rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
+        unrelated=(b"11 1 0:11 / /run/foreign-\xff rw - tmpfs tmpfs rw\n")
+
+        def decode_mountinfo(*args, encoding=None, errors=None, **kwargs):
+            return (unrelated+target).decode(encoding or "utf-8", errors or "strict")
+
+        with patch.object(Path,"read_text",side_effect=decode_mountinfo):
+            kind,flags=scratch._mount_record(scratch._PARENT,
+                                             os.makedev(0,12),12)
+        self.assertEqual(kind,"tmpfs")
+        self.assertEqual(flags,FLAGS|{"rw"})
+
     def test_mountinfo_rejects_bind_subtree_or_foreign_source(self):
         invalid = (
             "77 61 0:99 /foreign-subtree /run/omnigenis-ed04-scratch "

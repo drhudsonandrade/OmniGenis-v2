@@ -59,7 +59,9 @@ def _mount_record(
     if type(device) is not int or device < 0 or type(mount_id) is not int or mount_id <= 0:
         raise PdfBoundedScratchError("pdf_bounded_scratch_mount_invalid")
     device_id = f"{os.major(device)}:{os.minor(device)}"
-    lines = Path("/proc/self/mountinfo").read_text(encoding="ascii").splitlines()
+    lines = Path("/proc/self/mountinfo").read_text(
+        encoding="ascii", errors="surrogateescape"
+    ).splitlines()
     found = []
     for line in lines:
         head, separator, tail = line.partition(" - ")

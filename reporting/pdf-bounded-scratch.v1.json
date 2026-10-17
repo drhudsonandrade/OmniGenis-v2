@@ -30,7 +30,7 @@
     "No user document, scientific interpretation, accessibility certification, or report delivery can be released based on this profile."
   ],
   "source_sha256": {
-    "reporting/_pdf_bounded_scratch.py": "1f07dec012c96d42939d1ce7a2a4696d8c6960d821276d8e96664d3e94cab4a5",
+    "reporting/_pdf_bounded_scratch.py": "b0be778e7b0e811f90b08bbd0dfc14a0e5628a185852be173ae65146bd8b8238",
     "reporting/_pdf_visual_worker.py": "c0af1c8ef1e6c0c3a7b1eb35d43f214f96f5bb0850fc963ad58f299106bb9011",
     "reporting/_pdf_fixed_inspection_worker.py": "815a5b188068ebe4c5b26557b62ea97113082393f7bf9c8ec5ada8778e62cca9",
     "reporting/pdf_visual.py": "3513eb36372c900eb96343a05327a9823242e69fa30f323f48f62b81c597a384",
