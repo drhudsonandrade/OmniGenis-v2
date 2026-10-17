@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 
+from reporting._pdf_bounded_scratch import bounded_scratch_parent, raster_child_environment
 from reporting._pdf_raster_window_worker import (
     CPU_SECONDS, FILE_BYTES, IDENTITY_FIELDS, MAX_DOCUMENT_PAGES, MAX_PDF_BYTES,
     MAX_PIXELS_PER_PAGE, MAX_TOTAL_PIXELS, MAX_WINDOW_PAGES, MEMORY_BYTES,
@@ -144,7 +145,7 @@ def _decode(data: bytes, expected: dict) -> PdfRasterWindowInspection:
 def _start(command: list[str], fds: tuple[int, int, int], scratch: str) -> subprocess.Popen:
     """Launch the isolated worker with only declared protocol and private scratch descriptors."""
     return subprocess.Popen(command, cwd=Path(__file__).resolve().parents[1],
-        env={"PATH": os.defpath, "LANG": "C.UTF-8", "TMPDIR": scratch}, shell=False,
+        env=raster_child_environment(scratch), shell=False,
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         close_fds=True, pass_fds=fds, start_new_session=True)
 
@@ -164,10 +165,10 @@ def _wait(process: subprocess.Popen) -> int:
 
 def _run_worker(pdf: bytes, identity: dict) -> bytes:
     """Own the exact scratch inode and anonymous request/result files for one invocation."""
-    with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-", dir="/tmp") as scratch:
+    with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-", dir=bounded_scratch_parent()) as scratch:
         scratch_fd = os.open(scratch, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
         try:
-            with tempfile.TemporaryFile() as source, tempfile.TemporaryFile() as result:
+            with tempfile.TemporaryFile(dir=bounded_scratch_parent()) as source, tempfile.TemporaryFile(dir=bounded_scratch_parent()) as result:
                 fds = source.fileno(), result.fileno(), scratch_fd
                 infos = [os.fstat(fd) for fd in fds[:2]]
                 if any(not stat.S_ISREG(i.st_mode) or i.st_nlink != 0 for i in infos):
