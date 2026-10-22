@@ -91,11 +91,24 @@ def _open_trusted_scratch() -> tuple[Path, int]:
     if not value or len(value) > 4096:
         raise RuntimeError("pdf_visual_sandbox_unavailable")
     path = Path(value)
-    if (not path.is_absolute() or path.parent != SCRATCH_PARENT
+    if __name__ == "__main__":
+        from _pdf_bounded_scratch import (
+            _open_verified_bounded_child, bounded_scratch_parent,
+            bounded_scratch_requested,
+        )
+    else:
+        from reporting._pdf_bounded_scratch import (
+            _open_verified_bounded_child, bounded_scratch_parent,
+            bounded_scratch_requested,
+        )
+    if bounded_scratch_requested():
+        return path, _open_verified_bounded_child(value)
+    trusted_parent = bounded_scratch_parent()
+    if (not path.is_absolute() or path.parent != trusted_parent
             or not path.name.startswith(SCRATCH_PREFIX)):
         raise RuntimeError("pdf_visual_sandbox_unavailable")
     try:
-        parent = os.stat(SCRATCH_PARENT, follow_symlinks=False)
+        parent = os.stat(trusted_parent, follow_symlinks=False)
         if not stat.S_ISDIR(parent.st_mode) or not parent.st_mode & stat.S_ISVTX:
             raise RuntimeError("pdf_visual_sandbox_unavailable")
         fd = os.open(path, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)

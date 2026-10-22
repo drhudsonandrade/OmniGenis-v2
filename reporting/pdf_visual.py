@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 
+from reporting._pdf_bounded_scratch import PdfBoundedScratchError, bounded_scratch_parent
 from reporting._pdf_visual_worker import (
     ERRORS as WORKER_ERRORS,MAX_PAGES,MAX_PDF_BYTES,MAX_TOTAL_PIXELS,
     MIN_EDGE_MARGIN_PX,WALL_SECONDS,
@@ -93,7 +94,7 @@ class PdfVisualValidation:
 
 def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
     """Own the worker process group and temporary files through every exit."""
-    with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-", dir="/tmp") as scratch:
+    with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-", dir=bounded_scratch_parent()) as scratch:
         with subprocess.Popen(
             [sys.executable,"-I",str(_WORKER),str(os.getpid())],
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
@@ -135,6 +136,8 @@ def validate_pdf_visual_geometry(
         child=_run_worker(pdf_bytes)
     except subprocess.TimeoutExpired:
         return fail("pdf_visual_worker_timeout")
+    except PdfBoundedScratchError:
+        return fail("pdf_visual_worker_unavailable")
     except OSError:
         return fail("pdf_visual_worker_failed")
     if child.returncode!=0:

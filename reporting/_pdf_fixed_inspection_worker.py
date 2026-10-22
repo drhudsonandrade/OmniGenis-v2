@@ -30,6 +30,7 @@ from reporting import pdf_inspection_request as codec
 from reporting import pdf_request_descriptor as descriptor
 from reporting import pdf_sealed_inspection as sealed
 from reporting import pdf_inspection_result_frame as frame
+from reporting._pdf_bounded_scratch import activate_bounded_process_temporaries
 from reporting import pdf_structured_source_job as structured
 from reporting.page_checkpoints import _json_bytes, _reject_constant, _unique_object
 from reporting.bindings import _digest
@@ -167,6 +168,7 @@ def main(argv: list[str] | None=None) -> int:
             return 70
         _parent_lifetime(parent_pid)
         expected=_parse_context(_read_pipe())
+        activate_bounded_process_temporaries()
         original=sealed.execute_sealed_pdf_inspection_job(
             request_fd, expected_packet_sha256=expected['expected_packet_sha256'],
             expected_protocol_profile_sha256=expected['expected_protocol_profile_sha256'],

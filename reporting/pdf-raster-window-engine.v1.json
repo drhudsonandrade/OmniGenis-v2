@@ -108,7 +108,7 @@
     "reporting/_pdf_raster_executor.py": "db67321bf885ddf985f8f7c30a81cf30a807ae1c097ecaa3e807ca6de35be10c",
     "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
     "reporting/_pdf_text_window_worker.py": "c5176a6987b46f484ba4989bbbbee9383906094545ada7ed806bd53dad3b81a1",
-    "reporting/_pdf_visual_worker.py": "b1e8a0ff4e2a9afe65b6644d9391c99948b43b73f2b7295a7d5e80596b7560f8",
+    "reporting/_pdf_visual_worker.py": "c0af1c8ef1e6c0c3a7b1eb35d43f214f96f5bb0850fc963ad58f299106bb9011",
     "reporting/pdf_text_windows.py": "eff177c4b203fdc30e9e4df196dbaff241d81512b9922218c094e2adc5b0c5cd"
   },
   "schema_version": "1.0.0",
