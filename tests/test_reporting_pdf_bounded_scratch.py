@@ -305,6 +305,46 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.assertLess(text.index("activate_bounded_process_temporaries()"),
             text.index("original=sealed.execute_sealed_pdf_inspection_job("))
 
+    def test_fixed_worker_entrypoint_sets_only_the_verified_optin_parent(self):
+        """The dedicated launcher binds TMPDIR before main without changing defaults."""
+        from reporting import _pdf_fixed_inspection_worker as worker
+
+        observed=[]
+
+        def run():
+            """Capture the final child environment without starting inspection."""
+            observed.append(os.environ.get("TMPDIR"))
+            return 0
+
+        for inherited in (None,"/tmp/foreign"):
+            with self.subTest(inherited_tmpdir=inherited), \
+                 patch.dict(os.environ,{},clear=False), \
+                 patch.object(worker,"bounded_scratch_requested",return_value=True), \
+                 patch.object(worker,"bounded_scratch_parent",
+                              return_value=scratch._PARENT), \
+                 patch.object(worker,"main",side_effect=run) as execute:
+                if inherited is None:
+                    os.environ.pop("TMPDIR",None)
+                else:
+                    os.environ["TMPDIR"]=inherited
+                self.assertEqual(worker._entrypoint(),0)
+                execute.assert_called_once_with()
+                self.assertEqual(observed,[str(scratch._PARENT)])
+            observed.clear()
+        with patch.dict(os.environ,{"TMPDIR":"/tmp/legacy"}), \
+             patch.object(worker,"bounded_scratch_requested",return_value=False), \
+             patch.object(worker,"bounded_scratch_parent") as parent, \
+             patch.object(worker,"main",side_effect=run):
+            self.assertEqual(worker._entrypoint(),0)
+            self.assertEqual(observed,["/tmp/legacy"])
+            parent.assert_not_called()
+        with patch.object(worker,"bounded_scratch_requested",return_value=True), \
+             patch.object(worker,"bounded_scratch_parent",
+                          side_effect=scratch.PdfBoundedScratchError("missing")), \
+             patch.object(worker,"main") as run:
+            self.assertEqual(worker._entrypoint(),70)
+            run.assert_not_called()
+
     def test_manifest_is_optin_and_pins_exact_sources(self):
         import hashlib
         manifest=json.loads((ROOT/"reporting/pdf-bounded-scratch.v1.json").read_text())

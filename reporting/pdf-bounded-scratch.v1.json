@@ -33,7 +33,7 @@
   "source_sha256": {
     "reporting/_pdf_bounded_scratch.py": "34899583195a23d03b96d6a616721c790068f093b10832262d06d76e875bb497",
     "reporting/_pdf_visual_worker.py": "c0af1c8ef1e6c0c3a7b1eb35d43f214f96f5bb0850fc963ad58f299106bb9011",
-    "reporting/_pdf_fixed_inspection_worker.py": "815a5b188068ebe4c5b26557b62ea97113082393f7bf9c8ec5ada8778e62cca9",
+    "reporting/_pdf_fixed_inspection_worker.py": "22f4355d7fa46b407ff0793a83e078580c589ac075c29c096151c8d2893f5a2c",
     "reporting/pdf_visual.py": "3513eb36372c900eb96343a05327a9823242e69fa30f323f48f62b81c597a384",
     "reporting/pdf_raster_windows.py": "8ffbfa520b204b368fb4463d18f0d893fdeb75124a1911387cec84d8a997ad68"
   },
