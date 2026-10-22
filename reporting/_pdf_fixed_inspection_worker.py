@@ -30,6 +30,11 @@ from reporting import pdf_inspection_request as codec
 from reporting import pdf_request_descriptor as descriptor
 from reporting import pdf_sealed_inspection as sealed
 from reporting import pdf_inspection_result_frame as frame
+from reporting._pdf_bounded_scratch import (
+    activate_bounded_process_temporaries,
+    bounded_scratch_parent,
+    bounded_scratch_requested,
+)
 from reporting import pdf_structured_source_job as structured
 from reporting.page_checkpoints import _json_bytes, _reject_constant, _unique_object
 from reporting.bindings import _digest
@@ -150,6 +155,16 @@ def _write_frame(data: bytes) -> None:
         pending=pending[count:]
 
 
+def _entrypoint() -> int:
+    """Bind the fixed opt-in parent before entering the dedicated worker."""
+    try:
+        if bounded_scratch_requested():
+            os.environ["TMPDIR"]=str(bounded_scratch_parent())
+    except BaseException:
+        return 70
+    return main()
+
+
 def main(argv: list[str] | None=None) -> int:
     """Run exactly one fixed sealed inspection with no partial successful stdout."""
     args=sys.argv if argv is None else argv
@@ -167,6 +182,7 @@ def main(argv: list[str] | None=None) -> int:
             return 70
         _parent_lifetime(parent_pid)
         expected=_parse_context(_read_pipe())
+        activate_bounded_process_temporaries()
         original=sealed.execute_sealed_pdf_inspection_job(
             request_fd, expected_packet_sha256=expected['expected_packet_sha256'],
             expected_protocol_profile_sha256=expected['expected_protocol_profile_sha256'],
@@ -197,4 +213,4 @@ def main(argv: list[str] | None=None) -> int:
 
 
 if __name__=='__main__':
-    raise SystemExit(main())
+    raise SystemExit(_entrypoint())
