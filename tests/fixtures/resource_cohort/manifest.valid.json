@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "quarantined-resource-cohort-v1",
+  "cohort_id": "synthetic-cohort-v1",
+  "source_registry": {
+    "artifact_id": "source-registry-fixture-v1",
+    "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "reference_profile_id": "synthetic-reference-v1",
+  "compatibility_review": {
+    "artifact_id": "compatibility-fixture-v1",
+    "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "resources": [
+    {
+      "resource_id": "fixture-resource-001",
+      "source_id": "fixture-source",
+      "source_revision": "fixture-release-001",
+      "reference_profile_id": "synthetic-reference-v1",
+      "normalization_profile_id": "opaque-source-v1",
+      "media_type": "application/json",
+      "sha256": "0add517118bf13b64c2dd7ebd64c46e805b90368ce621be162f18e0771824c20",
+      "size_bytes": 35,
+      "rights_status": "STAGING_ALLOWED",
+      "rights_review": {
+        "artifact_id": "rights-fixture-v1",
+        "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      }
+    },
+    {
+      "resource_id": "fixture-resource-002",
+      "source_id": "fixture-source",
+      "source_revision": "fixture-release-002",
+      "reference_profile_id": "synthetic-reference-v1",
+      "normalization_profile_id": "opaque-source-v1",
+      "media_type": "application/json",
+      "sha256": "3c2a05023711ea47f06afbc9f6787f0006f5edcea6ce8ac45d3a26fd9eaca1fb",
+      "size_bytes": 35,
+      "rights_status": "STAGING_ALLOWED",
+      "rights_review": {
+        "artifact_id": "rights-fixture-v1",
+        "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      }
+    }
+  ]
+}

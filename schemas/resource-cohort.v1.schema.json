@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:resource-cohort:1.0.0",
+  "title": "QuarantinedResourceCohortManifest",
+  "description": "Preloaded source snapshot declarations only. Runtime additionally checks aggregate bytes, duplicate IDs, coherent reference profiles and evidence references. This contract grants no activation or authenticated rights.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "cohort_id",
+    "source_registry",
+    "reference_profile_id",
+    "compatibility_review",
+    "resources"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "const": "quarantined-resource-cohort-v1"
+    },
+    "cohort_id": {
+      "$ref": "#/$defs/identity"
+    },
+    "source_registry": {
+      "$ref": "#/$defs/reference"
+    },
+    "reference_profile_id": {
+      "$ref": "#/$defs/identity"
+    },
+    "compatibility_review": {
+      "$ref": "#/$defs/reference"
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/resource"
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "not": {
+        "anyOf": [
+          {
+            "pattern": "[^A-Za-z0-9._:-]"
+          },
+          {
+            "pattern": "^(?:[Ll][Aa][Tt][Ee][Ss][Tt]|[Cc][Uu][Rr][Rr][Ee][Nn][Tt]|[Uu][Nn][Kk][Nn][Oo][Ww][Nn]|[Nn][Oo][Tt]_[Aa][Vv][Aa][Ii][Ll][Aa][Bb][Ll][Ee])$"
+          }
+        ]
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "sha256"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "#/$defs/identity"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_id",
+        "source_id",
+        "source_revision",
+        "reference_profile_id",
+        "normalization_profile_id",
+        "media_type",
+        "sha256",
+        "size_bytes",
+        "rights_status",
+        "rights_review"
+      ],
+      "properties": {
+        "resource_id": {
+          "$ref": "#/$defs/identity"
+        },
+        "source_id": {
+          "$ref": "#/$defs/identity"
+        },
+        "source_revision": {
+          "$ref": "#/$defs/identity"
+        },
+        "reference_profile_id": {
+          "$ref": "#/$defs/identity"
+        },
+        "normalization_profile_id": {
+          "$ref": "#/$defs/identity"
+        },
+        "media_type": {
+          "enum": [
+            "application/json",
+            "application/xml",
+            "text/tab-separated-values"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5242880
+        },
+        "rights_status": {
+          "const": "STAGING_ALLOWED"
+        },
+        "rights_review": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    }
+  }
+}

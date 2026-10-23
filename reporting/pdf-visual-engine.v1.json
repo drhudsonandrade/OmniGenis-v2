@@ -1,5 +1,5 @@
 {
-  "binary_sha256": "ab7c91f0f144335ad7696f4f23aefbd564ef67c099290bd8f813cdbb47cd1e9e",
+  "binary_sha256": "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d",
   "binary_vendored": false,
   "disable_path": "Do not use raster visual evidence and keep downstream release authorization blocked.",
   "engine_id": "poppler-pdftoppm-raster-v1",
@@ -11,8 +11,8 @@
   ],
   "license": "GPL-2 or GPL-3",
   "package": "poppler-utils",
-  "package_sha256": "19ce4557ad89350506a0f1c33ad4c5a6aa7469e48c78aacae351a59b43ee20c6",
-  "package_version": "24.02.0-1ubuntu9.10",
+  "package_sha256": "babf881b89893f843701116f9f32917d19fa94dec337940b6dbeb27fe1a26fc8",
+  "package_version": "24.02.0-1ubuntu9.11",
   "profile": {
     "color_mode": "RGB",
     "dpi": 96,
