@@ -83,11 +83,11 @@ class PopplerSecurityPatchIdentityTests(unittest.TestCase):
 
         manifest=json.loads(ENGINE.read_text(encoding="utf-8"))
         self.assertEqual(manifest["tool_version"],"24.02.0")
-        self.assertEqual(manifest["package_version"],"24.02.0-1ubuntu9.10")
+        self.assertEqual(manifest["package_version"],"24.02.0-1ubuntu9.11")
         self.assertEqual(manifest["binary_sha256"],
-                         "ab7c91f0f144335ad7696f4f23aefbd564ef67c099290bd8f813cdbb47cd1e9e")
+                         "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d")
         self.assertEqual(manifest["package_sha256"],
-                         "19ce4557ad89350506a0f1c33ad4c5a6aa7469e48c78aacae351a59b43ee20c6")
+                         "babf881b89893f843701116f9f32917d19fa94dec337940b6dbeb27fe1a26fc8")
         self.assertEqual(worker.TOOL_VERSION,manifest["tool_version"])
         self.assertEqual(worker.TOOL_SHA256,manifest["binary_sha256"])
         self.assertEqual(manifest["license"],"GPL-2 or GPL-3")
@@ -96,6 +96,15 @@ class PopplerSecurityPatchIdentityTests(unittest.TestCase):
         self.assertEqual(manifest["profile"]["dpi"],96)
         self.assertEqual(manifest["resource_budget"]["worker_wall_seconds"],30)
         self.assertIn("disable_path",manifest)
+        window_manifest=json.loads(
+            (ROOT/"reporting"/"pdf-raster-window-engine.v1.json").read_text(encoding="utf-8")
+        )
+        for field in (
+            "tool", "tool_version", "package", "package_version",
+            "binary_sha256", "package_sha256", "license", "binary_vendored",
+        ):
+            with self.subTest(field=field):
+                self.assertEqual(window_manifest[field],manifest[field])
 
 
 class Rpt12PdfVisualTests(unittest.TestCase):
@@ -244,11 +253,11 @@ class Rpt12PdfVisualTests(unittest.TestCase):
         manifest=json.loads(ENGINE.read_text())
         self.assertEqual(manifest["engine_id"],"poppler-pdftoppm-raster-v1")
         self.assertEqual(manifest["tool_version"],"24.02.0")
-        self.assertEqual(manifest["package_version"],"24.02.0-1ubuntu9.10")
+        self.assertEqual(manifest["package_version"],"24.02.0-1ubuntu9.11")
         self.assertEqual(manifest["binary_sha256"],
-                         "ab7c91f0f144335ad7696f4f23aefbd564ef67c099290bd8f813cdbb47cd1e9e")
+                         "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d")
         self.assertEqual(manifest["package_sha256"],
-                         "19ce4557ad89350506a0f1c33ad4c5a6aa7469e48c78aacae351a59b43ee20c6")
+                         "babf881b89893f843701116f9f32917d19fa94dec337940b6dbeb27fe1a26fc8")
         self.assertEqual(manifest["license"],"GPL-2 or GPL-3")
         self.assertEqual(manifest["integration_class"],"USE_VIA_ADAPTER")
         self.assertFalse(manifest["source_copied"])
