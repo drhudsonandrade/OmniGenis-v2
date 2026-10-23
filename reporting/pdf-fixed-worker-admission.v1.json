@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0.0",
+  "content_classification": "SECURITY_RUNTIME_REQUIRED",
+  "profile": {
+    "schema_version": "1.0.0",
+    "profile_id": "fixed-pdf-kernel-admission-v1",
+    "selector": "OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1",
+    "selector_value": "1",
+    "supported_abi": "linux-x86_64-lp64",
+    "cgroup_path": "/system.slice/omnigenis-pdf-fixed-inspection-v1.service",
+    "cgroup_mount": "/sys/fs/cgroup",
+    "cgroup_type": "domain",
+    "cgroup_mount_readonly": true,
+    "cgroup_controls": {
+      "memory.max": "2147483648",
+      "memory.swap.max": "0",
+      "pids.max": "32",
+      "cpu.max": "200000 100000"
+    },
+    "process_limits": {
+      "RLIMIT_AS": [
+        1073741824,
+        1073741824
+      ],
+      "RLIMIT_CPU": [
+        300,
+        300
+      ],
+      "RLIMIT_FSIZE": [
+        67108864,
+        67108864
+      ],
+      "RLIMIT_NOFILE": [
+        128,
+        128
+      ],
+      "RLIMIT_CORE": [
+        0,
+        0
+      ]
+    },
+    "scratch_path": "/run/omnigenis-pdf-bounded-scratch",
+    "scratch_bytes": 134217728,
+    "scratch_inodes": 4096,
+    "scratch_uid": 0,
+    "scratch_mode": "1777",
+    "scratch_mount_flags": [
+      "nodev",
+      "noexec",
+      "nosuid"
+    ],
+    "unprivileged_process_required": true,
+    "no_new_privileges_required": true,
+    "zero_capability_sets_required": true,
+    "observation_scope": "CURRENT_PROCESS_NAMESPACES",
+    "rechecks": [
+      "BEFORE_CONTEXT",
+      "BEFORE_SEALED_WORK",
+      "BEFORE_FRAME_WRITE"
+    ],
+    "retained_descriptors_required": true,
+    "host_authenticated": false,
+    "native_profile_qualified": false,
+    "aggregate_job_resources_qualified": false,
+    "hard_job_deadline_enforced": false,
+    "descendant_cleanup_qualified": false,
+    "release_authorized": false,
+    "service_installed": false,
+    "default_pipeline_activated": false
+  },
+  "profile_sha256": "ff971470b83f8dbc6e39788bb26451512154462d5fde7173009f48ac1abcaa7f",
+  "legacy_worker_profile_sha256": "48701b4b85dc7f56d5ac1b5032bb71069c9d44189de3da265b59e94d3b3fead3",
+  "profile_values_are": "EXPLICIT_OPTIONAL_POLICY_NOT_MEASURED_CAPACITY",
+  "default_pipeline_activated": false,
+  "service_installed": false,
+  "dependencies_changed": false,
+  "native_profile_qualified": false,
+  "aggregate_job_resources_qualified": false,
+  "hard_job_deadline_enforced": false,
+  "descendant_cleanup_qualified": false,
+  "host_authenticated": false,
+  "release_authorized": false,
+  "observation_limitations": [
+    "Namespace-local paths do not authenticate the global host.",
+    "Rechecks observe snapshots, not transient changes between snapshots.",
+    "Inherited process CPU limits and cgroup bandwidth are not cumulative job CPU budgets.",
+    "Free scratch space may change; the policy observes total capacity and inodes.",
+    "A failed pipe write may leave a prefix; partial output is never acceptance."
+  ],
+  "source_sha256": {
+    "reporting/_pdf_fixed_inspection_worker.py": "456f318c7c5ce52c902cce1635b37ea3ced1823394bd209150c76e731ee3ced7",
+    "reporting/_pdf_bounded_scratch.py": "ef3cf090875c5ff74fbbd58f2084a8934513fb609692172d66626104de2ffc35"
+  }
+}

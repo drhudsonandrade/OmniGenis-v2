@@ -33,11 +33,27 @@ def bounded_scratch_requested() -> bool:
     return True
 
 
+def _read_kernel_text(path: Path, limit: int, *, errors: str = "strict") -> str:
+    """Read bounded proc metadata through an owned, non-inheritable descriptor."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
+    try:
+        data = bytearray()
+        while True:
+            block = os.read(fd, min(8192, limit + 1 - len(data)))
+            if not block:
+                return data.decode("ascii", errors=errors)
+            data.extend(block)
+            if len(data) > limit:
+                raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_budget")
+    finally:
+        os.close(fd)
+
+
 def _fd_mount_id(fd: int) -> int:
     """Return the one canonical Linux mount ID bound to an open descriptor."""
     if type(fd) is not int or fd < 0:
         raise PdfBoundedScratchError("pdf_bounded_scratch_mount_invalid")
-    lines = Path(f"/proc/self/fdinfo/{fd}").read_text(encoding="ascii").splitlines()
+    lines = _read_kernel_text(Path(f"/proc/self/fdinfo/{fd}"), 4096).splitlines()
     found = []
     for line in lines:
         key, separator, value = line.partition(":")
@@ -59,8 +75,8 @@ def _mount_record(
     if type(device) is not int or device < 0 or type(mount_id) is not int or mount_id <= 0:
         raise PdfBoundedScratchError("pdf_bounded_scratch_mount_invalid")
     device_id = f"{os.major(device)}:{os.minor(device)}"
-    lines = Path("/proc/self/mountinfo").read_text(
-        encoding="ascii", errors="surrogateescape"
+    lines = _read_kernel_text(
+        Path("/proc/self/mountinfo"), 262144, errors="surrogateescape"
     ).splitlines()
     found = []
     for line in lines:
@@ -102,18 +118,19 @@ def _open_verified_bounded_parent() -> tuple[int, os.stat_result, int]:
         current = os.stat(_PARENT, follow_symlinks=False)
         if identity != (current.st_dev, current.st_ino, current.st_uid, current.st_mode):
             raise PdfBoundedScratchError("pdf_bounded_scratch_path_changed")
-        return fd, held, mount_id
+        result = (fd, held, mount_id)
+        fd = None
+        return result
     except PdfBoundedScratchError:
-        if fd is not None:
-            os.close(fd)
         raise
     except (OSError, UnicodeError, ValueError, TypeError, OverflowError):
+        raise PdfBoundedScratchError("pdf_bounded_scratch_unavailable") from None
+    finally:
         if fd is not None:
             try:
                 os.close(fd)
             except OSError:
                 pass
-        raise PdfBoundedScratchError("pdf_bounded_scratch_unavailable") from None
 
 
 def bounded_scratch_parent() -> Path:
