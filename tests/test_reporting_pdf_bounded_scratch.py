@@ -102,12 +102,12 @@ class PdfBoundedScratchTests(unittest.TestCase):
 
     def test_mountinfo_rejects_duplicate_or_absent_destination(self):
         one=("12 1 0:12 / /run/omnigenis-pdf-bounded-scratch rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
-        with patch.object(Path,"read_text",return_value=one):
+        with patch.object(scratch,"_read_kernel_text",return_value=one):
             kind,flags=scratch._mount_record(scratch._PARENT, os.makedev(0,12), 12)
         self.assertEqual(kind,"tmpfs")
         self.assertEqual(flags,FLAGS|{"rw"})
         for data in ("",one+one,"12 1 0:12 / /run/another rw - tmpfs tmpfs rw\n"):
-            with self.subTest(data=data[:30]),patch.object(Path,"read_text",
+            with self.subTest(data=data[:30]),patch.object(scratch,"_read_kernel_text",
                                                             return_value=data):
                 with self.assertRaises(scratch.PdfBoundedScratchError):
                     scratch._mount_record(scratch._PARENT, os.makedev(0,12), 12)
@@ -120,7 +120,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
         def decode_mountinfo(*args, encoding=None, errors=None, **kwargs):
             return (unrelated+target).decode(encoding or "utf-8", errors or "strict")
 
-        with patch.object(Path,"read_text",side_effect=decode_mountinfo):
+        with patch.object(scratch,"_read_kernel_text",side_effect=decode_mountinfo):
             kind,flags=scratch._mount_record(scratch._PARENT,
                                              os.makedev(0,12),12)
         self.assertEqual(kind,"tmpfs")
@@ -135,7 +135,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
         )
         for line in invalid:
             with self.subTest(line=line), patch.object(
-                Path, "read_text", return_value=line
+                scratch, "_read_kernel_text", return_value=line
             ):
                 with self.assertRaises(scratch.PdfBoundedScratchError):
                     scratch._mount_record(scratch._PARENT, os.makedev(0,99), 77)
@@ -145,17 +145,17 @@ class PdfBoundedScratchTests(unittest.TestCase):
              "rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
         for device,mount_id in ((os.makedev(0,13),12),(os.makedev(0,12),13)):
             with self.subTest(device=device,mount_id=mount_id), \
-                 patch.object(Path,"read_text",return_value=one):
+                 patch.object(scratch,"_read_kernel_text",return_value=one):
                 with self.assertRaises(scratch.PdfBoundedScratchError):
                     scratch._mount_record(scratch._PARENT,device,mount_id)
 
     def test_fdinfo_requires_one_canonical_positive_mount_id(self):
-        with patch.object(Path,"read_text",return_value="pos:\t0\nmnt_id:\t77\n"):
+        with patch.object(scratch,"_read_kernel_text",return_value="pos:\t0\nmnt_id:\t77\n"):
             self.assertEqual(scratch._fd_mount_id(9),77)
         invalid=("", "mnt_id:\t0\n", "mnt_id:\t-1\n",
                  "mnt_id:\t1x\n", "mnt_id:\t2\nmnt_id:\t2\n")
         for data in invalid:
-            with self.subTest(data=data),patch.object(Path,"read_text",return_value=data):
+            with self.subTest(data=data),patch.object(scratch,"_read_kernel_text",return_value=data):
                 with self.assertRaises(scratch.PdfBoundedScratchError):
                     scratch._fd_mount_id(9)
 
@@ -388,6 +388,103 @@ class PdfBoundedScratchTests(unittest.TestCase):
         for forbidden in ("subprocess","Popen(","os.system(","eval(","exec(",
                           "http://","https://","pickle"):
             self.assertNotIn(forbidden,text)
+
+
+
+class PdfBoundedScratchCleanupTests(unittest.TestCase):
+    """The opener owns its descriptor until a successful transfer to its caller."""
+
+    def test_owned_parent_fd_closes_on_baseexception(self):
+        original_open = os.open
+        for error in (KeyboardInterrupt(), SystemExit(3), MemoryError()):
+            opened = []
+
+            def track_open(*args, **kwargs):
+                fd = original_open(*args, **kwargs)
+                opened.append(fd)
+                return fd
+
+            with self.subTest(error=type(error).__name__), \
+                 patch.object(scratch, '_PARENT', Path('/tmp')), \
+                 patch.object(scratch, '_fd_mount_id', return_value=12), \
+                 patch.object(scratch, '_mount_record', return_value=('tmpfs', FLAGS)), \
+                 patch.object(scratch.os, 'open', side_effect=track_open), \
+                 patch.object(scratch.os, 'fstatvfs', side_effect=error):
+                try:
+                    with self.assertRaises(type(error)):
+                        scratch._open_verified_bounded_parent()
+                    self.assertEqual(len(opened), 1)
+                    with self.assertRaises(OSError):
+                        os.fstat(opened[0])
+                finally:
+                    for fd in opened:
+                        try:
+                            os.close(fd)
+                        except OSError:
+                            pass
+
+
+
+class PdfBoundedScratchReadTests(unittest.TestCase):
+    """Real descriptors exercise bounded reads, short reads and exceptional cleanup."""
+
+    def test_kernel_reader_accepts_exact_limit_and_rejects_one_extra_byte(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'metadata'
+            for payload, accepted in ((b'abcd', True), (b'abcde', False)):
+                path.write_bytes(payload)
+                with self.subTest(payload=payload):
+                    if accepted:
+                        self.assertEqual(scratch._read_kernel_text(path, 4), 'abcd')
+                    else:
+                        with self.assertRaises(scratch.PdfBoundedScratchError):
+                            scratch._read_kernel_text(path, 4)
+
+    def test_kernel_reader_continues_after_short_reads(self):
+        read = os.read
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'metadata'
+            path.write_bytes(b'abcdefgh')
+            with patch.object(scratch.os, 'read', side_effect=lambda fd, count: read(fd, min(count, 2))):
+                self.assertEqual(scratch._read_kernel_text(path, 8), 'abcdefgh')
+
+    def test_kernel_reader_closes_on_decode_error_and_baseexception(self):
+        original_open = os.open
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'metadata'
+            path.write_bytes(b'\xff')
+            for error in (UnicodeDecodeError, KeyboardInterrupt, SystemExit, MemoryError, OSError):
+                opened = []
+
+                def open_metadata(*args, **kwargs):
+                    fd = original_open(*args, **kwargs)
+                    opened.append(fd)
+                    return fd
+
+                with self.subTest(error=error.__name__), patch.object(scratch.os, 'open', side_effect=open_metadata):
+                    if error is UnicodeDecodeError:
+                        with self.assertRaises(error):
+                            scratch._read_kernel_text(path, 4)
+                    else:
+                        with patch.object(scratch.os, 'read', side_effect=error), self.assertRaises(error):
+                            scratch._read_kernel_text(path, 4)
+                    self.assertEqual(len(opened), 1)
+                    with self.assertRaises(OSError):
+                        os.fstat(opened[0])
+
+    def test_proc_parsers_cannot_accept_valid_prefix_before_oversized_tail(self):
+        payloads = ((b'mnt_id: 77\n' + b'x'*4096, 'fdinfo'),
+                    (b'12 1 0:12 / /run/omnigenis-pdf-bounded-scratch rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n' + b'x'*262144, 'mountinfo'))
+        for payload, kind in payloads:
+            with self.subTest(kind=kind), tempfile.TemporaryFile() as fixture:
+                fixture.write(payload)
+                fixture.seek(0)
+                with patch.object(scratch.os, 'open', side_effect=lambda *args, **kwargs: os.dup(fixture.fileno())):
+                    with self.assertRaises(scratch.PdfBoundedScratchError):
+                        if kind == 'fdinfo':
+                            scratch._fd_mount_id(9)
+                        else:
+                            scratch._mount_record(scratch._PARENT, os.makedev(0,12), 12)
 
 
 if __name__=="__main__":
