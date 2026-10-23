@@ -28,6 +28,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
     """A real child produces bounded bytes but never authenticates itself."""
 
     def setUp(self):
+        """Load the fixed worker and initialize the reusable sealed inspection fixture."""
         self.assertIsNotNone(importlib.util.find_spec('reporting._pdf_fixed_inspection_worker'),
             'fixed request/result worker module missing')
         self.m=importlib.import_module('reporting._pdf_fixed_inspection_worker')
@@ -35,6 +36,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
         self.h.setUp()
 
     def context(self, expected, args, **changes):
+        """Build the expected profile and request identities, then apply explicit test overrides."""
         payload=dict(
             expected_worker_profile_sha256=self.m.PROFILE_SHA256,
             expected_packet_sha256=expected['expected_packet_sha256'],
@@ -53,6 +55,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
         return {**payload, **changes}
 
     def launch(self,fd,raw,parent=None,pipe=True):
+        """Run the isolated worker with the supplied descriptor and context, returning its status and output bytes."""
         cmd=[sys.executable,'-I','-B',str(WORKER),str(fd),
              str(os.getpid() if parent is None else parent)]
         result=subprocess.run(cmd,input=raw,stdout=subprocess.PIPE if pipe else subprocess.DEVNULL,
@@ -61,11 +64,13 @@ class FixedInspectionWorkerTests(unittest.TestCase):
         return result.returncode,result.stdout if result.stdout is not None else b''
 
     def assertRejected(self,fd,data,parent=None,pipe=True):
+        """Require a failed worker exit with no result bytes for the supplied request context."""
         code,result=self.launch(fd,data,parent,pipe)
         self.assertNotEqual(code,0)
         self.assertEqual(result,b'')
 
     def test_exact_signature_and_new_profile_are_bounded_and_disabled_in_default(self):
+        """Check fixed context and frame budgets while keeping activation and qualification claims disabled."""
         profile=self.m.worker_profile()
         self.assertEqual(profile['max_context_bytes'],codec.MAX_METADATA_BYTES)
         self.assertEqual(profile['max_result_frame_bytes'],framed.MAX_FRAME_BYTES)
@@ -75,6 +80,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
             self.assertIs(profile[key],False)
 
     def test_source_has_docstrings_and_no_arbitrary_process_or_network_launch(self):
+        """Require worker function documentation and exclude source tokens for arbitrary execution or network access."""
         source=WORKER.read_text()
         for node in ast.walk(ast.parse(source)):
             if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)):
@@ -84,6 +90,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
             self.assertNotIn(token,source)
 
     def test_manifest_pins_unchanged_original_sources_and_worker_profile(self):
+        """Verify the manifest matches the worker profile and reused source hashes with activation claims disabled."""
         record=json.loads((ROOT/'reporting/pdf-fixed-inspection-worker.v1.json').read_text())
         self.assertEqual(record['profile_sha256'],self.m.PROFILE_SHA256)
         self.assertEqual(record['profile'],self.m.worker_profile())
@@ -95,6 +102,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
             self.assertEqual(sha256((ROOT/name).read_bytes()).hexdigest(),digest)
 
     def test_canonical_context_and_fixed_keys_are_required(self):
+        """Accept canonical context bytes and reject malformed, ambiguous, extended, or oversized context records."""
         with self.h.request() as (fd,expected,args,_):
             record=self.context(expected,args)
             clean=_json_bytes(record)
@@ -108,6 +116,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
                     self.assertRejected(fd,variant)
 
     def test_expected_profile_and_identity_drift_fail_before_native_work(self):
+        """Reject each altered expected profile or request identity without publishing result bytes."""
         with self.h.request() as (fd,expected,args,_):
             source=self.context(expected,args)
             for key in source:
@@ -118,12 +127,14 @@ class FixedInspectionWorkerTests(unittest.TestCase):
                     self.assertRejected(fd,_json_bytes(altered))
 
     def test_missing_invalid_descriptor_and_wrong_parent_are_rejected(self):
+        """Reject an invalid request descriptor and a parent identity that differs from the launching process."""
         with self.h.request() as (fd,expected,args,_):
             payload=_json_bytes(self.context(expected,args))
             self.assertRejected(-1,payload)
             self.assertRejected(fd,payload,parent=os.getpid()+1)
 
     def test_stdout_must_be_a_pipe_and_extra_arguments_are_rejected(self):
+        """Reject a non-pipe output destination or extra launcher arguments without emitting a result."""
         with self.h.request() as (fd,expected,args,_):
             payload=_json_bytes(self.context(expected,args))
             self.assertRejected(fd,payload,pipe=False)
@@ -135,12 +146,14 @@ class FixedInspectionWorkerTests(unittest.TestCase):
             self.assertEqual(response.stdout,b'')
 
     def test_worker_disable_prevents_any_result(self):
+        """Verify the explicit worker disable switch prevents successful execution and result output."""
         with self.h.request() as (fd,expected,args,_):
             payload=_json_bytes(self.context(expected,args))
             with patch.dict(os.environ,{DISABLE:'1'}):
                 self.assertRejected(fd,payload)
 
     def test_real_one_thirty_three_sixty_four_page_unchanged_result(self):
+        """Inspect real 1, 33, and 64 page PDFs while preserving request bytes, descriptor position, and result identity."""
         for pages,(ir,pdf) in self.h.h.native_cases().items():
             raw=_json_bytes(ir)
             changes=dict(presentation_ir_bytes=raw,
@@ -171,6 +184,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
                 self.assertEqual(os.pread(fd,len(packet),0),packet)
 
     def test_valid_envelope_cannot_override_invalid_source_or_pdf(self):
+        """Reject the synthetic placeholder PDF even when its outer request context is valid."""
         with self.h.request() as (fd,expected,args,_):
             data=_json_bytes(self.context(expected,args))
             self.assertRejected(fd,data)
@@ -178,6 +192,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
         # not the signed-off real candidate used in the positive native tests.
 
     def test_unsealed_and_named_request_descriptors_are_rejected(self):
+        """Reject request bytes supplied through an unsealed memfd or a filesystem-backed temporary file."""
         with self.h.request() as (_,expected,args,packet):
             raw=_json_bytes(self.context(expected,args))
             memfd=os.memfd_create('synthetic-unsealed',os.MFD_CLOEXEC|os.MFD_ALLOW_SEALING)
@@ -194,6 +209,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
                 self.assertRejected(named.fileno(),raw)
 
     def test_context_pipe_cannot_be_replaced_with_ordinary_file(self):
+        """Require context input through a pipe by rejecting a regular file supplied as standard input."""
         with self.h.request() as (fd,expected,args,_):
             import tempfile
             with tempfile.TemporaryFile() as incoming:
@@ -206,6 +222,7 @@ class FixedInspectionWorkerTests(unittest.TestCase):
                 self.assertEqual(process.stdout,b'')
 
     def test_private_request_bytes_never_in_failure_output(self):
+        """Ensure a mismatched request hash fails with empty output and exposes no private packet prefix."""
         with self.h.request() as (fd,expected,args,packet):
             payload=_json_bytes(self.context(expected,args,
                 expected_request_sha256='f'*64))
@@ -220,6 +237,7 @@ class FixedKernelAdmissionOrderingTests(unittest.TestCase):
     """Selected policy must refuse before any untrusted context is consumed."""
 
     def test_missing_selected_policy_refuses_before_context_read(self):
+        """Refuse invalid or incomplete admission selection before reading context, preparing temporaries, or running work."""
         from types import SimpleNamespace
         import stat
         from reporting import _pdf_fixed_inspection_worker as worker
@@ -480,9 +498,11 @@ class FixedKernelObservationTests(unittest.TestCase):
     """Guard behavior under controlled OS observations; no native qualification."""
 
     def setUp(self):
+        """Load the worker implementation exercised by the controlled kernel observation fixtures."""
         self.worker = importlib.import_module('reporting._pdf_fixed_inspection_worker')
 
     def assert_released(self, fixture):
+        """Verify every owned descriptor is closed while the borrowed request and standard error remain valid."""
         self.assertEqual(fixture.active, {})
         for fd in {fd for fd, _ in fixture.opened}:
             with self.assertRaises(OSError) as caught:
@@ -492,6 +512,7 @@ class FixedKernelObservationTests(unittest.TestCase):
         fixture.real_fstat(2)
 
     def test_real_guard_admits_rechecks_and_closes_owned_originals(self):
+        """Retain owned descriptors across accepted observation changes and release them through idempotent cleanup."""
         with KernelObservationFixture(self.worker) as f:
             guard = self.worker._open_kernel_admission(f.request_fd)
             self.assertIsInstance(guard, self.worker._KernelAdmission)
@@ -515,6 +536,7 @@ class FixedKernelObservationTests(unittest.TestCase):
             self.assert_released(f)
 
     def test_control_status_membership_and_occupancy_refusal_matrix(self):
+        """Reject invalid resource controls, occupancy, membership, or process status and release acquired descriptors."""
         cases = [
             ('cgroup.type', b'domain threaded\n'), ('memory.max', b'max\n'),
             ('memory.max', b'1073741824\n'), ('memory.swap.max', b'1\n'),
@@ -538,6 +560,7 @@ class FixedKernelObservationTests(unittest.TestCase):
                 self.assert_released(f)
 
     def test_metadata_mount_namespace_and_limit_refusal_matrix(self):
+        """Reject mismatched metadata, mounts, namespaces, capacity, inheritance, or limits without leaking owned descriptors."""
         cases = (
             ('metadata', '/proc', {'st_uid': 1000}),
             ('metadata', 'control', {'st_uid': 1000}),
@@ -581,6 +604,7 @@ class FixedKernelObservationTests(unittest.TestCase):
                 self.assert_released(f)
 
     def test_recheck_rejects_real_name_and_observation_drift(self):
+        """Detect changed process links, namespaces, paths, membership, overmounts, or descriptor inheritance on recheck."""
         for change in ('self', 'namespace', 'path', 'membership', 'overmount', 'cloexec'):
             with self.subTest(change=change), KernelObservationFixture(self.worker) as f:
                 guard = self.worker._open_kernel_admission(f.request_fd)
@@ -606,6 +630,7 @@ class FixedKernelObservationTests(unittest.TestCase):
                 self.assert_released(f)
 
     def test_baseexception_after_acquisition_closes_real_descriptors(self):
+        """Release acquired descriptors when metadata observation raises an interrupt, exit, or allocation failure."""
         cases = (
             ('fstat', '/proc', 1, KeyboardInterrupt),
             ('fstat', '/proc', 2, SystemExit),
@@ -623,6 +648,7 @@ class FixedKernelObservationTests(unittest.TestCase):
                 self.assert_released(f)
 
     def test_cleanup_identity_failure_retains_ownership_until_bounded_retry(self):
+        """Preserve descriptor ownership after a cleanup identity failure so the bounded retry can release it."""
         with KernelObservationFixture(self.worker) as f:
             # First fstat records ownership, second checks metadata, third closes.
             # The injected cleanup exception must not discard the FD from ownership.
@@ -632,6 +658,7 @@ class FixedKernelObservationTests(unittest.TestCase):
             self.assert_released(f)
 
     def test_foreign_proc_self_rejects_before_opening_numeric_process(self):
+        """Reject a foreign proc self link before opening the expected numeric process directory."""
         with KernelObservationFixture(self.worker) as f:
             f.backing('/proc/self').unlink()
             f.backing('/proc/self').symlink_to('7212')
@@ -641,6 +668,7 @@ class FixedKernelObservationTests(unittest.TestCase):
             self.assert_released(f)
 
     def test_replaced_descriptor_slot_is_not_closed_as_an_owned_original(self):
+        """Reject a reused descriptor slot and leave its replacement open because the guard no longer owns that object."""
         with KernelObservationFixture(self.worker) as f:
             guard = self.worker._open_kernel_admission(f.request_fd)
             slot = guard.cgroup
@@ -654,6 +682,7 @@ class FixedKernelObservationTests(unittest.TestCase):
             self.assert_released(f)
 
     def test_real_metadata_reader_honors_short_reads_and_limit_plus_one(self):
+        """Accumulate short metadata reads, accept the exact byte limit, and reject one extra byte within bounded requests."""
         with KernelObservationFixture(self.worker) as f:
             f.read_chunk = 7
             guard = self.worker._open_kernel_admission(f.request_fd)
@@ -676,10 +705,12 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
     """Real guard and entrypoint reject drift before work and before publication."""
 
     def setUp(self):
+        """Load the worker and select the fixed memory control path used to inject admission drift."""
         self.worker = importlib.import_module('reporting._pdf_fixed_inspection_worker')
         self.control = '/sys/fs/cgroup/system.slice/omnigenis-pdf-fixed-inspection-v1.service/memory.max'
 
     def context_bytes(self):
+        """Encode a synthetic context with the current pinned profiles and fixed request identities."""
         return _json_bytes({
             'expected_worker_profile_sha256': self.worker.PROFILE_SHA256,
             'expected_packet_sha256': 'a'*64,
@@ -696,6 +727,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
 
     def exercise(self, fixture, *, after_context=None, during_work=None,
                  during_encode=None, partial_write=False):
+        """Run the entrypoint with staged observation hooks and captured writes, returning status, bytes, and event order."""
         from contextlib import ExitStack
         from types import SimpleNamespace
         events, output = [], bytearray()
@@ -703,12 +735,14 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
         original_write = os.write
 
         def read():
+            """Record context consumption, invoke the optional post-context hook, and return the encoded fixture context."""
             events.append('context')
             if after_context is not None:
                 after_context()
             return raw
 
         def inspect(*args, **kwargs):
+            """Verify owned descriptors remain live during inspection, invoke its hook, and return a synthetic result."""
             events.append('sealed')
             self.assertTrue(fixture.active)
             for fd in fixture.active:
@@ -718,12 +752,14 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
             return SimpleNamespace(to_bytes=lambda: b'original')
 
         def encode(*args, **kwargs):
+            """Record result encoding, invoke its optional hook, and return the synthetic frame bytes."""
             events.append('encode')
             if during_encode is not None:
                 during_encode()
             return b'frame'
 
         def write(fd, data):
+            """Capture standard output with live ownership checks and optionally simulate a partial write followed by pipe failure."""
             if fd != 1:
                 return original_write(fd, data)
             events.append('write')
@@ -748,6 +784,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
         return code, bytes(output), events
 
     def test_admitted_entrypoint_retains_descriptors_through_result_write(self):
+        """Keep admission descriptors through frame publication, then release them while preserving borrowed descriptor identities."""
         with KernelObservationFixture(self.worker) as fixture:
             borrowed = {fd: fixture.real_fstat(fd) for fd in (0,1,2,fixture.request_fd)}
             code, output, events = self.exercise(fixture)
@@ -759,6 +796,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
                 self.assertEqual((after.st_dev, after.st_ino), (before.st_dev, before.st_ino))
 
     def test_control_drift_after_context_prevents_sealed_work(self):
+        """Refuse changed memory controls after context input before inspection starts and release owned descriptors."""
         with KernelObservationFixture(self.worker) as fixture:
             code, output, events = self.exercise(fixture,
                 after_context=lambda: fixture.edit(self.control, b'max\n'))
@@ -767,6 +805,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
             fixture.real_fstat(fixture.request_fd)
 
     def test_drift_during_work_or_encoding_prevents_first_frame_byte(self):
+        """Withhold every frame byte when memory controls drift during inspection or encoding, then release owned descriptors."""
         for stage in ('during_work', 'during_encode'):
             with self.subTest(stage=stage), KernelObservationFixture(self.worker) as fixture:
                 code, output, events = self.exercise(fixture,
@@ -776,9 +815,11 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
                 self.assertFalse(fixture.active)
 
     def test_late_baseexception_closes_owned_fds_and_preserves_request(self):
+        """Convert late interrupts, exits, and allocation failures into empty failure output while preserving the request descriptor."""
         for stage in ('after_context', 'during_work', 'during_encode'):
             for error in (KeyboardInterrupt, SystemExit, MemoryError):
                 def fail():
+                    """Raise the selected exception at the current entrypoint stage to exercise late failure cleanup."""
                     raise error()
                 with self.subTest(stage=stage, error=error.__name__), KernelObservationFixture(self.worker) as fixture:
                     code, output, events = self.exercise(fixture, **{stage: fail})
@@ -788,6 +829,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
                     fixture.real_fstat(fixture.request_fd)
 
     def test_partial_pipe_write_returns_failure_and_closes_originals(self):
+        """Report failure after a broken pipe leaves one published byte and release all owned admission descriptors."""
         with KernelObservationFixture(self.worker) as fixture:
             code, output, events = self.exercise(fixture, partial_write=True)
             self.assertEqual((code, output), (70, b'f'))
@@ -795,6 +837,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
             self.assertFalse(fixture.active)
 
     def test_absent_selector_performs_no_new_kernel_observation(self):
+        """Leave admission inactive without opening descriptors or observing metadata and limits when its selector is absent."""
         with patch.dict(os.environ, {}, clear=True), \
              patch.object(os, 'open', side_effect=AssertionError('unexpected open')), \
              patch.object(os, 'fstat', side_effect=AssertionError('unexpected fstat')), \
@@ -802,6 +845,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
             self.assertIsNone(self.worker._open_kernel_admission(9))
 
     def test_real_procfs_observer_and_unsupported_abi(self):
+        """Verify the real procfs type and required mount flags while rejecting an unsupported machine ABI."""
         fd = os.open('/proc', os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC)
         try:
             magic, flags = self.worker._kernel_filesystem(fd)
@@ -814,6 +858,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
             os.close(fd)
 
     def test_persistent_cleanup_observation_failure_is_bounded_and_never_guessed(self):
+        """Limit failed cleanup identity checks to two attempts and retain ownership until observation succeeds later."""
         with KernelObservationFixture(self.worker) as fixture:
             guard = self.worker._open_kernel_admission(fixture.request_fd)
             target = guard.scratch
@@ -821,6 +866,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
             attempts = []
 
             def unavailable(fd):
+                """Fail identity observation for the selected descriptor, counting attempts while observing other descriptors normally."""
                 if fd == target:
                     attempts.append(fd)
                     raise OSError(errno.EIO, 'observation unavailable')
@@ -835,6 +881,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
             self.assertFalse(fixture.active)
 
     def test_proc_metadata_budgets_and_mount_id_parsing_refuse_ambiguous_input(self):
+        """Reject malformed or oversized mount IDs and oversized process metadata, releasing all acquired admission descriptors."""
         for payload in (b'mnt_id: 0\n', b'mnt_id: +11\n', b'mnt_id: 11\nmnt_id: 11\n',
                         b'mnt_id: 18446744073709551616\n', b'mnt_id: \xff\n',
                         b'mnt_id: 11\n' + b'x'*4096):
@@ -853,6 +900,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
                 self.assertFalse(fixture.active)
 
     def test_admission_manifest_pins_sources_without_reidentifying_legacy_wire(self):
+        """Verify admission policy and source hashes while retaining the legacy worker identity and disabled qualification claims."""
         manifest = json.loads((ROOT/'reporting/pdf-fixed-worker-admission.v1.json').read_text())
         self.assertEqual(self.worker.PROFILE_SHA256,
             '48701b4b85dc7f56d5ac1b5032bb71069c9d44189de3da265b59e94d3b3fead3')

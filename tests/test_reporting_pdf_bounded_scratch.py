@@ -26,6 +26,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
     """Fail closed whenever the optional mount identity cannot be proven."""
 
     def positive(self, fstype="tmpfs", flags=FLAGS, blocks=32768, inodes=4096):
+        """Install cleanup-managed synthetic mount observations with configurable filesystem, flags, capacity, and inode limits."""
         stack = __import__("contextlib").ExitStack()
         self.addCleanup(stack.close)
         stack.enter_context(patch.dict(os.environ,
@@ -40,6 +41,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
         return stack
 
     def test_no_opt_in_preserves_exact_legacy_root_and_environment(self):
+        """Preserve the legacy scratch root, temporary directory state, and child environment when opt-in is absent."""
         with patch.dict(os.environ,{},clear=True):
             current=tempfile.tempdir
             self.assertIs(scratch.bounded_scratch_requested(),False)
@@ -101,6 +103,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.assertEqual(opened, [{"dir":Path("/tmp")}, {"dir":Path("/tmp")}])
 
     def test_mountinfo_rejects_duplicate_or_absent_destination(self):
+        """Accept one matching tmpfs mount record and reject duplicate, missing, or foreign destination records."""
         one=("12 1 0:12 / /run/omnigenis-pdf-bounded-scratch rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
         with patch.object(scratch,"_read_kernel_text",return_value=one):
             kind,flags=scratch._mount_record(scratch._PARENT, os.makedev(0,12), 12)
@@ -113,11 +116,13 @@ class PdfBoundedScratchTests(unittest.TestCase):
                     scratch._mount_record(scratch._PARENT, os.makedev(0,12), 12)
 
     def test_mountinfo_tolerates_non_ascii_bytes_only_in_unrelated_records(self):
+        """Parse the valid target mount despite undecodable bytes in an unrelated mount record."""
         target=(b"12 1 0:12 / /run/omnigenis-pdf-bounded-scratch "
                 b"rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
         unrelated=(b"11 1 0:11 / /run/foreign-\xff rw - tmpfs tmpfs rw\n")
 
         def decode_mountinfo(*args, encoding=None, errors=None, **kwargs):
+            """Decode synthetic mount records using the encoding and error policy requested by the mount parser."""
             return (unrelated+target).decode(encoding or "utf-8", errors or "strict")
 
         with patch.object(scratch,"_read_kernel_text",side_effect=decode_mountinfo):
@@ -127,6 +132,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.assertEqual(flags,FLAGS|{"rw"})
 
     def test_mountinfo_rejects_bind_subtree_or_foreign_source(self):
+        """Reject target mount records rooted in a foreign subtree or naming an unexpected tmpfs source."""
         invalid = (
             "77 61 0:99 /foreign-subtree /run/omnigenis-pdf-bounded-scratch "
             "rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n",
@@ -141,6 +147,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                     scratch._mount_record(scratch._PARENT, os.makedev(0,99), 77)
 
     def test_mountinfo_must_match_open_descriptor_identity(self):
+        """Reject a mount record whose device number or mount ID differs from the opened descriptor."""
         one=("12 1 0:12 / /run/omnigenis-pdf-bounded-scratch "
              "rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n")
         for device,mount_id in ((os.makedev(0,13),12),(os.makedev(0,12),13)):
@@ -150,6 +157,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                     scratch._mount_record(scratch._PARENT,device,mount_id)
 
     def test_fdinfo_requires_one_canonical_positive_mount_id(self):
+        """Accept one positive canonical mount ID and reject missing, malformed, nonpositive, or duplicate values."""
         with patch.object(scratch,"_read_kernel_text",return_value="pos:\t0\nmnt_id:\t77\n"):
             self.assertEqual(scratch._fd_mount_id(9),77)
         invalid=("", "mnt_id:\t0\n", "mnt_id:\t-1\n",
@@ -160,12 +168,14 @@ class PdfBoundedScratchTests(unittest.TestCase):
                     scratch._fd_mount_id(9)
 
     def test_reject_every_foreign_switch_value(self):
+        """Reject present opt-in values other than the exact supported activation marker."""
         for value in ("", "0","yes","true","2","/tmp","1 "):
             with self.subTest(value=value),patch.dict(os.environ,{SWITCH:value}):
                 with self.assertRaises(scratch.PdfBoundedScratchError):
                     scratch.bounded_scratch_requested()
 
     def test_pinned_mount_identity_permits_no_custom_path(self):
+        """Pin the scratch path, byte and inode budgets, and required flags without exposing a root override."""
         self.assertEqual(str(scratch._PARENT),"/run/omnigenis-pdf-bounded-scratch")
         self.assertEqual(scratch._MAX_BYTES,128*1024*1024)
         self.assertEqual(scratch._MAX_INODES,4096)
@@ -173,15 +183,18 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.assertFalse(hasattr(scratch,"set_scratch_root"))
 
     def test_positive_synthetic_namespace_can_admit_fixed_root(self):
+        """Admit the fixture parent when the opt-in marker and synthetic mount observations satisfy the policy."""
         self.positive()
         self.assertTrue(scratch.bounded_scratch_requested())
         self.assertEqual(scratch.bounded_scratch_parent(),Path("/tmp"))
 
     def test_capacity_is_checked_on_the_still_open_parent_descriptor(self):
+        """Check parent capacity through one still-open descriptor during bounded scratch admission."""
         self.positive()
         observed=[]
 
         def inspect(fd):
+            """Record the live parent descriptor inode and supply the exact synthetic capacity and inode budgets."""
             observed.append(os.fstat(fd).st_ino)
             return SimpleNamespace(f_blocks=32768,f_frsize=4096,f_files=4096)
 
@@ -190,6 +203,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.assertEqual(len(observed),1)
 
     def test_only_complete_mount_flags_accepted(self):
+        """Reject the scratch parent when any required nosuid, nodev, or noexec mount flag is missing."""
         for removed in FLAGS:
             with self.subTest(removed=removed):
                 self.positive(flags=FLAGS-{removed})
@@ -197,6 +211,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                     scratch.bounded_scratch_parent()
 
     def test_wrong_filesystem_is_rejected(self):
+        """Reject alternate or unidentified filesystems even when other synthetic mount observations are valid."""
         for fs in ("overlay","ext4","ramfs",""):
             with self.subTest(fstype=fs):
                 self.positive(fstype=fs)
@@ -204,6 +219,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                     scratch.bounded_scratch_parent()
 
     def test_resource_size_or_inode_overbudget_rejected(self):
+        """Reject scratch mounts with excessive byte or inode capacity or with either capacity reported as zero."""
         for blocks,inodes in ((32769,4096),(32768,4097),(0,4096),(32768,0)):
             with self.subTest(blocks=blocks,inodes=inodes):
                 self.positive(blocks=blocks,inodes=inodes)
@@ -211,6 +227,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                     scratch.bounded_scratch_parent()
 
     def test_missing_mount_identity_is_rejected_without_fallback(self):
+        """Propagate mount identity failure instead of selecting a fallback scratch directory."""
         self.positive()
         with patch.object(scratch,"_mount_record",
             side_effect=scratch.PdfBoundedScratchError("missing")):
@@ -218,6 +235,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                 scratch.bounded_scratch_parent()
 
     def test_incorrect_requested_mount_environment_blocks_tempdir(self):
+        """Refuse process temporary activation when TMPDIR differs from the admitted scratch parent."""
         self.positive()
         with patch.dict(os.environ,{"TMPDIR":"/tmp/other"}):
             with self.assertRaisesRegex(scratch.PdfBoundedScratchError,
@@ -225,6 +243,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                 scratch.activate_bounded_process_temporaries()
 
     def test_opt_in_tempdir_binding_is_scoped_to_a_dedicated_child(self):
+        """Bind tempfile state and directory selection to the admitted synthetic parent during explicit activation."""
         self.positive()
         with patch.object(tempfile,"tempdir",None):
             self.assertTrue(scratch.activate_bounded_process_temporaries())
@@ -232,6 +251,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
             self.assertEqual(tempfile.gettempdir(),"/tmp")
 
     def test_child_propagates_only_fixed_opt_in_marker(self):
+        """Build a minimal child environment containing the fixed opt-in marker and verified private scratch directory."""
         self.positive()
         with tempfile.TemporaryDirectory(
             prefix="omnigenis-pdf-visual-supervisor-",dir="/tmp") as directory:
@@ -241,12 +261,14 @@ class PdfBoundedScratchTests(unittest.TestCase):
             self.assertEqual(result["TMPDIR"],directory)
 
     def test_optin_rejects_arbitrary_child_directory(self):
+        """Reject arbitrary child paths, foreign parents, and the scratch parent itself as private worker directories."""
         self.positive()
         for path in ("/tmp/private","/var/tmp/foreign","/tmp"):
             with self.subTest(path=path),self.assertRaises(scratch.PdfBoundedScratchError):
                 scratch.raster_child_environment(path)
 
     def test_optin_rejects_child_or_protocol_descriptor_on_another_mount(self):
+        """Reject a child directory or protocol descriptor whose mount ID differs from the admitted scratch mount."""
         self.positive()
         with tempfile.TemporaryDirectory(
             prefix="omnigenis-pdf-visual-supervisor-",dir="/tmp"
@@ -265,18 +287,21 @@ class PdfBoundedScratchTests(unittest.TestCase):
                 os.close(child_fd)
 
     def test_default_raster_visual_supervisors_have_no_literal_tempdir(self):
+        """Require visual and raster supervisors to select the bounded parent helper instead of a literal temporary root."""
         for name in ("reporting/pdf_visual.py","reporting/pdf_raster_windows.py"):
             text=(ROOT/name).read_text()
             self.assertNotIn('dir="/tmp"',text)
             self.assertIn("bounded_scratch_parent()",text)
 
     def test_original_visual_child_keeps_existing_default_profile(self):
+        """Preserve the visual worker's legacy scratch parent and dedicated supervisor directory prefix."""
         from reporting import _pdf_visual_worker as worker
         self.assertEqual(worker.SCRATCH_PARENT,Path("/tmp"))
         self.assertEqual(worker.SCRATCH_PREFIX,
                          "omnigenis-pdf-visual-supervisor-")
 
     def test_optin_workers_cannot_bypass_same_mount_guards(self):
+        """Propagate scratch child and protocol mount guard failures through the visual and raster worker paths."""
         from reporting import _pdf_visual_worker as worker
         from reporting import pdf_raster_windows as raster
 
@@ -300,6 +325,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                 raster._run_worker(b"%PDF-1.7\n",identity)
 
     def test_fixed_worker_activation_is_before_original_inspection(self):
+        """Require the fixed worker source to activate bounded process temporaries before invoking sealed inspection."""
         text=(ROOT/"reporting/_pdf_fixed_inspection_worker.py").read_text()
         self.assertIn("activate_bounded_process_temporaries()",text)
         self.assertLess(text.index("activate_bounded_process_temporaries()"),
@@ -346,6 +372,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_manifest_is_optin_and_pins_exact_sources(self):
+        """Check the bounded scratch manifest's resource policy, exact source hashes, and disabled activation claims."""
         import hashlib
         manifest=json.loads((ROOT/"reporting/pdf-bounded-scratch.v1.json").read_text())
         self.assertEqual(manifest["content_classification"],
@@ -368,6 +395,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                 self.assertEqual(hashlib.sha256((ROOT/name).read_bytes()).hexdigest(),digest)
 
     def test_transitive_manifests_pin_changed_reused_sources(self):
+        """Keep inspection and raster manifest pins aligned with the bounded scratch manifest for reused sources."""
         bounded=json.loads(
             (ROOT/"reporting/pdf-bounded-scratch.v1.json").read_text()
         )["source_sha256"]
@@ -383,6 +411,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
                          bounded["reporting/_pdf_visual_worker.py"])
 
     def test_scratch_helper_never_uses_shell_or_external_process(self):
+        """Parse the scratch helper and exclude source tokens for shell execution, subprocesses, and network access."""
         text=(ROOT/"reporting/_pdf_bounded_scratch.py").read_text()
         ast.parse(text)
         for forbidden in ("subprocess","Popen(","os.system(","eval(","exec(",
@@ -395,11 +424,13 @@ class PdfBoundedScratchCleanupTests(unittest.TestCase):
     """The opener owns its descriptor until a successful transfer to its caller."""
 
     def test_owned_parent_fd_closes_on_baseexception(self):
+        """Close the acquired parent descriptor when capacity observation raises an interrupt, exit, or allocation failure."""
         original_open = os.open
         for error in (KeyboardInterrupt(), SystemExit(3), MemoryError()):
             opened = []
 
             def track_open(*args, **kwargs):
+                """Open a real descriptor and record it so exceptional parent acquisition cleanup can be checked."""
                 fd = original_open(*args, **kwargs)
                 opened.append(fd)
                 return fd
@@ -429,6 +460,7 @@ class PdfBoundedScratchReadTests(unittest.TestCase):
     """Real descriptors exercise bounded reads, short reads and exceptional cleanup."""
 
     def test_kernel_reader_accepts_exact_limit_and_rejects_one_extra_byte(self):
+        """Accept metadata at the exact byte budget and reject a file containing one additional byte."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)/'metadata'
             for payload, accepted in ((b'abcd', True), (b'abcde', False)):
@@ -441,6 +473,7 @@ class PdfBoundedScratchReadTests(unittest.TestCase):
                             scratch._read_kernel_text(path, 4)
 
     def test_kernel_reader_continues_after_short_reads(self):
+        """Reassemble the complete metadata payload when each operating system read returns at most two bytes."""
         read = os.read
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)/'metadata'
@@ -449,6 +482,7 @@ class PdfBoundedScratchReadTests(unittest.TestCase):
                 self.assertEqual(scratch._read_kernel_text(path, 8), 'abcdefgh')
 
     def test_kernel_reader_closes_on_decode_error_and_baseexception(self):
+        """Close the metadata descriptor after decoding failure or exceptions raised while reading its bytes."""
         original_open = os.open
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)/'metadata'
@@ -457,6 +491,7 @@ class PdfBoundedScratchReadTests(unittest.TestCase):
                 opened = []
 
                 def open_metadata(*args, **kwargs):
+                    """Open and record the real metadata descriptor for cleanup assertions after read or decoding failure."""
                     fd = original_open(*args, **kwargs)
                     opened.append(fd)
                     return fd
@@ -473,6 +508,7 @@ class PdfBoundedScratchReadTests(unittest.TestCase):
                         os.fstat(opened[0])
 
     def test_proc_parsers_cannot_accept_valid_prefix_before_oversized_tail(self):
+        """Reject oversized fdinfo and mountinfo payloads even when each begins with an otherwise valid record."""
         payloads = ((b'mnt_id: 77\n' + b'x'*4096, 'fdinfo'),
                     (b'12 1 0:12 / /run/omnigenis-pdf-bounded-scratch rw,nosuid,nodev,noexec - tmpfs tmpfs rw\n' + b'x'*262144, 'mountinfo'))
         for payload, kind in payloads:
