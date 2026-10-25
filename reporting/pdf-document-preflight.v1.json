@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "generated-pdf-document-preflight-v1",
+  "status": "STAGED_UNQUALIFIED",
+  "conformance_scope": "EXACT_PDF_DIGEST_AND_COMPLETE_DECLARED_WINDOWS_ONLY",
+  "profile_sha256": "99978998c67dae94e6350ea3f4a115009113e763115a82dd7a45f6f86469c9b1",
+  "profile": {
+    "actual_pdf_page_count_verified": false,
+    "aggregate_job_resources_qualified": false,
+    "current_job_max_invocations": 24,
+    "current_job_max_pages": 64,
+    "current_job_max_pdf_bytes": 8388608,
+    "current_job_profile_sha256": "2534d67533aa6f764dd0ea75ee4441b1f7edd5dfdce544a4b054b8c2025efdb5",
+    "default_pipeline_activated": false,
+    "existing_qa_max_pages": 32,
+    "existing_qa_max_pdf_bytes": 8388608,
+    "existing_qa_profile_id": "omnigenis-generated-pdf-candidate-qa-v1",
+    "max_staged_pdf_bytes": 33554432,
+    "native_executor_activated": false,
+    "new_class_proven_by_measurement": false,
+    "planning_page_ceiling": 512,
+    "profile_id": "generated-pdf-document-preflight-v1",
+    "raster_window_profile_id": "generated-pdf-raster-window-v1",
+    "raster_window_width": 4,
+    "release_authorized": false,
+    "schema_version": "1.0.0",
+    "text_window_profile_id": "generated-pdf-text-window-v1",
+    "text_window_width": 16,
+    "whole_pdf_safety_qualified": false
+  },
+  "scope_limits": [
+    "Existing PDF QA: 32 pages, 8 MiB; unchanged",
+    "Staging preflight: 512 declared pages, 32 MiB; not a native execution allowance"
+  ],
+  "capabilities_not_established": [
+    "authenticated job identity",
+    "actual measured PDF page count",
+    "whole-file object/tag safety",
+    "aggregate CPU, RSS, descendants or deadline",
+    "scientific completeness or equivalence",
+    "report release"
+  ],
+  "default_pipeline_activated": false,
+  "service_installed": false,
+  "release_authorized": false
+}
