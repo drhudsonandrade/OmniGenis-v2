@@ -1,0 +1,45 @@
+{
+  "default_pipeline_activated": false,
+  "dependencies_changed": false,
+  "host_profile_qualified": false,
+  "known_issues": [
+    "The live parent bounds pipe exchange and acceptance, not kernel scheduling or uninterruptible process creation.",
+    "Cleanup covers only the unreaped direct child and its original process group; escaped descendants and supervisor death require outer supervision.",
+    "No aggregate CPU, RSS or cgroup capacity qualification is established.",
+    "Deployment and caller expectations must be independently trusted; unsigned matching bytes are not authentication."
+  ],
+  "profile": {
+    "acceptance_deadline_ns": 300000000000,
+    "aggregate_job_resources_qualified": false,
+    "arbitrary_descendant_cleanup_qualified": false,
+    "caller_command_override": false,
+    "cleanup_scope": "OWNED_DIRECT_CHILD_AND_ORIGINAL_PROCESS_GROUP_ONLY",
+    "cleanup_seconds": 2,
+    "completion": "CONTEXT_SENT_EOF_ZERO_EXIT_REAP_VALID_FRAME",
+    "default_pipeline_activated": false,
+    "frame_profile_sha256": "c994251417266d15ac74cca19b0fb145f868b83ce7f6ee0934218c4fa05dc9b5",
+    "hard_job_deadline_qualified": false,
+    "host_authenticated": false,
+    "max_context_bytes": 4096,
+    "max_frame_bytes": 294956,
+    "platform": "linux",
+    "profile_id": "fixed-pdf-supervised-transport-v1",
+    "release_authorized": false,
+    "retries": 0,
+    "schema_version": "1.0.0",
+    "service_installed": false,
+    "stdout_storage": "BOUNDED_PIPE_FRAME_PLUS_ONE_OVERFLOW_BYTE",
+    "unprivileged_caller_required": true,
+    "worker_profile_sha256": "48701b4b85dc7f56d5ac1b5032bb71069c9d44189de3da265b59e94d3b3fead3"
+  },
+  "profile_sha256": "faaeb3370d9077b635a2bcbc09427bbfcbb925d90e81124d606dfb8cea9f2bb6",
+  "release_authorized": false,
+  "schema_version": "1.0.0",
+  "source_sha256": {
+    "reporting/_pdf_fixed_inspection_worker.py": "456f318c7c5ce52c902cce1635b37ea3ced1823394bd209150c76e731ee3ced7",
+    "reporting/pdf_inspection_result_frame.py": "34b146dc4e3a3fe3500031726c712d55e3c52d6fea705324511b0a7a529527ae",
+    "reporting/pdf_request_descriptor.py": "a7c9fb5e67075138603f0c12ec7e22308f68e8c0498b9029c17ce5897305ef7f",
+    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
+    "reporting/pdf_supervised_inspection.py": "6bc4bc7c4b973971ecf5f585df0933d870db4a521fc150630fd08617fe9636ba"
+  }
+}
