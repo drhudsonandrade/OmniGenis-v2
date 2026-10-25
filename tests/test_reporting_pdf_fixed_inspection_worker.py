@@ -455,6 +455,20 @@ class KernelObservationFixture:
         path = self.active[fd]
         return self.filesystems.get(path, self._zone(path)[1:])
 
+    def _statx(self, fd):
+        """Encode the fixture's independent kernel facts at the new syscall boundary."""
+        import struct
+        info = self._fstat(fd)
+        logical = self.active[fd]
+        mount = self.mount_ids.get(logical, self._zone(logical)[0])
+        raw = bytearray(256)
+        struct.pack_into('=I', raw, 0, 0x1101)
+        struct.pack_into('=H', raw, 0x1c, info.st_mode)
+        struct.pack_into('=Q', raw, 0x20, info.st_ino)
+        struct.pack_into('=II', raw, 0x88, os.major(info.st_dev), os.minor(info.st_dev))
+        struct.pack_into('=Q', raw, 0x90, mount)
+        return bytes(raw)
+
     def __enter__(self):
         """Install the OS boundary; the caller still invokes real admission."""
         self.stack.enter_context(patch.dict(os.environ, {
@@ -475,6 +489,7 @@ class KernelObservationFixture:
         self.stack.enter_context(patch.object(resource, 'getrlimit', side_effect=self.limits.__getitem__))
         self.stack.enter_context(patch.object(resource, 'setrlimit', side_effect=AssertionError('limit mutation')))
         self.stack.enter_context(patch.object(self.worker, '_kernel_filesystem', side_effect=self._filesystem))
+        self.stack.enter_context(patch.object(self.worker.scratch, '_descriptor_statx', side_effect=self._statx))
         return self
 
     def close(self):

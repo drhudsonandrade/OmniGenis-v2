@@ -156,16 +156,45 @@ class PdfBoundedScratchTests(unittest.TestCase):
                 with self.assertRaises(scratch.PdfBoundedScratchError):
                     scratch._mount_record(scratch._PARENT,device,mount_id)
 
-    def test_fdinfo_requires_one_canonical_positive_mount_id(self):
-        """Accept one positive canonical mount ID and reject missing, malformed, nonpositive, or duplicate values."""
-        with patch.object(scratch,"_read_kernel_text",return_value="pos:\t0\nmnt_id:\t77\n"):
-            self.assertEqual(scratch._fd_mount_id(9),77)
-        invalid=("", "mnt_id:\t0\n", "mnt_id:\t-1\n",
-                 "mnt_id:\t1x\n", "mnt_id:\t2\nmnt_id:\t2\n")
-        for data in invalid:
-            with self.subTest(data=data),patch.object(scratch,"_read_kernel_text",return_value=data):
-                with self.assertRaises(scratch.PdfBoundedScratchError):
-                    scratch._fd_mount_id(9)
+    def test_statx_requires_complete_identity_and_positive_mount_id(self):
+        """Reject unavailable statx fields or contradictory descriptor identity."""
+        import ctypes
+        import struct
+        fd = os.open('/tmp', os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC)
+        try:
+            held = os.fstat(fd)
+            def response(mask=0x1101, inode=None, device=None, mode=None, mount_id=77):
+                """Build the exact fixed-width kernel response, never a proc text fallback."""
+                raw = bytearray(256)
+                struct.pack_into('=I', raw, 0, mask)
+                struct.pack_into('=H', raw, 0x1c, held.st_mode if mode is None else mode)
+                struct.pack_into('=Q', raw, 0x20, held.st_ino if inode is None else inode)
+                selected = held.st_dev if device is None else device
+                struct.pack_into('=II', raw, 0x88, os.major(selected), os.minor(selected))
+                struct.pack_into('=Q', raw, 0x90, mount_id)
+                return bytes(raw)
+            class NativeCall:
+                """Emulate one libc response for malformed-result contract tests."""
+                def __init__(self, data, result=0):
+                    """Retain response bytes and explicit syscall outcome."""
+                    self.data, self.result = data, result
+                def __call__(self, supplied, path, flags, mask, output):
+                    """Write only the declared ABI buffer and return the selected outcome."""
+                    ctypes.memmove(output, self.data, len(self.data))
+                    return self.result
+            with patch.object(scratch.ctypes, 'CDLL', return_value=SimpleNamespace(statx=NativeCall(response()))):
+                self.assertEqual(scratch._fd_mount_id(fd), 77)
+            for raw, result in ((response(mask=0), 0), (response(mount_id=0), 0),
+                                (response(inode=held.st_ino+1), 0),
+                                (response(device=os.makedev(0,999)), 0),
+                                (response(mode=stat.S_IFREG|0o600), 0), (response(), -1)):
+                with self.subTest(result=result, raw=raw[:32]), \
+                     patch.object(scratch.ctypes, 'CDLL', return_value=SimpleNamespace(statx=NativeCall(raw,result))), \
+                     patch.object(scratch,'_read_kernel_text',side_effect=AssertionError('fallback')):
+                    with self.assertRaises(scratch.PdfBoundedScratchError):
+                        scratch._fd_mount_id(fd)
+        finally:
+            os.close(fd)
 
     def test_reject_every_foreign_switch_value(self):
         """Reject present opt-in values other than the exact supported activation marker."""
