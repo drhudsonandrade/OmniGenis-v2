@@ -290,7 +290,7 @@ class SupervisedInspectionTests(unittest.TestCase):
     def test_bad_native_selector_does_not_become_unconfined_execution(self):
         """Invalid native selectors fail closed instead of being silently omitted."""
         for name in ('OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1', 'OMNIGENIS_PDF_BOUNDED_SCRATCH_V1'):
-            with patch.dict(os.environ, {name: '0'}), self.assertRaises(Exception):
+            with patch.dict(os.environ, {name: '0'}), self.assertRaises(self.m._Refusal):
                 self.m._environment()
 
     def test_profile_disable_during_execution_prevents_return(self):
@@ -310,7 +310,7 @@ class SupervisedInspectionTests(unittest.TestCase):
         """A malformed time source is not a usable remaining budget."""
         for ticks in ((10, 9), (True,), (-1,), (10, 10.5)):
             with self.subTest(ticks=ticks), patch.object(self.m, 'monotonic_ns', side_effect=ticks), \
-                 self.assertRaises(Exception):
+                 self.assertRaises(self.m._Refusal):
                 self.m._Clock().remaining()
 
     def test_exited_parent_with_open_descendant_pipe_hits_deadline(self):
@@ -367,12 +367,16 @@ class SupervisedInspectionTests(unittest.TestCase):
         self.assertTrue(process.stdin.closed and process.stdout.closed)
 
     def test_spawn_failure_is_content_free_and_preserves_descriptor(self):
-        """Failed creation never leaks the underlying OS message or closes input."""
-        with self.h.request() as (fd, expected, args, packet), \
-             patch.object(self.m.subprocess, 'Popen', side_effect=OSError('SYNTHETIC_SECRET')), \
-             self.assertRaises(self.m.PdfSupervisedInspectionError) as caught:
-            self.invoke(fd, _json_bytes(self.fixture.context(expected, args)))
-        self.assertNotIn('SYNTHETIC_SECRET', str(caught.exception))
+        """Failed spawn preserves borrowed bytes/offset and a content-free fixed error."""
+        with self.h.request() as (fd, expected, args, packet):
+            os.lseek(fd, 7, os.SEEK_SET)
+            with patch.object(self.m.subprocess, 'Popen', side_effect=OSError('SYNTHETIC_SECRET')) as launch, \
+                 self.assertRaises(self.m.PdfSupervisedInspectionError) as caught:
+                self.invoke(fd, _json_bytes(self.fixture.context(expected, args)))
+            launch.assert_called_once()
+            self.assertEqual(str(caught.exception), 'pdf_supervised_inspection_failed')
+            self.assertEqual(os.pread(fd, len(packet), 0), packet)
+            self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), 7)
 
     def test_repeated_failures_do_not_leak_owned_descriptors(self):
         """Admission and transport failures preserve the caller's descriptor count."""
