@@ -1,16 +1,19 @@
 """Fixed-child transport tests; synthetic process faults are not service qualification."""
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from hashlib import sha256
 import ast
+import ctypes
 import importlib
 import importlib.util
 import inspect
 import json
 import os
 from pathlib import Path
+import select
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 from unittest.mock import patch
@@ -54,29 +57,45 @@ class SupervisedInspectionTests(unittest.TestCase):
         launches = []
         def launch(command, **kwargs):
             """Retain production pipe, session, environment and descriptor settings."""
-            launches.append((command, kwargs))
-            return REAL_POPEN([sys.executable, '-I', '-B', '-c', script], **kwargs)
+            process = REAL_POPEN([sys.executable, '-I', '-B', '-c', script], **kwargs)
+            launches.append((command, kwargs, process))
+            return process
         clock_class = self.m._Clock
         def short_clock():
             """Inject a short internal clock only; the production profile is unchanged."""
             value = clock_class()
             value.deadline = value.started + 250_000_000
             return value
-        with patch.object(self.m.subprocess, 'Popen', side_effect=launch):
-            if short_deadline:
-                with patch.object(self.m, '_Clock', side_effect=short_clock):
+        try:
+            with patch.object(self.m.subprocess, 'Popen', side_effect=launch):
+                if short_deadline:
+                    with patch.object(self.m, '_Clock', side_effect=short_clock):
+                        yield launches
+                else:
                     yield launches
-            else:
-                yield launches
+        finally:
+            # Assertions run before this emergency fixture cleanup.
+            for _, _, process in launches:
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=3)
+                for stream in (process.stdin, process.stdout):
+                    if stream is not None:
+                        stream.close()
 
     def fail_with_child(self, script, *, short=False):
         """Run a fault against a real sealed request and require a fixed safe error."""
         with self.h.request() as (fd, expected, args, _):
             raw = _json_bytes(self.fixture.context(expected, args))
             before = time.monotonic()
-            with self.child(script, short_deadline=short), \
-                 self.assertRaises(self.m.PdfSupervisedInspectionError) as caught:
-                self.invoke(fd, raw)
+            with self.child(script, short_deadline=short) as launches:
+                with self.assertRaises(self.m.PdfSupervisedInspectionError) as caught:
+                    self.invoke(fd, raw)
+                self.assertEqual(len(launches), 1)
+                process = launches[0][2]
+                self.assertIsNotNone(process.returncode, 'direct child was not reaped')
+                with self.assertRaises(ChildProcessError):
+                    os.waitpid(process.pid, os.WNOHANG)
             self.assertLess(time.monotonic() - before, 5)
             self.assertTrue(str(caught.exception).startswith('pdf_supervised_inspection_'))
             self.assertNotIn('SYNTHETIC_SECRET', str(caught.exception))
@@ -200,7 +219,7 @@ class SupervisedInspectionTests(unittest.TestCase):
             with self.child(script) as launches:
                 self.assertEqual(self.invoke(fd, _json_bytes(context)), decoded)
             self.assertEqual(len(launches), 1)
-            command, options = launches[0]
+            command, options, _ = launches[0]
             self.assertEqual(command[:3], [sys.executable, '-I', '-B'])
             self.assertTrue(command[3].endswith('/reporting/_pdf_fixed_inspection_worker.py'))
             self.assertEqual(command[-1], str(os.getpid()))
@@ -295,12 +314,20 @@ class SupervisedInspectionTests(unittest.TestCase):
                 self.m._Clock().remaining()
 
     def test_exited_parent_with_open_descendant_pipe_hits_deadline(self):
-        """A child exit cannot turn a still-open original-group pipe into EOF."""
-        script = ('import os,sys,time;sys.stdin.buffer.read();child=os.fork()\n'
-                  'if child == 0:\n time.sleep(10);os._exit(0)\n'
-                  'os._exit(0)')
-        self.assertEqual(self.fail_with_child(script, short=True),
-                         'pdf_supervised_inspection_deadline')
+        """Observe exact descendant exit, with a surviving no-group-signal control."""
+        for signal_group in (False, True):
+            with self.subTest(signal_group=signal_group):
+                code = ("import json,sys;sys.path.insert(0," + repr(str(ROOT)) + ");"
+                        "from tests.test_reporting_pdf_supervised_inspection import descendant_cleanup_probe;"
+                        "print(json.dumps(descendant_cleanup_probe(" + repr(signal_group) + ")))")
+                completed = subprocess.run([sys.executable, '-I', '-B', '-c', code],
+                    cwd=ROOT, capture_output=True, text=True, timeout=20, check=True)
+                result = json.loads(completed.stdout)
+                self.assertEqual(result['reason'], 'pdf_supervised_inspection_deadline')
+                self.assertEqual(result['direct_exit'], 0)
+                self.assertTrue(result['direct_reaped'])
+                self.assertEqual(result['descendant_exited'], signal_group)
+                self.assertEqual(result['descendant_signal'], signal.SIGKILL if signal_group else None)
 
     def test_zero_context_write_cannot_succeed(self):
         """An anomalous no-progress write must close and reap the owned child."""
@@ -388,6 +415,108 @@ class SupervisedInspectionTests(unittest.TestCase):
             self.assertFalse(data['aggregate_job_resources_qualified'])
             self.assertFalse(data['release_authorized'])
             self.assertEqual(os.pread(fd, len(packet), 0), packet)
+
+
+
+def descendant_cleanup_probe(signal_group: bool) -> dict:
+    """Pin and reap one original-group descendant in a disposable subreaper process."""
+    if ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) != 0:
+        raise RuntimeError('test subreaper unavailable')
+    case = SupervisedInspectionTests()
+    case.setUp()
+    processes, clocks = [], []
+    child_pid = child_fd = None
+    reaped = False
+    original_clock = case.m._Clock
+    with tempfile.TemporaryDirectory(prefix='omnigenis-supervisor-cleanup-') as directory:
+        marker = Path(directory) / 'descendant.pid'
+        release = Path(directory) / 'release'
+        script = (
+            'import os,sys,time\nfrom pathlib import Path\nchild=os.fork()\n'
+            'if child == 0:\n time.sleep(10);os._exit(0)\n'
+            'marker=Path(' + repr(str(marker)) + ')\n'
+            'temporary=marker.with_suffix(".tmp")\n'
+            'temporary.write_text(str(child),encoding="ascii");temporary.replace(marker)\n'
+            'deadline=time.monotonic()+5\n'
+            'while not Path(' + repr(str(release)) + ').exists():\n'
+            ' if time.monotonic()>=deadline:os._exit(71)\n time.sleep(0.005)\n'
+            'sys.stdin.buffer.read();os._exit(0)\n')
+
+        def clock():
+            """Retain only the synthetic transport clock; production budgets are untouched."""
+            value = original_clock()
+            clocks.append(value)
+            return value
+
+        def launch(command, **kwargs):
+            """Pin the live descendant before releasing its still-owned direct parent."""
+            nonlocal child_pid, child_fd
+            process = REAL_POPEN([sys.executable, '-I', '-B', '-c', script], **kwargs)
+            processes.append(process)
+            limit = time.monotonic() + 5
+            while not marker.exists():
+                if time.monotonic() >= limit:
+                    raise RuntimeError('test descendant readiness missing')
+                time.sleep(0.005)
+            child_pid = int(marker.read_text(encoding='ascii'))
+            child_fd = os.pidfd_open(child_pid)
+            case.assertFalse(select.select([child_fd], [], [], 0)[0])
+            case.assertEqual(os.getpgid(child_pid), process.pid)
+            status = Path(f'/proc/{child_pid}/status').read_text()
+            case.assertIn('PPid:\t' + str(process.pid) + '\n', status)
+            release.touch(exist_ok=False)
+            # Start the artificial short transport window after fixture readiness.
+            clocks[0].deadline = time.monotonic_ns() + 1_000_000_000
+            return process
+
+        try:
+            with ExitStack() as stack:
+                stack.enter_context(patch.object(case.m, '_Clock', side_effect=clock))
+                stack.enter_context(patch.object(case.m.subprocess, 'Popen', side_effect=launch))
+                if not signal_group:
+                    stack.enter_context(patch.object(case.m.os, 'killpg', return_value=None))
+                with case.h.request() as (fd, expected, args, _):
+                    with case.assertRaises(case.m.PdfSupervisedInspectionError) as caught:
+                        case.invoke(fd, _json_bytes(case.fixture.context(expected, args)))
+            case.assertEqual(len(processes), 1)
+            process = processes[0]
+            case.assertEqual(process.returncode, 0)
+            with case.assertRaises(ChildProcessError):
+                os.waitpid(process.pid, os.WNOHANG)
+            exited = bool(select.select([child_fd], [], [], 1)[0])
+            exit_signal = None
+            if exited:
+                observed = os.waitid(os.P_PIDFD, child_fd, os.WEXITED | os.WNOHANG)
+                case.assertIsNotNone(observed)
+                reaped = True
+                case.assertEqual(observed.si_pid, child_pid)
+                case.assertEqual(observed.si_code, os.CLD_KILLED)
+                exit_signal = observed.si_status
+            return {'reason': str(caught.exception), 'direct_exit': process.returncode,
+                    'direct_reaped': True, 'descendant_exited': exited,
+                    'descendant_signal': exit_signal}
+        finally:
+            # Never signal a recycled numeric descendant PID or count fixture cleanup as proof.
+            if child_fd is not None:
+                try:
+                    signal.pidfd_send_signal(child_fd, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            for process in processes:
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=3)
+                for stream in (process.stdin, process.stdout):
+                    if stream is not None:
+                        stream.close()
+            if child_fd is not None:
+                try:
+                    if not reaped:
+                        if not select.select([child_fd], [], [], 3)[0]:
+                            raise RuntimeError('test descendant cleanup unresolved')
+                        os.waitid(os.P_PIDFD, child_fd, os.WEXITED | os.WNOHANG)
+                finally:
+                    os.close(child_fd)
 
 
 if __name__ == '__main__':
