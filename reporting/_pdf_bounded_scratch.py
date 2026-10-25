@@ -6,7 +6,12 @@ aggregate limits. Reject missing, foreign, unbounded or weak scratch mounts.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
+import ctypes
+import fcntl
 import os
+import struct
+import sys
 from pathlib import Path
 import stat
 import tempfile
@@ -23,6 +28,113 @@ class PdfBoundedScratchError(RuntimeError):
     """An unavailable optional resource boundary never triggers fallback."""
 
 
+_MOUNTINFO_PATH = Path("/proc/self/mountinfo")
+_HELD_MOUNTINFO: tuple[int, tuple[int, ...]] | None = None
+
+
+class _DescriptorStatfs(ctypes.Structure):
+    """Fixed Linux x86-64 LP64 statfs layout for procfs provenance checks."""
+
+    _fields_ = [
+        ("f_type", ctypes.c_long), ("f_bsize", ctypes.c_long),
+        ("f_blocks", ctypes.c_ulong), ("f_bfree", ctypes.c_ulong),
+        ("f_bavail", ctypes.c_ulong), ("f_files", ctypes.c_ulong),
+        ("f_ffree", ctypes.c_ulong), ("f_fsid", ctypes.c_int * 2),
+        ("f_namelen", ctypes.c_long), ("f_frsize", ctypes.c_long),
+        ("f_flags", ctypes.c_long), ("f_spare", ctypes.c_long * 4),
+    ]
+
+
+def _require_descriptor_abi() -> None:
+    """Refuse unsupported layouts instead of guessing kernel structure offsets."""
+    if (sys.platform != "linux" or os.uname().machine != "x86_64"
+            or ctypes.sizeof(ctypes.c_void_p) != 8 or ctypes.sizeof(ctypes.c_long) != 8
+            or ctypes.sizeof(_DescriptorStatfs) != 120):
+        raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_abi")
+
+
+def _metadata_identity(fd: int) -> tuple[int, ...]:
+    """Require a readable regular procfs file, never caller-supplied file bytes."""
+    try:
+        _require_descriptor_abi()
+        if type(fd) is not int or not 3 <= fd <= 2**31 - 1:
+            raise ValueError("invalid metadata descriptor")
+        value = os.fstat(fd)
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        if (not stat.S_ISREG(value.st_mode) or flags & os.O_PATH
+                or flags & os.O_ACCMODE != os.O_RDONLY):
+            raise ValueError("metadata file type or access")
+        call = ctypes.CDLL(None, use_errno=True).fstatfs
+        call.argtypes = [ctypes.c_int, ctypes.POINTER(_DescriptorStatfs)]
+        call.restype = ctypes.c_int
+        observed = _DescriptorStatfs()
+        if call(fd, ctypes.byref(observed)) != 0 or observed.f_type != 0x9FA0:
+            raise ValueError("metadata is not real procfs")
+        return (value.st_dev, value.st_ino, value.st_mode, value.st_uid,
+                value.st_gid, value.st_nlink)
+    except (OSError, ValueError, TypeError, AttributeError, OverflowError,
+            ctypes.ArgumentError):
+        raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_invalid") from None
+
+
+@contextmanager
+def mountinfo_scope(borrowed_fd: int | None = None):
+    """Retain one real read-only mountinfo handle in a dedicated worker process.
+
+    Capture occurs before Landlock. A descendant may borrow the explicitly
+    passed handle; it does not receive authority to reopen proc paths. The
+    original parser still binds path, mount ID, device, root, source and flags.
+    This process-local scope is intentionally not a concurrent parent API.
+    """
+    global _HELD_MOUNTINFO
+    if _HELD_MOUNTINFO is not None:
+        raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_scope_active")
+    owned = borrowed_fd is None
+    fd = None
+    identity = None
+    try:
+        fd = (os.open(_MOUNTINFO_PATH, os.O_RDONLY | os.O_NOFOLLOW
+                      | os.O_CLOEXEC | os.O_NONBLOCK) if owned else borrowed_fd)
+        identity = _metadata_identity(fd)
+        _HELD_MOUNTINFO = (fd, identity)
+        yield fd
+    finally:
+        _HELD_MOUNTINFO = None
+        if owned and fd is not None:
+            # Never close a substituted descriptor belonging to another caller.
+            if identity is not None and _metadata_identity(fd) != identity:
+                raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_changed")
+            os.close(fd)
+
+
+def active_mountinfo_fd() -> int:
+    """Expose only the current verified handle for one explicit child launch."""
+    if (_HELD_MOUNTINFO is None
+            or _metadata_identity(_HELD_MOUNTINFO[0]) != _HELD_MOUNTINFO[1]):
+        raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_missing")
+    return _HELD_MOUNTINFO[0]
+
+
+def _read_retained_mountinfo(limit: int, errors: str) -> str:
+    """Read current kernel metadata without consuming a shared descriptor offset."""
+    fd = active_mountinfo_fd()
+    if type(limit) is not int or not 0 < limit <= 262144:
+        raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_budget")
+    data = bytearray()
+    try:
+        while True:
+            block = os.pread(fd, min(8192, limit + 1 - len(data)), len(data))
+            if not block:
+                if active_mountinfo_fd() != fd:
+                    raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_changed")
+                return data.decode("ascii", errors=errors)
+            data.extend(block)
+            if len(data) > limit:
+                raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_budget")
+    except OSError:
+        raise PdfBoundedScratchError("pdf_bounded_scratch_metadata_unavailable") from None
+
+
 def bounded_scratch_requested() -> bool:
     """Permit only the absent legacy switch or its one exact opt-in value."""
     value = os.environ.get(_SWITCH)
@@ -34,7 +146,9 @@ def bounded_scratch_requested() -> bool:
 
 
 def _read_kernel_text(path: Path, limit: int, *, errors: str = "strict") -> str:
-    """Read bounded proc metadata through an owned, non-inheritable descriptor."""
+    """Read bounded proc metadata, using the scoped handle only for mountinfo."""
+    if path == _MOUNTINFO_PATH and _HELD_MOUNTINFO is not None:
+        return _read_retained_mountinfo(limit, errors)
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
     try:
         data = bytearray()
@@ -49,23 +163,42 @@ def _read_kernel_text(path: Path, limit: int, *, errors: str = "strict") -> str:
         os.close(fd)
 
 
+def _descriptor_statx(fd: int) -> bytes:
+    """Capture the fixed-width kernel response for an already validated FD number."""
+    _require_descriptor_abi()
+    call = ctypes.CDLL(None, use_errno=True).statx
+    call.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                     ctypes.c_uint, ctypes.c_void_p]
+    call.restype = ctypes.c_int
+    output = (ctypes.c_uint64 * 32)()
+    # AT_EMPTY_PATH; STATX_TYPE | STATX_INO | STATX_MNT_ID.
+    if call(fd, b"", 0x1000, 0x1101, ctypes.byref(output)) != 0:
+        raise OSError(ctypes.get_errno(), "descriptor metadata unavailable")
+    return bytes(output)
+
+
 def _fd_mount_id(fd: int) -> int:
-    """Return the one canonical Linux mount ID bound to an open descriptor."""
-    if type(fd) is not int or fd < 0:
-        raise PdfBoundedScratchError("pdf_bounded_scratch_mount_invalid")
-    lines = _read_kernel_text(Path(f"/proc/self/fdinfo/{fd}"), 4096).splitlines()
-    found = []
-    for line in lines:
-        key, separator, value = line.partition(":")
-        if key == "mnt_id":
-            candidate = value.strip()
-            if (not separator or not candidate.isascii()
-                    or not candidate.isdecimal() or len(candidate) > 20):
-                raise PdfBoundedScratchError("pdf_bounded_scratch_mount_invalid")
-            found.append(int(candidate))
-    if len(found) != 1 or found[0] <= 0:
-        raise PdfBoundedScratchError("pdf_bounded_scratch_mount_invalid")
-    return found[0]
+    """Observe an open descriptor's mount identity without reopening proc paths."""
+    try:
+        _require_descriptor_abi()
+        if type(fd) is not int or not 0 <= fd <= 2**31 - 1:
+            raise ValueError("invalid descriptor")
+        required = 0x1101
+        raw = _descriptor_statx(fd)
+        held = os.fstat(fd)
+        if (struct.unpack_from("=I", raw, 0)[0] & required != required
+                or struct.unpack_from("=Q", raw, 0x20)[0] != held.st_ino
+                or os.makedev(*struct.unpack_from("=II", raw, 0x88)) != held.st_dev
+                or stat.S_IFMT(struct.unpack_from("=H", raw, 0x1c)[0])
+                != stat.S_IFMT(held.st_mode)):
+            raise ValueError("descriptor identity mismatch")
+        mount_id = struct.unpack_from("=Q", raw, 0x90)[0]
+        if not 0 < mount_id <= 2**63 - 1:
+            raise ValueError("invalid mount identity")
+        return mount_id
+    except (OSError, ValueError, TypeError, AttributeError, OverflowError,
+            ctypes.ArgumentError):
+        raise PdfBoundedScratchError("pdf_bounded_scratch_mount_invalid") from None
 
 
 def _mount_record(

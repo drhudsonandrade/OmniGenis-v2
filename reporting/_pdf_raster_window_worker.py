@@ -7,6 +7,7 @@ limits and guards do not establish aggregate job or arbitrary-descendant closure
 """
 from __future__ import annotations
 
+from contextlib import nullcontext
 import hashlib
 from importlib.metadata import version
 from io import BytesIO
@@ -23,6 +24,7 @@ import tempfile
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from reporting import _pdf_bounded_scratch as mount_metadata
 from reporting._pdf_process_sandbox import enforce_pdf_landlock, enforce_pdf_network_filter
 from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
 from reporting._pdf_text_window_worker import (
@@ -105,11 +107,17 @@ def _geometry(page) -> tuple[int, int]:
 
 def _raster_page(tool: str, source: Path, prefix: Path, number: int) -> Path:
     """Launch the pinned native rasterizer through its isolated direct-parent lifetime guard."""
+    metadata_args = []
+    metadata_options = {}
+    if mount_metadata.bounded_scratch_requested():
+        fd = mount_metadata.active_mountinfo_fd()
+        metadata_args = [str(fd)]
+        metadata_options = {"pass_fds": (fd,)}
     result = subprocess.run(
         [sys.executable, "-I", str(Path(__file__).resolve().with_name("_pdf_raster_executor.py")),
-         str(os.getpid()), tool, str(source), str(prefix), str(number)], stdin=subprocess.DEVNULL,
+         str(os.getpid()), tool, str(source), str(prefix), str(number)] + metadata_args, stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
-        timeout=PAGE_WALL_SECONDS, check=False, shell=False,
+        timeout=PAGE_WALL_SECONDS, check=False, shell=False, **metadata_options,
     )
     if result.returncode != 0:
         raise ValueError("raster executor failure")
@@ -210,16 +218,19 @@ def main(argv: list[str] | None = None) -> int:
         limits = _limits()
         _lifetime(parent)
         scratch = _open_scratch(scratch_fd)
-        enforce_pdf_landlock(Path(__file__), writable_scratch_fd=scratch_fd)
-        enforce_pdf_network_filter()
-        identity, pdf = _read_request(request_fd)
-        inspection = _inspect(pdf, identity, scratch)
-        encoded = json.dumps({"protocol_version": PROTOCOL_VERSION, "profile_id": PROFILE_ID,
-            "identity": identity, "limits": limits, "inspection": inspection}, sort_keys=True,
-            separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode("ascii")
-        if not 0 < len(encoded) <= RESULT_BYTES:
-            return 70
-        _write_bytes(result_fd, encoded)
+        metadata = (mount_metadata.mountinfo_scope()
+                    if mount_metadata.bounded_scratch_requested() else nullcontext())
+        with metadata:
+            enforce_pdf_landlock(Path(__file__), writable_scratch_fd=scratch_fd)
+            enforce_pdf_network_filter()
+            identity, pdf = _read_request(request_fd)
+            inspection = _inspect(pdf, identity, scratch)
+            encoded = json.dumps({"protocol_version": PROTOCOL_VERSION, "profile_id": PROFILE_ID,
+                "identity": identity, "limits": limits, "inspection": inspection}, sort_keys=True,
+                separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode("ascii")
+            if not 0 < len(encoded) <= RESULT_BYTES:
+                return 70
+            _write_bytes(result_fd, encoded)
     except Exception:
         return 70
     return 0

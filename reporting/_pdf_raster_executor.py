@@ -8,6 +8,7 @@ this narrow guarantee. No host settings or default PDF route are changed.
 """
 from __future__ import annotations
 
+from contextlib import nullcontext
 import errno
 import hashlib
 import os
@@ -19,6 +20,7 @@ import sys
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from reporting import _pdf_bounded_scratch as mount_metadata
 from reporting._pdf_process_sandbox import enforce_pdf_landlock, enforce_pdf_network_filter
 from reporting._pdf_render_worker import _arm_worker_lifetime
 from reporting._pdf_text_window_worker import MAX_DOCUMENT_PAGES
@@ -137,19 +139,36 @@ def main(argv: list[str] | None = None) -> int:
     """Replace this guarded process with the fixed native rasterizer or fail silently."""
     if sys.platform != "linux":
         return 64
+    metadata_fd = None
     try:
-        parent, tool, source, prefix, page = _parse(sys.argv if argv is None else argv)
-    except (TypeError, ValueError):
+        args = sys.argv if argv is None else argv
+        if mount_metadata.bounded_scratch_requested():
+            if (type(args) is not list or len(args) != 7
+                    or type(args[-1]) is not str or not args[-1].isascii()
+                    or not args[-1].isdecimal() or len(args[-1]) > 10):
+                raise ValueError("raster metadata argument")
+            metadata_fd = int(args[-1])
+            if not 3 <= metadata_fd <= 2**31 - 1 or str(metadata_fd) != args[-1]:
+                raise ValueError("raster metadata descriptor")
+            args = args[:-1]
+        parent, tool, source, prefix, page = _parse(args)
+    except (TypeError, ValueError, mount_metadata.PdfBoundedScratchError):
         return 64
     try:
         _arm_lifetime(parent)
         _limits()
-        scratch, scratch_fd = _bind_scratch(source, prefix, page)
-        try:
-            enforce_pdf_landlock(Path(__file__), writable_scratch_fd=scratch_fd)
-            enforce_pdf_network_filter()
-        finally:
-            os.close(scratch_fd)
+        metadata = (mount_metadata.mountinfo_scope(metadata_fd)
+                    if metadata_fd is not None else nullcontext())
+        with metadata:
+            scratch, scratch_fd = _bind_scratch(source, prefix, page)
+            try:
+                enforce_pdf_landlock(Path(__file__), writable_scratch_fd=scratch_fd)
+                enforce_pdf_network_filter()
+            finally:
+                os.close(scratch_fd)
+        if metadata_fd is not None:
+            os.close(metadata_fd)
+            metadata_fd = None
         executable_fd = _open_executable(tool)
         try:
             if os.getppid() != parent or os.getuid() != os.geteuid() or os.getgid() != os.getegid():
@@ -162,6 +181,12 @@ def main(argv: list[str] | None = None) -> int:
             os.close(executable_fd)
     except Exception:
         return 70
+    finally:
+        if metadata_fd is not None:
+            try:
+                os.close(metadata_fd)
+            except OSError:
+                return 70
     return 70  # A successful exec never returns; no fallback or synthetic success.
 
 

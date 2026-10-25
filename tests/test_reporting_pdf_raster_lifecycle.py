@@ -340,9 +340,9 @@ class RasterExecutorLifecycleTests(unittest.TestCase):
                     side_effect=RuntimeError("guard") if guard_failure == name else None))
             opened = stack.enter_context(patch.object(self.e, "_open_executable", return_value=binary_fd))
             executable = stack.enter_context(patch.object(self.e.os, "execve", side_effect=failure))
-            expected_parent = os.getppid()
-            if stale_parent:
-                stack.enter_context(patch.object(self.e.os, "getppid", return_value=expected_parent + 1))
+            expected_parent = os.getpid()
+            stack.enter_context(patch.object(self.e.os, "getppid",
+                return_value=expected_parent + 1 if stale_parent else expected_parent))
             try:
                 result = self.e.main(self.argv(parent=str(expected_parent)))
                 return result, executable.call_args, opened.called, events
@@ -351,6 +351,19 @@ class RasterExecutorLifecycleTests(unittest.TestCase):
                     try: os.close(descriptor)
                     except OSError as exc:
                         if exc.errno != errno.EBADF: raise
+
+    def test_mocked_lifecycle_is_independent_of_test_runner_parent(self):
+        """An orphaned test runner must not invalidate the simulated valid parent."""
+        for observed_parent in (1, 4242):
+            with self.subTest(observed_parent=observed_parent), \
+                 patch.object(os, "getppid", return_value=observed_parent):
+                result, call, opened, events = self.mocked_main(
+                    failure=OSError("synthetic exec failure"))
+                self.assertEqual(result, 70)
+                self.assertTrue(opened)
+                self.assertIsNotNone(call)
+                self.assertEqual(events, ["lifetime", "limits"])
+                self.assertEqual(os.getppid(), observed_parent)
 
     def test_exec_uses_checked_descriptor_fixed_arguments_and_environment(self):
         """No shell, environment loader injection or path re-open replaces the verified FD."""

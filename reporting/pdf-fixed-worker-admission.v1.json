@@ -89,6 +89,6 @@
   ],
   "source_sha256": {
     "reporting/_pdf_fixed_inspection_worker.py": "456f318c7c5ce52c902cce1635b37ea3ced1823394bd209150c76e731ee3ced7",
-    "reporting/_pdf_bounded_scratch.py": "ef3cf090875c5ff74fbbd58f2084a8934513fb609692172d66626104de2ffc35"
+    "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a"
   }
 }
