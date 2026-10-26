@@ -96,11 +96,48 @@ class PdfDocumentPreflightTests(unittest.TestCase):
             {"expected_ir_sha256": "A" * 64},
             {"request_sha256": "z" * 64},
             {"namespace_id": ""}, {"job_id": ""}, {"declared_page_count": True},
+            {"declared_page_count": 33.0}, {"declared_page_count": "33"},
+            {"namespace_id": None}, {"job_id": 7},
             {"expected_preflight_profile_sha256": "0" * 64},
         ):
             with self.subTest(overrides=overrides):
                 with self.assertRaises(subject.PdfDocumentPreflightError):
                     self.preflight(**overrides)
+
+    def test_non_bytes_candidate_types_fail_closed_with_matching_digest(self):
+        """Reject candidate type coercion even with the correct byte digest."""
+        digest = sha256(PDF).hexdigest()
+        for pdf in (bytearray(PDF), PDF.decode("ascii")):
+            with self.subTest(candidate_type=type(pdf).__name__):
+                with self.assertRaises(subject.PdfDocumentPreflightError):
+                    subject.build_pdf_document_preflight(
+                        pdf_bytes=pdf, expected_pdf_sha256=digest,
+                        expected_ir_sha256=IR_SHA, declared_page_count=33,
+                        namespace_id="tenant-alpha", job_id="report-alpha",
+                        request_sha256=REQUEST_SHA,
+                        expected_preflight_profile_sha256=subject.PROFILE_SHA256,
+                    )
+
+    def test_exact_legacy_and_staging_byte_boundaries(self):
+        """Keep inclusive limits and the byte-based budget class exact."""
+        prefix = b"%PDF-1.7\n"
+        legacy = prefix + b"x" * (qa.MAX_PDF_BYTES - len(prefix))
+        self.assertEqual(len(legacy), qa.MAX_PDF_BYTES)
+        data = self.preflight(pdf=legacy, pages=32).to_dict()
+        self.assertEqual(data["pdf_byte_count"], qa.MAX_PDF_BYTES)
+        self.assertEqual(data["budget_class"], "EXISTING_QA_ENVELOPE")
+        over_legacy = legacy + b"x"
+        data = self.preflight(pdf=over_legacy, pages=32).to_dict()
+        self.assertEqual(data["pdf_byte_count"], qa.MAX_PDF_BYTES + 1)
+        self.assertEqual(data["budget_class"], "LONG_DOCUMENT_STAGING")
+
+        ceiling = prefix + b"x" * (subject.MAX_STAGED_PDF_BYTES - len(prefix))
+        self.assertEqual(len(ceiling), subject.MAX_STAGED_PDF_BYTES)
+        data = self.preflight(pdf=ceiling, pages=33).to_dict()
+        self.assertEqual(data["pdf_byte_count"], subject.MAX_STAGED_PDF_BYTES)
+        self.assertEqual(data["budget_class"], "LONG_DOCUMENT_STAGING")
+        with self.assertRaises(subject.PdfDocumentPreflightError):
+            self.preflight(pdf=ceiling + b"x", pages=33)
 
     def test_zero_over_ceiling_non_pdf_and_oversized_bytes_fail_whole(self):
         """Reject invalid inputs without returning truncated plans."""
