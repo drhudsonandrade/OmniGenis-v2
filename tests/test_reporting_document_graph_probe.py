@@ -19,7 +19,10 @@ REQUEST_SHA = "b" * 64
 
 
 class PdfDocumentGraphProbeTests(unittest.TestCase):
+    """Verify native happy paths, exact identity, and fail-before-launch behavior."""
+
     def planned(self, pdf: bytes, pages: int = 33, job: str = "report-alpha"):
+        """Build a sealed preflight with one independently computed PDF digest."""
         return preflight.build_pdf_document_preflight(
             pdf_bytes=pdf, expected_pdf_sha256=sha256(pdf).hexdigest(),
             expected_ir_sha256=IR_SHA, declared_page_count=pages,
@@ -28,6 +31,7 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
             expected_preflight_profile_sha256=preflight.PROFILE_SHA256)
 
     def probe(self, pdf: bytes, pages: int = 33, **kwargs):
+        """Exercise the public graph bridge with trusted preflight expectations."""
         document = self.planned(pdf, pages=pages)
         args = dict(document=document, pdf_bytes=pdf,
                     expected_preflight_sha256=document.preflight_sha256,
@@ -36,6 +40,7 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
         return subject.inspect_pdf_document_preflight_graph(**args)
 
     def test_actual_native_graph_for_33_64_129_300_pages(self):
+        """Observe exact physical counts from four real full-document parses."""
         for count in (33, 64, 129, 300):
             with self.subTest(pages=count):
                 pdf = fixture_pdf(count)
@@ -57,6 +62,7 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
                 self.assertFalse(record["default_pipeline_activated"])
 
     def test_declared_page_count_must_match_real_pdf(self):
+        """Reject native parser counts that disagree with the sealed preflight."""
         pdf = fixture_pdf(33)
         for declared in (32, 34, 64):
             with self.subTest(declared=declared):
@@ -64,6 +70,7 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
                     self.probe(pdf, pages=declared)
 
     def test_wrong_candidate_digest_or_cross_job_plan_rejected_without_worker(self):
+        """Prove digest, job and profile refusals occur before worker dispatch."""
         pdf = fixture_pdf(33)
         doc = self.planned(pdf)
         other = self.planned(pdf, job="report-beta")
@@ -75,23 +82,25 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
             {"document": doc, "expected_probe_profile_sha256": "0" * 64},
         ):
             with self.subTest(overrides=tuple(overrides)), \
-                 patch.object(graph, "inspect_pdf_object_graph",
-                              side_effect=AssertionError("unexpected worker")):
+                 patch.object(graph, "inspect_pdf_object_graph") as worker:
                 with self.assertRaises(subject.PdfDocumentGraphProbeError):
                     self.probe(pdf, **overrides)
+                worker.assert_not_called()
 
     def test_staged_candidate_over_eight_mib_never_reaches_native_worker(self):
+        """Defer an admitted large candidate without launching the 8-MiB worker."""
         small = fixture_pdf(33)
         pdf = small + b"\n% comment\n" + b"x" * (graph.MAX_PDF_BYTES + 1 - len(small))
         self.assertGreater(len(pdf), graph.MAX_PDF_BYTES)
         doc = self.planned(pdf)
         self.assertEqual(doc.budget_class, "LONG_DOCUMENT_STAGING")
-        with patch.object(graph, "inspect_pdf_object_graph",
-                          side_effect=AssertionError("must defer")):
+        with patch.object(graph, "inspect_pdf_object_graph") as worker:
             with self.assertRaises(subject.PdfDocumentGraphProbeError):
                 self.probe(pdf, document=doc)
+            worker.assert_not_called()
 
     def test_pdf_action_on_last_page_is_rejected(self):
+        """Reject a prohibited action even when it occurs on the final page."""
         from pypdf import PdfWriter
         from pypdf.generic import DictionaryObject, NameObject
         writer = PdfWriter(clone_from=BytesIO(fixture_pdf(33)))
@@ -103,10 +112,12 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
             self.probe(stream.getvalue())
 
     def test_synthetic_header_is_not_a_native_pdf(self):
+        """Treat a plausible PDF header alone as insufficient native evidence."""
         with self.assertRaises(subject.PdfDocumentGraphProbeError):
             self.probe(b"%PDF-1.7\ninvalid synthetic content")
 
     def test_no_native_32_mib_resource_admission_or_default_activation(self):
+        """Keep the native budget distinct from larger inert staging."""
         profile = subject.document_graph_probe_profile()
         self.assertEqual(profile["max_pdf_bytes"], graph.MAX_PDF_BYTES)
         self.assertEqual(profile["max_pages"], graph.MAX_DOCUMENT_PAGES)
@@ -118,17 +129,21 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
         self.assertEqual(subject.document_graph_probe_profile()["max_pages"], 512)
 
     def test_disable_and_profile_drift_reject_prelaunch(self):
+        """Refuse a disabled or drifted profile without invoking the worker."""
         pdf = fixture_pdf(33)
         with patch.dict("os.environ", {"OMNIGENIS_PDF_PREFLIGHT_GRAPH_PROBE_DISABLED": "1"}):
-            with patch.object(graph, "inspect_pdf_object_graph",
-                              side_effect=AssertionError("unexpected worker")):
+            with patch.object(graph, "inspect_pdf_object_graph") as worker:
                 with self.assertRaises(subject.PdfDocumentGraphProbeError):
                     self.probe(pdf)
-        with patch.object(graph, "MAX_PDF_BYTES", graph.MAX_PDF_BYTES + 1):
+                worker.assert_not_called()
+        with patch.object(graph, "MAX_PDF_BYTES", graph.MAX_PDF_BYTES + 1), \
+             patch.object(graph, "inspect_pdf_object_graph") as worker:
             with self.assertRaises(subject.PdfDocumentGraphProbeError):
                 self.probe(pdf)
+            worker.assert_not_called()
 
     def test_mutated_document_or_graph_receipt_cannot_be_resealed(self):
+        """Reject tampering with either nested object after the receipt seal."""
         pdf = fixture_pdf(33)
         r = self.probe(pdf)
         stable = r.to_dict()
@@ -142,6 +157,7 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
             r2.to_dict()
 
     def test_constructed_unsigned_receipts_are_never_portable_proof(self):
+        """Keep nonclaims false even when a caller constructs a matching receipt."""
         pdf = fixture_pdf(33)
         doc = self.planned(pdf)
         claimed = graph.PdfObjectGraphInspection(
@@ -158,6 +174,7 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
         self.assertEqual(result["conformance_scope"], "SAME_EXACT_PDF_AND_IR_EFFECTIVE_GRAPH_ONLY")
 
     def test_unqualified_source_and_report_gates_are_unchanged(self):
+        """Leave historical revisions, all-page coverage and release unqualified."""
         pdf = fixture_pdf(33)
         r = self.probe(pdf)
         self.assertFalse(r.to_dict()["all_file_revisions_inspected"])
@@ -167,6 +184,7 @@ class PdfDocumentGraphProbeTests(unittest.TestCase):
         self.assertFalse(r.to_dict()["release_authorized"])
 
     def test_manifest_is_exact_to_pin_and_nonclaims(self):
+        """Bind the checked-in manifest to the actual runtime resource limits."""
         manifest = json.loads((ROOT / "reporting/pdf-document-graph-probe.v1.json").read_text())
         self.assertEqual(manifest["profile"], subject.document_graph_probe_profile())
         self.assertEqual(manifest["profile_sha256"], subject.PROFILE_SHA256)
