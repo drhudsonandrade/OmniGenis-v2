@@ -1,0 +1,32 @@
+{
+  "aggregate_job_resources_qualified": false,
+  "all_file_revisions_inspected": false,
+  "conformance_scope": "COMPLETE_DECLARED_RANGE_RECEIPTS_AND_EFFECTIVE_GRAPH_ONLY",
+  "default_pipeline_activated": false,
+  "dependencies_changed": false,
+  "existing_qa_limits_unchanged": true,
+  "integration_mode": "OPTIONAL_PURE_METADATA_BINDING_ONLY",
+  "native_execution_performed": false,
+  "profile": {
+    "aggregate_job_resources_qualified": false,
+    "all_file_revisions_inspected": false,
+    "default_pipeline_activated": false,
+    "graph_probe_profile_sha256": "54dc75ed3813e5278a2f7d9a0395ebbc0732f3aac5b0bd10bf859b58791b9841",
+    "inspection_bundle_profile_id": "complete-pdf-inspection-metadata-v1",
+    "max_bound_pages": 512,
+    "max_bound_pdf_bytes": 8388608,
+    "preflight_profile_sha256": "99978998c67dae94e6350ea3f4a115009113e763115a82dd7a45f6f86469c9b1",
+    "profile_id": "generated-pdf-document-inspection-reconciliation-v1",
+    "receipts_authenticated": false,
+    "release_authorized": false,
+    "schema_version": "1.0.0"
+  },
+  "profile_id": "generated-pdf-document-inspection-reconciliation-v1",
+  "profile_sha256": "58efe1a5f669e1f3d439cf8ec2b463abe5a850dfd0d11989f9089b523c5b5f02",
+  "release_authorized": false,
+  "schema_version": "1.0.0",
+  "service_installed": false,
+  "status": "OPTIONAL_UNSIGNED_DOCUMENT_METADATA_RECONCILIATION",
+  "whole_pdf_safety_qualified": false,
+  "worker_results_authenticated": false
+}
