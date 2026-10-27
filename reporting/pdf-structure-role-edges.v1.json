@@ -1,0 +1,66 @@
+{
+  "aggregate_job_resources_qualified": false,
+  "all_file_revisions_inspected": false,
+  "all_reachable_role_edges_inventoried": true,
+  "conformance_scope": "KNOWN_GENERATED_PDF_ROLE_ADJACENCY_ONLY",
+  "default_pipeline_activated": false,
+  "language": "en-US",
+  "max_pages": 64,
+  "max_pdf_bytes": 8388608,
+  "max_tree_depth": 64,
+  "max_tree_visits": 20000,
+  "parent_role_profile_sha256": "442117c837e9ef8b7a8afb7371b9e9dd876334a7147334ee8c7a1d59ed28de73",
+  "parent_structure_policy_id": "forward-k-parent-and-mcid-linkage-v1",
+  "parser_version": "6.19.0",
+  "pdf_ua_qualified": false,
+  "policy_id": "generated-pdf-role-adjacency-subset-v1",
+  "profile_id": "generated-pdf-structure-role-edges-v1",
+  "reading_order_verified": false,
+  "release_authorized": false,
+  "root_sentinel": "ROOT",
+  "schema_version": "1.0.0",
+  "semantic_role_appropriateness_verified": false,
+  "supported_role_edges": [
+    [
+      "/Document",
+      "/H1"
+    ],
+    [
+      "/Document",
+      "/Sect"
+    ],
+    [
+      "/H1",
+      "/Span"
+    ],
+    [
+      "/H2",
+      "/Span"
+    ],
+    [
+      "/NonStruct",
+      "/Span"
+    ],
+    [
+      "/P",
+      "/Span"
+    ],
+    [
+      "/Sect",
+      "/H2"
+    ],
+    [
+      "/Sect",
+      "/NonStruct"
+    ],
+    [
+      "/Sect",
+      "/P"
+    ],
+    [
+      "ROOT",
+      "/Document"
+    ]
+  ],
+  "worker_results_authenticated": false
+}
