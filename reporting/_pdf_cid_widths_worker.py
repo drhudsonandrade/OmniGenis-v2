@@ -72,11 +72,11 @@ def _width_array(value: object) -> tuple[int, int]:
             raise ValueError("generated CID width intervals overlap or exceed CID code space")
         for width in widths:
             if type(width) is NumberObject:
-                if not 0 < int(width) <= MAX_NATIVE_WIDTH:
+                if not 1 <= int(width) <= MAX_NATIVE_WIDTH:
                     raise ValueError("generated CID width metric outside envelope")
             elif type(width) is FloatObject:
                 scalar = float(width)
-                if not math.isfinite(scalar) or not 0 < scalar <= MAX_NATIVE_WIDTH:
+                if not math.isfinite(scalar) or not 1 <= scalar <= MAX_NATIVE_WIDTH:
                     raise ValueError("generated CID width metric nonfinite or unbounded")
             else:
                 raise ValueError("generated CID width metric is not native numeric")

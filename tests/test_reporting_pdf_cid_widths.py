@@ -152,6 +152,7 @@ class PdfCidWidthTests(unittest.TestCase):
         for case in (
             "zero", "negative", "too_large", "nan", "infinite",
             "text", "boolean", "indirect", "invalid_negative_float",
+            "invalid_positive_subunit_float",
         ):
             with self.subTest(case=case):
                 reader = self.reader()
@@ -172,6 +173,8 @@ class PdfCidWidthTests(unittest.TestCase):
                     value = BooleanObject(True)
                 elif case == "indirect":
                     value = reader.pages[0].indirect_reference
+                elif case == "invalid_positive_subunit_float":
+                    value = FloatObject(0.5)
                 else:
                     value = FloatObject(-1.5)
                 widths[1][0] = value
@@ -180,11 +183,13 @@ class PdfCidWidthTests(unittest.TestCase):
 
     def test_native_finite_fractional_width_allowed_without_glyph_claim(self):
         """Allow bounded fractional native metrics without validating glyphs."""
-        reader = self.reader()
-        self.widths(reader)[1][0] = FloatObject(260.5)
-        result = self.verify(reader)
-        self.assertEqual(result["cid_width_value_count"], 50)
-        self.assertTrue(result["cid_widths_natively_bounded"])
+        for width in (1.0, 260.5):
+            with self.subTest(width=width):
+                reader = self.reader()
+                self.widths(reader)[1][0] = FloatObject(width)
+                result = self.verify(reader)
+                self.assertEqual(result["cid_width_value_count"], 50)
+                self.assertTrue(result["cid_widths_natively_bounded"])
 
     def test_raw_array_shape_and_nested_budget_rejected(self):
         """Reject unsupported range notation, types and nested budgets."""
