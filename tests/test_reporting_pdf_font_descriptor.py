@@ -346,6 +346,21 @@ class PdfFontDescriptorTests(unittest.TestCase):
                     with self.assertRaises(self.m.PdfFontDescriptorError):
                         self.inspect()
 
+    def test_child_cannot_attach_different_document_ancestor_receipt(self):
+        identity = self.worker._identity_from_plan(self.plan)
+        raw = self.m._run_worker(self.pdf, identity)
+        foreign_pdf = _CASES[33]
+        foreign_plan = descriptor_plan(foreign_pdf, 33)
+        foreign_ancestor = self.m.previous.inspect_pdf_resource_leaves(
+            pdf_bytes=foreign_pdf, plan=foreign_plan,
+            expected_plan_sha256=foreign_plan.plan_sha256,
+            expected_language="en-US",
+        )
+        self.assertNotEqual(identity["pdf_sha256"], foreign_ancestor.pdf_sha256)
+        self.assertEqual(foreign_ancestor.font_binding_count, 3)
+        with self.assertRaises(self.m.PdfFontDescriptorError):
+            self.m._decode(raw, identity, foreign_ancestor)
+
     def test_inflight_plan_disabled_profile_and_immutable_receipt(self):
         normal = self.m._run_worker
 

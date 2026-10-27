@@ -181,7 +181,9 @@ def _decode(
     try:
         _identity(identity)
         if (type(ancestor) is not previous.PdfResourceLeaves
-                or type(data) is not bytes or not 0 < len(data) <= RESULT_BYTES):
+                or type(data) is not bytes or not 0 < len(data) <= RESULT_BYTES
+                or {key: getattr(ancestor, key) for key in IDENTITY_FIELDS}
+                   != identity):
             raise ValueError("FontDescriptor child result or ancestor invalid")
         ancestor_digest = ancestor.inspection_sha256
         record = json.loads(data.decode("ascii"), object_pairs_hook=_unique_pairs)
