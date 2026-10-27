@@ -139,7 +139,7 @@ class PdfXrefResolutionTests(unittest.TestCase):
 
     def test_broken_prior_xref_map_blocks_child(self):
         invalid = mutate_last_xref_stream(
-            self.pdf, lambda raw: raw[:-5] + b"\\x01\\x00\\x08\\x00\\x00",
+            self.pdf, lambda raw: raw[:-5] + b"\x01\x00\x08\x00\x00",
         )
         plan = page_plan(invalid, 1)
         with patch.object(self.m, "_run_worker") as child:
@@ -198,7 +198,7 @@ class PdfXrefResolutionTests(unittest.TestCase):
         mutate(lambda x: x["inspection"].update({"unexpected": "yes"}))
         variations.extend([
             wire.replace(b'"status":', b'"status":"forged","status":', 1),
-            wire + b"\\xff",
+            wire + b"\xff",
             wire + b"x" * (self.m.RESULT_BYTES + 1),
         ])
         for candidate in variations:
