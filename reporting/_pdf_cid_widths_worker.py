@@ -40,10 +40,12 @@ MAX_NATIVE_WIDTH = 16384
 
 
 def _identity(value: dict) -> None:
+    """Reuse the pinned prior worker's closed identity validation."""
     previous._identity(value)
 
 
 def _identity_from_plan(plan: object) -> dict:
+    """Extract the exact source identity from the admitted sealed plan."""
     return previous._identity_from_plan(plan)
 
 

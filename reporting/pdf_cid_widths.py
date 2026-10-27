@@ -152,6 +152,7 @@ class PdfCidWidths:
         }
 
     def __post_init__(self) -> None:
+        """Seal a normalized receipt digest and reject subsequent mutation."""
         try:
             encoded = _canonical(self._record())
             if len(encoded) > RESULT_BYTES:
@@ -164,6 +165,7 @@ class PdfCidWidths:
             raise PdfCidWidthsError("pdf_cid_widths_receipt_invalid") from None
 
     def to_bytes(self) -> bytes:
+        """Return only canonical bytes when the receipt seal still matches."""
         try:
             encoded = _canonical(self._record())
             if len(encoded) > RESULT_BYTES or sha256(encoded).hexdigest() != self._sealed_sha256:
@@ -173,6 +175,7 @@ class PdfCidWidths:
             raise PdfCidWidthsError("pdf_cid_widths_receipt_invalid") from None
 
     def to_dict(self) -> dict:
+        """Expose the validated immutable technical receipt as a copy."""
         return json.loads(self.to_bytes())
 
     @property
