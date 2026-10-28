@@ -107,6 +107,7 @@ class PdfToUnicodeZlib:
     _sealed_sha256: str = field(init=False, repr=False, compare=False)
 
     def _record(self) -> dict:
+        """Serialize source identity, verified counts and explicit nonclaims."""
         _profile()
         _identity({key: getattr(self, key) for key in IDENTITY_FIELDS})
         if (type(self.tounicode_stream_count) is not int
@@ -147,6 +148,7 @@ class PdfToUnicodeZlib:
         }
 
     def __post_init__(self) -> None:
+        """Seal the canonical receipt and reject inconsistent fields."""
         try:
             encoded = _canonical(self._record())
             if len(encoded) > RESULT_BYTES:
@@ -160,6 +162,7 @@ class PdfToUnicodeZlib:
             raise PdfToUnicodeZlibError("pdf_tounicode_zlib_receipt_invalid") from None
 
     def to_bytes(self) -> bytes:
+        """Return canonical receipt bytes only if the seal still matches."""
         try:
             encoded = _canonical(self._record())
             if (len(encoded) > RESULT_BYTES
@@ -170,6 +173,7 @@ class PdfToUnicodeZlib:
             raise PdfToUnicodeZlibError("pdf_tounicode_zlib_receipt_invalid") from None
 
     def to_dict(self) -> dict:
+        """Return a new dictionary from the validated serialized receipt."""
         return json.loads(self.to_bytes())
 
     @property
