@@ -1,4 +1,4 @@
-"""Retain an exclusively owned inspection child's identity through group cleanup.
+"""Retain an exclusively owned PDF child's identity through group cleanup.
 
 The caller must remain alive and exclusively own a Popen child launched with
 start_new_session=True. Concurrent reaping or mutation of that object is not
@@ -41,13 +41,23 @@ def _wait_for_exit(process: subprocess.Popen, deadline: float):
         time.sleep(min(0.01, remaining))
 
 
-def wait_owned_process_group(process: subprocess.Popen, *, wall_seconds: float) -> int:
+def wait_owned_process_group(
+    process: subprocess.Popen, *, wall_seconds: float, cleanup_seconds: float = 2
+) -> int:
     """Wait, clean the original group while identity is owned, then reap once.
 
     A timeout remains a timeout even when cleanup succeeds. Unknown ownership or
-    any unresolved cleanup operation refuses success. The two-second cleanup
+    any unresolved cleanup operation refuses success. The selected cleanup
     budget is shared by independent group/direct-child cleanup and final reap.
     """
+    if isinstance(cleanup_seconds, bool) or not isinstance(cleanup_seconds, (int, float)):
+        raise ValueError("finite positive cleanup budget required")
+    try:
+        valid_cleanup = math.isfinite(cleanup_seconds) and cleanup_seconds > 0
+    except OverflowError:
+        valid_cleanup = False
+    if not valid_cleanup:
+        raise ValueError("finite positive cleanup budget required")
     if not math.isfinite(wall_seconds) or wall_seconds < 0:
         raise ValueError("finite inspection wall budget required")
     failure = None
@@ -60,7 +70,7 @@ def wait_owned_process_group(process: subprocess.Popen, *, wall_seconds: float) 
     except BaseException as error:
         failure = error
 
-    cleanup_deadline = time.monotonic() + 2
+    cleanup_deadline = time.monotonic() + cleanup_seconds
     cleanup_failure = None
     try:
         _observe(process)
@@ -92,7 +102,7 @@ def wait_owned_process_group(process: subprocess.Popen, *, wall_seconds: float) 
 
         try:
             if _wait_for_exit(process, cleanup_deadline) is None:
-                raise subprocess.TimeoutExpired(process.args, 2)
+                raise subprocess.TimeoutExpired(process.args, cleanup_seconds)
             # Popen.wait() hides ECHILD by reporting zero. Explicitly reap so a
             # lost child cannot be mistaken for a successful inspection.
             pid, status = os.waitpid(process.pid, os.WNOHANG)

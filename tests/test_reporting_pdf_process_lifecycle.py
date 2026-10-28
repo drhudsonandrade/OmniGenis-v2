@@ -296,7 +296,302 @@ class InspectionChildLifecycleTests(unittest.TestCase):
                                  {"exit": 0, "descendant_signal": 9, "owned": True, "reaped": True})
 
 
-def descendant_probe(name):
+
+@contextmanager
+def reap_observer(process, observations):
+    """Check retained kernel ownership immediately before the product's final reap."""
+    def reap(pid, flags):
+        """Preserve kernel ECHILD while refusing an unowned numeric waitpid."""
+        if pid != process.pid:
+            raise AssertionError("unexpected reap target")
+        try:
+            REAL_WAITID(os.P_PID, pid, WAIT_FLAGS)
+        except ChildProcessError:
+            observations.append(False)
+            raise
+        observations.append(True)
+        return REAL_WAITPID(pid, flags)
+    with patch.object(os, "waitpid", side_effect=reap):
+        yield
+
+
+@unittest.skipUnless(sys.platform == "linux" and hasattr(os, "pidfd_open"), "Linux pidfd required")
+class RendererChildLifecycleTests(unittest.TestCase):
+    def test_real_exit_statuses_retain_ownership_through_signals_and_final_reap(self):
+        """A renderer reap before group cleanup revokes numeric signal authority."""
+        from reporting import adapters
+        for script, expected in (("import os;os._exit(0)", 0),
+                                 ("import os;os._exit(7)", 7),
+                                 ("import os,signal;os.kill(os.getpid(),signal.SIGTERM)", -15)):
+            with self.subTest(expected=expected), real_child(script) as process:
+                observe_exit(process)
+                signals, reaps = [], []
+                with signal_observer(process, signals), reap_observer(process, reaps):
+                    code = adapters._wait_pdf_render_worker(process, wall_seconds=1)
+                self.assertEqual(code, expected)
+                self.assertEqual(process.returncode, expected)
+                self.assertTrue(signals)
+                self.assertTrue(all(owned for _, owned, _ in signals), signals)
+                self.assertEqual(reaps, [True])
+                with self.assertRaises(ChildProcessError):
+                    REAL_WAITID(os.P_PID, process.pid, WAIT_FLAGS)
+
+    def test_external_kernel_reap_without_returncode_refuses_all_numeric_operations(self):
+        """Popen's ECHILD-to-zero fallback cannot turn a released PID into success."""
+        from reporting import adapters
+        with real_child("import os;os._exit(0)") as process:
+            observe_exit(process)
+            REAL_WAITPID(process.pid, 0)
+            self.assertIsNone(process.returncode)
+            signals, reaps = [], []
+            with signal_observer(process, signals), reap_observer(process, reaps):
+                with self.assertRaisesRegex(RuntimeError, "^pdf_render_failed$"):
+                    adapters._wait_pdf_render_worker(process)
+            self.assertEqual(signals, [])
+            self.assertEqual(reaps, [])
+            self.assertIsNone(process.returncode)
+
+    def test_unavailable_ownership_primitives_refuse_without_signals_or_reap(self):
+        """Missing or unavailable waitid cannot certify renderer cleanup."""
+        from reporting import adapters
+        for error in (OSError(errno.ENOSYS, "PRIVATE"), AttributeError("PRIVATE")):
+            with self.subTest(error=type(error).__name__), real_child("import os;os._exit(0)") as process:
+                observe_exit(process)
+                signals, reaps = [], []
+                with patch.object(os, "waitid", side_effect=error), \
+                     signal_observer(process, signals), reap_observer(process, reaps):
+                    with self.assertRaisesRegex(RuntimeError, "^pdf_render_failed$"):
+                        adapters._wait_pdf_render_worker(process)
+                self.assertEqual(signals, [])
+                self.assertEqual(reaps, [])
+
+    def test_invalid_wall_budget_maps_to_fixed_renderer_refusal(self):
+        """Helper budget validation must retain the renderer's fixed public failure."""
+        from reporting import adapters
+        with real_child("import os;os._exit(0)") as process:
+            observe_exit(process)
+            signals, reaps = [], []
+            with signal_observer(process, signals), reap_observer(process, reaps):
+                error = None
+                try:
+                    adapters._wait_pdf_render_worker(process, wall_seconds=-1)
+                except Exception as caught:
+                    error = caught
+            self.assertIsInstance(error, RuntimeError)
+            self.assertEqual(str(error), "pdf_render_failed")
+            self.assertEqual(signals, [])
+            self.assertEqual(reaps, [])
+
+    def test_group_failure_preserves_independent_owned_child_cleanup(self):
+        """A refused group signal still kills and reaps the owned direct renderer."""
+        from reporting import adapters
+        initial = OSError(errno.EIO, "PRIVATE initial observation")
+        first = True
+        def observe(*args):
+            """Inject one transient observation fault, then expose kernel ownership."""
+            nonlocal first
+            if first:
+                first = False
+                raise initial
+            return REAL_WAITID(*args)
+        with real_child("import time;time.sleep(30)") as process:
+            signals, reaps = [], []
+            with patch.object(os, "waitid", side_effect=observe), \
+                 signal_observer(process, signals, group_error=PermissionError("PRIVATE group")), \
+                 reap_observer(process, reaps):
+                error = None
+                try:
+                    adapters._wait_pdf_render_worker(process, wall_seconds=1)
+                except Exception as caught:
+                    error = caught
+            self.assertIsInstance(error, RuntimeError)
+            self.assertEqual(str(error), "pdf_render_failed")
+            self.assertEqual(process.returncode, -9)
+            self.assertIn(("child", True, None), signals)
+            self.assertTrue(all(owned for _, owned, _ in signals), signals)
+            self.assertEqual(reaps, [True])
+
+    def test_timeout_refuses_after_owned_child_cleanup(self):
+        """Successful cleanup cannot turn renderer timeout into a usable exit code."""
+        from reporting import adapters
+        with real_child("import time;time.sleep(30)") as process:
+            signals, reaps = [], []
+            with signal_observer(process, signals), reap_observer(process, reaps):
+                with self.assertRaisesRegex(RuntimeError, "^pdf_render_failed$"):
+                    adapters._wait_pdf_render_worker(process, wall_seconds=0.02)
+            self.assertEqual(process.returncode, -9)
+            self.assertTrue(signals)
+            self.assertTrue(all(owned for _, owned, _ in signals), signals)
+            self.assertEqual(reaps, [True])
+
+    def test_definitive_ownership_loss_never_restores_numeric_authority(self):
+        """A later real observation cannot undo an earlier ECHILD refusal."""
+        from reporting import adapters
+        for stage in (1, 2, 3, 4):
+            with self.subTest(stage=stage), real_child("import os;os._exit(0)") as process:
+                observe_exit(process)
+                calls, lost = 0, False
+                after_loss = []
+                def observe(*args):
+                    """Declare ownership lost at the selected lifecycle observation."""
+                    nonlocal calls, lost
+                    calls += 1
+                    if calls == stage:
+                        lost = True
+                        raise ChildProcessError(errno.ECHILD, "ownership lost")
+                    return REAL_WAITID(*args)
+                def send(pid, sig):
+                    """Record forbidden post-loss signals without sending them."""
+                    if lost:
+                        after_loss.append("signal")
+                    else:
+                        try:
+                            REAL_WAITID(os.P_PID, pid, WAIT_FLAGS)
+                        except ChildProcessError:
+                            after_loss.append("unowned signal")
+                            return
+                        REAL_KILLPG(pid, sig)
+                def reap(pid, flags):
+                    """Record forbidden post-loss reap attempts without calling waitpid."""
+                    if lost:
+                        after_loss.append("reap")
+                        return (0, 0)
+                    return REAL_WAITPID(pid, flags)
+                with patch.object(os, "waitid", side_effect=observe), \
+                     patch.object(os, "killpg", side_effect=send), \
+                     patch.object(os, "kill", side_effect=send), \
+                     patch.object(os, "waitpid", side_effect=reap):
+                    with self.assertRaisesRegex(RuntimeError, "^pdf_render_failed$"):
+                        adapters._wait_pdf_render_worker(process)
+                self.assertTrue(lost, "required ownership observation was skipped")
+                self.assertEqual(after_loss, [])
+                self.assertIsNone(process.returncode)
+
+    def test_renderer_original_group_descendant_cleanup_and_timeout_refusal(self):
+        """Product group cleanup, rather than pidfd fixture teardown, kills descendants."""
+        for timeout in (False, True):
+            with self.subTest(timeout=timeout):
+                script = (
+                    "import sys;sys.path.insert(0," + repr(str(ROOT)) + ");"
+                    "sys.path.insert(0," + repr(str(ROOT / "tests")) + ");"
+                    "from test_reporting_pdf_process_lifecycle import descendant_probe;"
+                    "import json;print(json.dumps(descendant_probe('adapters', timeout=" + repr(timeout) + ")))"
+                )
+                result = subprocess.run([sys.executable, "-I", "-B", "-c", script],
+                                        capture_output=True, text=True, timeout=12)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout), {
+                    "exit": "pdf_render_failed" if timeout else 0,
+                    "descendant_signal": 9, "owned": True, "reaped": True,
+                })
+
+
+@unittest.skipUnless(sys.platform == "linux" and hasattr(os, "pidfd_open"), "Linux pidfd required")
+class CleanupAllowanceTests(unittest.TestCase):
+    def test_invalid_cleanup_allowance_rejects_before_any_process_operation(self):
+        """Invalid cleanup budgets must fail validation before ownership or cleanup."""
+        from reporting import _pdf_process_lifecycle as lifecycle
+        invalid = (None, "5", [], object(), True, False, 0, -1, float("nan"),
+                   float("inf"), -float("inf"), 10 ** 10000)
+        for index, allowance in enumerate(invalid):
+            with self.subTest(index=index), patch.object(lifecycle, "_observe") as observe, \
+                 patch.object(os, "killpg") as group, patch.object(os, "kill") as child, \
+                 patch.object(os, "waitpid") as reap:
+                error = None
+                try:
+                    lifecycle.wait_owned_process_group(object(), wall_seconds=1,
+                                                       cleanup_seconds=allowance)
+                except Exception as caught:
+                    error = caught
+                self.assertIsInstance(error, ValueError)
+                observe.assert_not_called()
+                group.assert_not_called()
+                child.assert_not_called()
+                reap.assert_not_called()
+
+    def run_delayed_observation(self, *, route, visible_at, group_cost=0, allowance=5):
+        """Use a real retained child with controlled monotonic observation latency."""
+        from reporting import _pdf_process_lifecycle as lifecycle, adapters
+        clock, calls = [100.0], 0
+        original_observe = lifecycle._observe
+        def observe(process):
+            """Delay only final-exit visibility while retaining actual child ownership."""
+            nonlocal calls
+            calls += 1
+            result = original_observe(process)
+            if calls <= 3 or clock[0] >= 100 + visible_at:
+                return result
+            return None
+        def sleep(seconds):
+            """Advance controlled monotonic time instead of sleeping real seconds."""
+            clock[0] += seconds
+        with real_child("import os;os._exit(7)") as process:
+            observe_exit(process)
+            signals = []
+            def group(pid, sig):
+                """Guard the real group signal and charge earlier cleanup work."""
+                try:
+                    REAL_WAITID(os.P_PID, pid, WAIT_FLAGS)
+                except ChildProcessError:
+                    signals.append(False)
+                    return
+                signals.append(True)
+                REAL_KILLPG(pid, sig)
+                clock[0] += group_cost
+            with patch.object(lifecycle, "_observe", side_effect=observe), \
+                 patch.object(lifecycle.time, "monotonic", side_effect=lambda: clock[0]), \
+                 patch.object(lifecycle.time, "sleep", side_effect=sleep), \
+                 patch.object(os, "killpg", side_effect=group):
+                code, error = None, None
+                try:
+                    if route == "default":
+                        code = lifecycle.wait_owned_process_group(process, wall_seconds=30)
+                    elif route == "selected":
+                        code = lifecycle.wait_owned_process_group(process, wall_seconds=30, cleanup_seconds=allowance)
+                    else:
+                        code = adapters._wait_pdf_render_worker(process)
+                except Exception as caught:
+                    error = caught
+            return code, error, clock[0] - 100, signals
+
+    def test_default_two_seconds_and_selected_five_seconds_have_distinct_outcomes(self):
+        """A terminal observation at three seconds exceeds only the default budget."""
+        code, error, elapsed, signals = self.run_delayed_observation(route="default", visible_at=3)
+        self.assertIsNone(code)
+        self.assertIsInstance(error, subprocess.TimeoutExpired)
+        self.assertEqual(error.timeout, 2)
+        self.assertAlmostEqual(elapsed, 2)
+        self.assertEqual(signals, [True])
+        for allowance in (5, 5.0):
+            with self.subTest(allowance=allowance):
+                code, error, elapsed, signals = self.run_delayed_observation(
+                    route="selected", visible_at=3, allowance=allowance)
+                self.assertIsNone(error)
+                self.assertEqual(code, 7)
+                self.assertGreaterEqual(elapsed, 3)
+                self.assertLess(elapsed, 3.02)
+                self.assertEqual(signals, [True])
+
+    def test_renderer_five_second_cleanup_accepts_terminal_observation_after_two_seconds(self):
+        """Renderer integration must preserve five seconds instead of inheriting two."""
+        code, error, elapsed, signals = self.run_delayed_observation(route="renderer", visible_at=3)
+        self.assertIsNone(error)
+        self.assertEqual(code, 7)
+        self.assertGreaterEqual(elapsed, 3)
+        self.assertLess(elapsed, 3.02)
+        self.assertEqual(signals, [True])
+
+    def test_earlier_cleanup_work_reduces_final_observation_budget(self):
+        """A four-second group operation leaves one second of the original five."""
+        code, error, elapsed, signals = self.run_delayed_observation(
+            route="selected", visible_at=6, group_cost=4)
+        self.assertIsNone(code)
+        self.assertIsInstance(error, subprocess.TimeoutExpired)
+        self.assertEqual(error.timeout, 5)
+        self.assertAlmostEqual(elapsed, 5)
+        self.assertEqual(signals, [True])
+
+def descendant_probe(name, *, timeout=False):
     """Reap an orphaned fixture descendant in a disposable test-only subreaper."""
     if ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) != 0:
         raise RuntimeError("test subreaper unavailable")
@@ -312,7 +607,7 @@ def descendant_probe(name):
             "deadline=time.monotonic()+5\n"
             "while not Path(" + repr(str(release)) + ").exists():\n"
             " if time.monotonic()>deadline:os._exit(71)\n time.sleep(0.005)\n"
-            "os._exit(0)\n"
+            + ("time.sleep(30)\n" if timeout else "os._exit(0)\n")
         )
         try:
             with real_child(script) as process:
@@ -326,10 +621,19 @@ def descendant_probe(name):
                 if os.getpgid(descendant) != process.pid:
                     raise AssertionError("fixture descendant escaped group")
                 release.touch()
-                observe_exit(process)
+                if not timeout:
+                    observe_exit(process)
                 observations = []
                 with signal_observer(process, observations):
-                    result = module._wait(process)
+                    if name == "adapters":
+                        try:
+                            result = module._wait_pdf_render_worker(process, wall_seconds=0.02 if timeout else 1)
+                        except RuntimeError as error:
+                            if str(error) != "pdf_render_failed":
+                                raise
+                            result = str(error)
+                    else:
+                        result = module._wait(process)
                 reaped = False
                 try:
                     REAL_WAITID(os.P_PID, process.pid, WAIT_FLAGS)

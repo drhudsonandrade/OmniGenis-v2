@@ -241,16 +241,16 @@
   "reused_source_sha256": {
     "reporting/_pdf_fixed_inspection_worker.py": "7964a87a78fd517769a84f47913bd8df14c0acc527597b9acad7847fe98ed000",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-bounded-scratch.v1.json": "be4f3d1c34ca9b4c75aa871a491e453536f0c2d3d362d0aaf6f13f1f91f6913d",
+    "reporting/pdf-bounded-scratch.v1.json": "6e81642140fda657dc32484dea748e82e082e50c3d2a9044917015639a694443",
     "reporting/pdf-fixed-inspection-worker.v1.json": "1da1b326f0dcd4e866f6a2045ddfcf778458ed08e0d390d10673addd85bed67e",
     "reporting/pdf-fixed-worker-admission.v1.json": "6d9f94eae2057fdb5b3caa752eb5cf8ad4ec13b3377b74322a31e2743eae583c",
-    "reporting/pdf-inspection-request.v1.json": "10537d21507cce1446968cc046af12b64907813c38052f73aacc1dbebd660719",
+    "reporting/pdf-inspection-request.v1.json": "fe0bd6d03abc7a4f9c2e711b0f92a20581660a2efd4ab32ab5ec6b29e9ba5d75",
     "reporting/pdf-inspection-result-frame.v1.json": "bc094df6fbfc4af2c40f4c261633a469f89d35ecedc64090fdea04a293953ea9",
-    "reporting/pdf-native-source-job.v1.json": "994709fe3efd8a969bcfe80bb3b106a9f146fa21d504c6e2e395f45ce62e0693",
-    "reporting/pdf-request-descriptor.v1.json": "257e63e39fc49da686e418e535f4218541df6f6f508696504c6c58a750ee2b60",
-    "reporting/pdf-sealed-inspection.v1.json": "d992ba5316fdd08872f88ffdd7bdaf6d8f5a56595629f888bbcab98a4b0f40d9",
-    "reporting/pdf-snapshot-inspection.v1.json": "da8843c20f4964b4dccdb0e6b94f66b087273e91a7ead249b5d87ba3d7835e4f",
-    "reporting/pdf-structured-source-job.v1.json": "5b43041c71d1b5fa7dbef24deb6e1bacbc0e11f857c2b23d3905e57969a4953c",
+    "reporting/pdf-native-source-job.v1.json": "20ee0d61543ed2ce8eb225aeb0e69907751787e759e07a373ed321a28957b850",
+    "reporting/pdf-request-descriptor.v1.json": "ac9103158024945ff39e765e9c492485f9824fbd972f05b591541909834ca142",
+    "reporting/pdf-sealed-inspection.v1.json": "91a27d628cf84bb224431080df0378dc7b45954ed00906563bcf07963a5546c7",
+    "reporting/pdf-snapshot-inspection.v1.json": "31a611f3b70946d03d60cc2399cb90045386ea71ffe7cf674a9a21d59a363787",
+    "reporting/pdf-structured-source-job.v1.json": "e3794b72d1350d0ef955e7625fd189da36792df1fe92d8728269e95ecea9ea5c",
     "reporting/pdf-supervised-inspection.v1.json": "2cffaf5d1e54aaffa3dc6fbc35dbf57ebda6a7bf2718f4cff7016b6691d79a6b",
     "reporting/pdf-tounicode-width-coverage.v1.json": "bf7a9a44f7db35ff4376e9a9c79280c24d670051ce1fdeed61b6db51ee350e3d",
     "reporting/pdf_inspection_request.py": "f9e72d162992debe09f081dc945edd1bc6740730682e4de4a5f1c80d43113dd3",
@@ -263,7 +263,7 @@
     "reporting/pdf_supervised_inspection.py": "06ba16a929583a1930bda05c8f2b6d298a451afd0c5e130e9dedea17973b1a31",
     "reporting/pdf_text_windows.py": "be81c573b7d2145d31d0a049bb946f4eceb0399f01f23c2b38e1c4bbb43f8f81",
     "reporting/pdf_tounicode_width_coverage.py": "a161b31fca3fc7cc457289e6fa9558e3814d5d222f86c6b42ff794faf0cd8e43",
-    "reporting/_pdf_process_lifecycle.py": "38edfb1529aeefb3f1cd105e6153615bd01dc1580186a02a163f26570a61cb85"
+    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
   },
   "schema_version": "2.0.0"
 }
