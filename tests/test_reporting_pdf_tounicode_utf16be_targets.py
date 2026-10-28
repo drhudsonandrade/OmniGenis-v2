@@ -114,7 +114,8 @@ class PdfToUnicodeUtf16beTargetsTests(unittest.TestCase):
                 self.assertEqual(result["pdf_sha256"], sha256(pdf).hexdigest())
                 self.assertEqual(len(result["prior_tounicode_cmap_frame_sha256"]), 64)
                 for key in (
-                    "unicode_mappings_audited", "glyph_meanings_verified",
+                    "cmap_syntax_audited", "unicode_mappings_audited",
+                    "glyph_meanings_verified", "glyph_widths_audited",
                     "reading_order_verified", "pdf_ua_qualified",
                     "worker_results_authenticated", "default_pipeline_activated",
                     "release_authorized",

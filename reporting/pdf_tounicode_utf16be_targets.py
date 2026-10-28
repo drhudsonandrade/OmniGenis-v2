@@ -69,9 +69,11 @@ def tounicode_utf16be_targets_profile() -> dict:
         "all_file_revisions_inspected": False,
         "all_native_cmap_dialects_supported": False,
         "general_postscript_executed": False,
+        "cmap_syntax_audited": False,
         "unicode_mappings_audited": False,
         "glyph_meanings_verified": False,
         "font_programs_audited": False,
+        "glyph_widths_audited": False,
         "reading_order_verified": False,
         "pdf_ua_qualified": False,
         "worker_results_authenticated": False,
@@ -82,7 +84,7 @@ def tounicode_utf16be_targets_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_utf16be_targets_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "8b77173e41642082a50e005b93c8850c6993da51d660ad8ba87b6a6b2ef08571"
+_FIXED_PROFILE_SHA256 = "b20db009e9453d1b60b067dbc17688970be8e27d0ff4aa23eb0f2ee494098495"
 
 
 def _profile() -> None:
@@ -159,9 +161,11 @@ class PdfToUnicodeUtf16beTargets:
             "all_file_revisions_inspected": False,
             "all_native_cmap_dialects_supported": False,
             "general_postscript_executed": False,
+            "cmap_syntax_audited": False,
             "unicode_mappings_audited": False,
             "glyph_meanings_verified": False,
             "font_programs_audited": False,
+            "glyph_widths_audited": False,
             "reading_order_verified": False,
             "pdf_ua_qualified": False,
             "worker_results_authenticated": False,
