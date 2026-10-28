@@ -181,15 +181,16 @@ def _finish_child(process: subprocess.Popen) -> int:
 def _exchange(request_fd: int, context: bytes, environment: dict[str, str], clock: _Clock) -> bytes:
     """Exchange bounded pipes with only the fixed child and preserve its unreaped identity."""
     clock.remaining()
+    # Prepare fallible transport state before creating the owned child.
+    output = bytearray()
+    sent = 0
+    eof = False
+    exit_code = None
     process = subprocess.Popen(
         [sys.executable, '-I', '-B', str(_WORKER), str(request_fd), str(os.getpid())],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         pass_fds=(request_fd,), close_fds=True, start_new_session=True,
         cwd=_ROOT, env=environment, bufsize=0)
-    output = bytearray()
-    sent = 0
-    eof = False
-    exit_code = None
     try:
         with selectors.DefaultSelector() as ready:
             os.set_blocking(process.stdin.fileno(), False)

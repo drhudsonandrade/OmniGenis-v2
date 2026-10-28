@@ -40,6 +40,6 @@
     "reporting/pdf_inspection_result_frame.py": "34b146dc4e3a3fe3500031726c712d55e3c52d6fea705324511b0a7a529527ae",
     "reporting/pdf_request_descriptor.py": "a7c9fb5e67075138603f0c12ec7e22308f68e8c0498b9029c17ce5897305ef7f",
     "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
-    "reporting/pdf_supervised_inspection.py": "6bc4bc7c4b973971ecf5f585df0933d870db4a521fc150630fd08617fe9636ba"
+    "reporting/pdf_supervised_inspection.py": "121c80319684ea9884dc90ceb1951f1010060eeef683d5b60056518b61cc979c"
   }
 }
