@@ -378,6 +378,32 @@ class SupervisedInspectionTests(unittest.TestCase):
             self.assertEqual(os.pread(fd, len(packet), 0), packet)
             self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), 7)
 
+    def test_buffer_allocation_failure_leaves_no_owned_child_or_pipes(self):
+        """A failed transport allocation must not leave a child or its pipes owned."""
+        with self.h.request() as (fd, expected, args, packet):
+            raw = _json_bytes(self.fixture.context(expected, args))
+            os.lseek(fd, 7, os.SEEK_SET)
+            descriptors_before = len(os.listdir('/proc/self/fd'))
+            started = time.monotonic()
+            with self.child('import sys;sys.stdin.buffer.read()') as launches, \
+                 patch.object(self.m, 'bytearray', create=True,
+                              side_effect=MemoryError('SYNTHETIC_SECRET')) as allocate:
+                with self.assertRaises(self.m.PdfSupervisedInspectionError) as caught:
+                    self.invoke(fd, raw)
+                allocate.assert_called_once_with()
+                self.assertEqual(str(caught.exception), 'pdf_supervised_inspection_failed')
+                self.assertEqual(os.pread(fd, len(packet), 0), packet)
+                self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), 7)
+                # Check production cleanup before the fixture can rescue a leaked child.
+                for _, _, process in launches:
+                    self.assertIsNotNone(process.returncode,
+                                         'direct child was not reaped after allocation failure')
+                    with self.assertRaises(ChildProcessError):
+                        os.waitpid(process.pid, os.WNOHANG)
+                    self.assertTrue(process.stdin.closed and process.stdout.closed)
+                self.assertEqual(len(os.listdir('/proc/self/fd')), descriptors_before)
+                self.assertLess(time.monotonic() - started, 5)
+
     def test_repeated_failures_do_not_leak_owned_descriptors(self):
         """Admission and transport failures preserve the caller's descriptor count."""
         with self.h.request() as (fd, expected, args, packet):
