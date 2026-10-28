@@ -36,10 +36,10 @@
   "release_authorized": false,
   "schema_version": "1.0.0",
   "source_sha256": {
-    "reporting/_pdf_fixed_inspection_worker.py": "456f318c7c5ce52c902cce1635b37ea3ced1823394bd209150c76e731ee3ced7",
-    "reporting/pdf_inspection_result_frame.py": "34b146dc4e3a3fe3500031726c712d55e3c52d6fea705324511b0a7a529527ae",
-    "reporting/pdf_request_descriptor.py": "a7c9fb5e67075138603f0c12ec7e22308f68e8c0498b9029c17ce5897305ef7f",
+    "reporting/_pdf_fixed_inspection_worker.py": "7964a87a78fd517769a84f47913bd8df14c0acc527597b9acad7847fe98ed000",
+    "reporting/pdf_inspection_result_frame.py": "105d904ef1fa904342fb733a2a64bcdb8028d1a575c0299bd8cf935abf64f95d",
+    "reporting/pdf_request_descriptor.py": "3bc2dcbd6d2b28a3d9a92fefb84568fa45bc1b220f5bbdced4da707eb98e2d5f",
     "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
-    "reporting/pdf_supervised_inspection.py": "121c80319684ea9884dc90ceb1951f1010060eeef683d5b60056518b61cc979c"
+    "reporting/pdf_supervised_inspection.py": "06ba16a929583a1930bda05c8f2b6d298a451afd0c5e130e9dedea17973b1a31"
   }
 }

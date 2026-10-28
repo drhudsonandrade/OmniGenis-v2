@@ -1,43 +1,43 @@
 {
-  "schema_version": "1.0.0",
+  "aggregate_resources_qualified": false,
   "content_classification": "SECURITY_RUNTIME_REQUIRED",
-  "profile_id": "isolated-pdf-bounded-scratch-optin-v1",
-  "status": "OPTIONAL_NOT_ACTIVATED",
-  "integration_mode": "OPT_IN_FIXED_CHILD_ONLY",
-  "environment_switch": "OMNIGENIS_PDF_BOUNDED_SCRATCH_V1=1",
   "default_pipeline_activated": false,
   "default_scratch_parent": "/tmp",
-  "qualified_scratch_parent": "/run/omnigenis-pdf-bounded-scratch",
-  "mount_filesystem": "tmpfs",
-  "mount_required_options": [
-    "nosuid",
-    "nodev",
-    "noexec"
-  ],
-  "max_scratch_bytes": 134217728,
-  "max_inodes": 4096,
-  "mount_directory_mode": "01777",
-  "directory_owner_uid": 0,
   "dependency_versions_changed": false,
+  "directory_owner_uid": 0,
+  "disabled_if_mount_missing": true,
+  "environment_switch": "OMNIGENIS_PDF_BOUNDED_SCRATCH_V1=1",
   "existing_renderer_behavior_changed": false,
   "existing_resource_profiles_changed": false,
-  "profile_activated_for_release": false,
-  "disabled_if_mount_missing": true,
-  "no_caller_selected_root": true,
+  "integration_mode": "OPT_IN_FIXED_CHILD_ONLY",
   "known_issues": [
     "Unit-level actual tmpfs admission has not yet passed a native owner-operated systemd check.",
     "Process-local admission does not independently prove all aggregate CPU, memory, descendant, wall-time, or scratch cleanup guarantees.",
     "The existing private /tmp remains present under PrivateTmp=yes; proving that every non-Python native helper is confined to the bounded mount requires separate host verification.",
     "No user document, scientific interpretation, accessibility certification, or report delivery can be released based on this profile."
   ],
+  "max_inodes": 4096,
+  "max_scratch_bytes": 134217728,
+  "mount_directory_mode": "01777",
+  "mount_filesystem": "tmpfs",
+  "mount_required_options": [
+    "nosuid",
+    "nodev",
+    "noexec"
+  ],
+  "no_caller_selected_root": true,
+  "profile_activated_for_release": false,
+  "profile_id": "isolated-pdf-bounded-scratch-optin-v1",
+  "qualified_scratch_parent": "/run/omnigenis-pdf-bounded-scratch",
+  "release_authorized": false,
+  "schema_version": "1.0.0",
+  "scientific_equivalence_verified": false,
   "source_sha256": {
     "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a",
+    "reporting/_pdf_fixed_inspection_worker.py": "7964a87a78fd517769a84f47913bd8df14c0acc527597b9acad7847fe98ed000",
     "reporting/_pdf_visual_worker.py": "00564cacfb041488cfc88c36be391b280ab4c77b49f0e5e180d66a8ea70f9c91",
-    "reporting/_pdf_fixed_inspection_worker.py": "456f318c7c5ce52c902cce1635b37ea3ced1823394bd209150c76e731ee3ced7",
-    "reporting/pdf_visual.py": "3513eb36372c900eb96343a05327a9823242e69fa30f323f48f62b81c597a384",
-    "reporting/pdf_raster_windows.py": "8ffbfa520b204b368fb4463d18f0d893fdeb75124a1911387cec84d8a997ad68"
+    "reporting/pdf_raster_windows.py": "8ffbfa520b204b368fb4463d18f0d893fdeb75124a1911387cec84d8a997ad68",
+    "reporting/pdf_visual.py": "3513eb36372c900eb96343a05327a9823242e69fa30f323f48f62b81c597a384"
   },
-  "release_authorized": false,
-  "aggregate_resources_qualified": false,
-  "scientific_equivalence_verified": false
+  "status": "OPTIONAL_NOT_ACTIVATED"
 }

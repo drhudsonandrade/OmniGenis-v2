@@ -39,12 +39,15 @@ from reporting._pdf_bounded_scratch import (
     bounded_scratch_requested,
 )
 from reporting import pdf_structured_source_job as structured
+from reporting import pdf_native_source_job as native
 from reporting.page_checkpoints import _json_bytes, _reject_constant, _unique_object
 from reporting.bindings import _digest
 
 PROFILE_ID='fixed-sealed-request-result-worker-v1'
 MAX_CONTEXT_BYTES=codec.MAX_METADATA_BYTES
 MAX_RESULT_FRAME_BYTES=frame.MAX_FRAME_BYTES
+NATIVE_PROFILE_ID='fixed-sealed-request-result-worker-v2'
+NATIVE_MAX_RESULT_FRAME_BYTES=frame.NATIVE_MAX_FRAME_BYTES
 _DISABLE='OMNIGENIS_PDF_FIXED_INSPECTION_WORKER_DISABLED'
 _KEYS=frozenset((
     'expected_worker_profile_sha256','expected_packet_sha256',
@@ -78,6 +81,20 @@ def worker_profile() -> dict:
 
 
 PROFILE_SHA256=sha256(_json_bytes(worker_profile())).hexdigest()
+
+
+def native_worker_profile() -> dict:
+    """Pin one complete native request/result family without changing host policy."""
+    return {**worker_profile(), 'schema_version':'2.0.0', 'profile_id':NATIVE_PROFILE_ID,
+            'max_result_frame_bytes':NATIVE_MAX_RESULT_FRAME_BYTES,
+            'request_profile_sha256':codec.NATIVE_PROFILE_SHA256,
+            'descriptor_profile_sha256':descriptor.NATIVE_PROFILE_SHA256,
+            'inspection_profile_sha256':sealed.NATIVE_PROFILE_SHA256,
+            'result_frame_profile_sha256':frame.NATIVE_PROFILE_SHA256,
+            'resource_profile_sha256':native.PROFILE_SHA256}
+
+
+NATIVE_PROFILE_SHA256=sha256(_json_bytes(native_worker_profile())).hexdigest()
 
 
 _ADMISSION_SWITCH = 'OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1'
@@ -471,9 +488,19 @@ def _open_kernel_admission(request_fd: int) -> _KernelAdmission | None:
         raise
 
 
-def _profile(expected: object) -> None:
+def _profile(expected: object) -> bool:
     """Reject an unpinned or disabled worker before accessing request content."""
     _digest(expected)
+    if expected==NATIVE_PROFILE_SHA256:
+        if (sys.platform!='linux' or os.environ.get(_DISABLE)=='1'
+                or sha256(_json_bytes(native_worker_profile())).hexdigest()!=NATIVE_PROFILE_SHA256
+                or MAX_CONTEXT_BYTES!=codec.MAX_METADATA_BYTES
+                or NATIVE_MAX_RESULT_FRAME_BYTES!=frame.NATIVE_MAX_FRAME_BYTES):
+            raise ValueError('native fixed inspection worker profile invalid')
+        sealed._profile(sealed.NATIVE_PROFILE_SHA256,descriptor.NATIVE_PROFILE_SHA256,
+                        codec.NATIVE_PROFILE_SHA256)
+        frame._profile(frame.NATIVE_PROFILE_SHA256)
+        return True
     if (sys.platform!='linux' or os.environ.get(_DISABLE)=='1'
             or expected!=PROFILE_SHA256
             or sha256(_json_bytes(worker_profile())).hexdigest()!=PROFILE_SHA256
@@ -482,6 +509,7 @@ def _profile(expected: object) -> None:
         raise ValueError('fixed inspection worker profile invalid')
     sealed._profile(sealed.PROFILE_SHA256,descriptor.PROFILE_SHA256,codec.PROFILE_SHA256)
     frame._profile(frame.PROFILE_SHA256)
+    return False
 
 
 def _parse_context(raw: object) -> dict:
@@ -493,18 +521,21 @@ def _parse_context(raw: object) -> dict:
                     parse_constant=_reject_constant)
     if type(data) is not dict or set(data)!=_KEYS or _json_bytes(data)!=raw:
         raise ValueError('fixed worker context not canonical')
-    _profile(data['expected_worker_profile_sha256'])
+    selected_native=_profile(data['expected_worker_profile_sha256'])
     for key,value in data.items():
         if key.endswith('sha256'):
             _digest(value)
+    pins = {
+        'expected_protocol_profile_sha256':codec.NATIVE_PROFILE_SHA256 if selected_native else codec.PROFILE_SHA256,
+        'expected_descriptor_profile_sha256':descriptor.NATIVE_PROFILE_SHA256 if selected_native else descriptor.PROFILE_SHA256,
+        'expected_execution_profile_sha256':sealed.NATIVE_PROFILE_SHA256 if selected_native else sealed.PROFILE_SHA256,
+        'expected_resource_profile_sha256':native.PROFILE_SHA256 if selected_native else structured.PROFILE_SHA256,
+        'expected_frame_profile_sha256':frame.NATIVE_PROFILE_SHA256 if selected_native else frame.PROFILE_SHA256,
+    }
     if (type(data['expected_page_count']) is not int
             or not 1<=data['expected_page_count']<=structured.MAX_PAGES
             or data['expected_language']!=structured.LANGUAGE
-            or data['expected_protocol_profile_sha256']!=codec.PROFILE_SHA256
-            or data['expected_descriptor_profile_sha256']!=descriptor.PROFILE_SHA256
-            or data['expected_execution_profile_sha256']!=sealed.PROFILE_SHA256
-            or data['expected_resource_profile_sha256']!=structured.PROFILE_SHA256
-            or data['expected_frame_profile_sha256']!=frame.PROFILE_SHA256):
+            or any(data[key]!=value for key,value in pins.items())):
         raise ValueError('fixed worker context profile mismatch')
     return data
 
@@ -537,9 +568,10 @@ def _read_pipe() -> bytes:
             raise ValueError('worker context exceeds fixed limit')
 
 
-def _write_frame(data: bytes) -> None:
+def _write_frame(data: bytes, selected_native: bool=False) -> None:
     """Write only the complete framed result; a partial pipe is never acceptance."""
-    if type(data) is not bytes or not 0<len(data)<=MAX_RESULT_FRAME_BYTES:
+    maximum=NATIVE_MAX_RESULT_FRAME_BYTES if selected_native else MAX_RESULT_FRAME_BYTES
+    if type(data) is not bytes or not 0<len(data)<=maximum:
         raise ValueError('worker output budget')
     pending=memoryview(data)
     while pending:
@@ -604,10 +636,13 @@ def main(argv: list[str] | None=None) -> int:
         result=frame.encode_pdf_inspection_result_frame(original,**result_context)
         if frame.decode_pdf_inspection_result_frame(result,**result_context)!=original.to_bytes():
             raise ValueError('worker result frame identity mismatch')
-        _profile(expected['expected_worker_profile_sha256'])
+        selected_native=_profile(expected['expected_worker_profile_sha256'])
         if admission is not None:
             admission.recheck()
-        _write_frame(result)
+        if selected_native:
+            _write_frame(result, selected_native=True)
+        else:
+            _write_frame(result)
         status=0
     except BaseException:
         status=70

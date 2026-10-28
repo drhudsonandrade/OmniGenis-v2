@@ -29,7 +29,9 @@ from reporting.bindings import _digest
 from reporting.page_checkpoints import _json_bytes, _validate_context
 
 PROFILE_ID = 'sealed-pdf-inspection-request-descriptor-v1'
+NATIVE_PROFILE_ID = 'sealed-pdf-inspection-request-descriptor-v2'
 CODEC_PROFILE_SHA256 = codec.PROFILE_SHA256
+NATIVE_CODEC_PROFILE_SHA256 = codec.NATIVE_PROFILE_SHA256
 MAX_PACKET_BYTES = codec.MAX_PACKET_BYTES
 CHUNK_BYTES = 64 * 1024
 _SEAL_NAMES = ('F_SEAL_WRITE', 'F_SEAL_GROW', 'F_SEAL_SHRINK', 'F_SEAL_SEAL')
@@ -61,25 +63,47 @@ def descriptor_profile() -> dict:
 PROFILE_SHA256 = sha256(_json_bytes(descriptor_profile())).hexdigest()
 
 
-def _profile(descriptor_pin: str, codec_pin: str) -> None:
+def native_descriptor_profile() -> dict:
+    """Bind the unchanged descriptor policy to the independently selected native codec."""
+    profile = descriptor_profile()
+    profile.update(schema_version='2.0.0', profile_id=NATIVE_PROFILE_ID,
+                   codec_profile_sha256=NATIVE_CODEC_PROFILE_SHA256)
+    return profile
+
+
+NATIVE_PROFILE_SHA256 = sha256(_json_bytes(native_descriptor_profile())).hexdigest()
+
+
+def _profile(descriptor_pin: str, codec_pin: str) -> bool:
     """Require both exact profiles and retain every existing prerequisite switch."""
     _digest(descriptor_pin)
     if (not _SUPPORTED or sys.platform != 'linux' or os.environ.get(_DISABLE) == '1'
-            or descriptor_pin != PROFILE_SHA256
-            or sha256(_json_bytes(descriptor_profile())).hexdigest() != PROFILE_SHA256
-            or codec_pin != CODEC_PROFILE_SHA256 or codec.PROFILE_SHA256 != CODEC_PROFILE_SHA256
             or MAX_PACKET_BYTES != codec.MAX_PACKET_BYTES
             or REQUIRED_SEALS != sum(getattr(fcntl, name, 0) for name in _SEAL_NAMES)):
         raise ValueError('descriptor profile unavailable')
-    codec._profile(codec_pin)
+    if descriptor_pin == PROFILE_SHA256:
+        if (sha256(_json_bytes(descriptor_profile())).hexdigest() != PROFILE_SHA256
+                or codec_pin != CODEC_PROFILE_SHA256 or codec.PROFILE_SHA256 != CODEC_PROFILE_SHA256):
+            raise ValueError('descriptor profile unavailable')
+        codec._profile(codec_pin)
+        return False
+    if descriptor_pin == NATIVE_PROFILE_SHA256:
+        if (sha256(_json_bytes(native_descriptor_profile())).hexdigest() != NATIVE_PROFILE_SHA256
+                or codec_pin != NATIVE_CODEC_PROFILE_SHA256
+                or codec.NATIVE_PROFILE_SHA256 != NATIVE_CODEC_PROFILE_SHA256):
+            raise ValueError('descriptor profile unavailable')
+        codec._profile(codec_pin)
+        return True
+    raise ValueError('descriptor profile unavailable')
 
 
 def _expectations(packet_pin: str, codec_pin: str, namespace: str, job: str,
                   request_pin: str, descriptor_pin: str) -> dict:
     """Validate bounded independent identity metadata before allocating or duplicating FDs."""
-    _profile(descriptor_pin, codec_pin)
+    selected_native = _profile(descriptor_pin, codec_pin)
     _digest(packet_pin)
-    _validate_context(namespace, job, request_pin, codec.RESOURCE_PROFILE_SHA256)
+    resource_pin = codec.NATIVE_RESOURCE_PROFILE_SHA256 if selected_native else codec.RESOURCE_PROFILE_SHA256
+    _validate_context(namespace, job, request_pin, resource_pin)
     return {'expected_packet_sha256':packet_pin, 'expected_protocol_profile_sha256':codec_pin,
             'expected_namespace_id':namespace, 'expected_job_id':job,
             'expected_request_sha256':request_pin}

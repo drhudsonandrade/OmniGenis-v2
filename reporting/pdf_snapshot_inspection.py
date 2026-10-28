@@ -5,9 +5,10 @@ unsealed mutable dictionary is not accepted or copied at this API boundary.
 The caller must obtain the source and expectations through its authenticated
 upstream artifact transaction; matching bytes do not authenticate that source.
 
-This entrypoint reuses the existing result type, native inspectors, worker
-limits and resource profile. It adds no release, scientific, aggregate-resource
-or hard-deadline qualification and does not change the default rendering route.
+Independent pins select either the original structured job or the combined
+native-source job. Both retain their existing result types, inspectors and
+limits. This adds no release, scientific, aggregate-resource or hard-deadline
+qualification and does not change the default rendering route.
 """
 from __future__ import annotations
 
@@ -16,22 +17,28 @@ import json
 import os
 
 from reporting import pdf_candidate_qa as qa
+from reporting import pdf_native_source_job as native
 from reporting import pdf_structured_source_job as structured
 from reporting.bindings import _digest
 from reporting.page_checkpoints import (
     _json_bytes, _reject_constant, _unique_object, _validate_context,
 )
 from reporting.pdf_content import _expected_content
+from reporting.pdf_native_source_job import (
+    PdfNativeSourceResult, execute_pdf_native_source_job,
+)
 from reporting.pdf_structured_source_job import (
     PdfStructuredSourceResult, execute_pdf_structured_source_job,
 )
 
 PROFILE_ID = 'immutable-presentation-source-v1'
+NATIVE_PROFILE_ID = 'immutable-presentation-source-v2'
 MAX_SOURCE_BYTES = qa.MAX_PDF_BYTES
 MAX_JSON_DEPTH = qa._MAX_JSON_DEPTH
 MAX_JSON_NODES = qa._MAX_JSON_NODES
 MAX_INTEGER_BITS = qa._MAX_INTEGER_BITS
 STRUCTURED_PROFILE_SHA256 = structured.PROFILE_SHA256
+NATIVE_RESOURCE_PROFILE_SHA256 = native.PROFILE_SHA256
 _DISABLE = 'OMNIGENIS_PDF_SNAPSHOT_INSPECTION_DISABLED'
 
 
@@ -56,18 +63,42 @@ def snapshot_source_profile() -> dict:
 PROFILE_SHA256 = sha256(_json_bytes(snapshot_source_profile())).hexdigest()
 
 
-def _profile(source_pin: str, resource_pin: str) -> None:
+def native_snapshot_source_profile() -> dict:
+    """Bind the same immutable-source admission to the complete native-source job."""
+    profile = snapshot_source_profile()
+    del profile['structured_job_profile_sha256']
+    profile.update(schema_version='2.0.0', profile_id=NATIVE_PROFILE_ID,
+                   native_source_job_profile_sha256=NATIVE_RESOURCE_PROFILE_SHA256,
+                   returned_result_type='PdfNativeSourceResult')
+    return profile
+
+
+NATIVE_PROFILE_SHA256 = sha256(_json_bytes(native_snapshot_source_profile())).hexdigest()
+
+
+def _profile(source_pin: str, resource_pin: str) -> bool:
     """Require both independent pins and preserve every existing prerequisite switch."""
     _digest(source_pin)
     _digest(resource_pin)
-    if (os.environ.get(_DISABLE) == '1' or source_pin != PROFILE_SHA256
-            or sha256(_json_bytes(snapshot_source_profile())).hexdigest() != PROFILE_SHA256
-            or resource_pin != STRUCTURED_PROFILE_SHA256
-            or structured.PROFILE_SHA256 != STRUCTURED_PROFILE_SHA256
+    if (os.environ.get(_DISABLE) == '1'
             or (qa.MAX_PDF_BYTES, qa._MAX_JSON_DEPTH, qa._MAX_JSON_NODES, qa._MAX_INTEGER_BITS)
             != (MAX_SOURCE_BYTES, MAX_JSON_DEPTH, MAX_JSON_NODES, MAX_INTEGER_BITS)):
         raise ValueError('snapshot profile unavailable')
-    structured._profile(resource_pin)
+    if source_pin == PROFILE_SHA256:
+        if (sha256(_json_bytes(snapshot_source_profile())).hexdigest() != PROFILE_SHA256
+                or resource_pin != STRUCTURED_PROFILE_SHA256
+                or structured.PROFILE_SHA256 != STRUCTURED_PROFILE_SHA256):
+            raise ValueError('snapshot profile unavailable')
+        structured._profile(resource_pin)
+        return False
+    if source_pin == NATIVE_PROFILE_SHA256:
+        if (sha256(_json_bytes(native_snapshot_source_profile())).hexdigest() != NATIVE_PROFILE_SHA256
+                or resource_pin != NATIVE_RESOURCE_PROFILE_SHA256
+                or native.PROFILE_SHA256 != NATIVE_RESOURCE_PROFILE_SHA256):
+            raise ValueError('snapshot profile unavailable')
+        native._profile(resource_pin)
+        return True
+    raise ValueError('snapshot profile unavailable')
 
 
 def _scan_json_budget(data: bytes) -> None:
@@ -128,11 +159,12 @@ def execute_pdf_snapshot_inspection_job(
     pdf_bytes: object, expected_pdf_sha256: str, page_count: int,
     expected_language: str, namespace_id: str, job_id: str, request_sha256: str,
     expected_source_profile_sha256: str, expected_resource_profile_sha256: str,
-) -> PdfStructuredSourceResult:
-    """Inspect one immutable source representation through the unchanged fixed job.
+) -> PdfStructuredSourceResult | PdfNativeSourceResult:
+    """Inspect one immutable source through the independently pinned fixed job.
 
     The source pin qualifies this admission encoding only. The independent
     resource pin and returned sealed result keep their original job identity.
+    The native family requires its own source pin; mixed families never fall back.
     No caller receipts, mutable-source factory, storage handle, executor, retry,
     checkpoint, source refresh or report publication is introduced.
 
@@ -142,13 +174,14 @@ def execute_pdf_snapshot_inspection_job(
     been sealed upstream; this function does not implement that transaction.
     """
     try:
-        _profile(expected_source_profile_sha256, expected_resource_profile_sha256)
+        selected_native = _profile(expected_source_profile_sha256, expected_resource_profile_sha256)
+        resource = native if selected_native else structured
         if (type(presentation_ir_bytes) is not bytes
                 or not 0 < len(presentation_ir_bytes) <= MAX_SOURCE_BYTES
                 or type(pdf_bytes) is not bytes or not pdf_bytes.startswith(b'%PDF-1.7')
-                or len(pdf_bytes) > structured.MAX_PDF_BYTES
-                or type(page_count) is not int or not 1 <= page_count <= structured.MAX_PAGES
-                or type(expected_language) is not str or expected_language != structured.LANGUAGE):
+                or len(pdf_bytes) > resource.MAX_PDF_BYTES
+                or type(page_count) is not int or not 1 <= page_count <= resource.MAX_PAGES
+                or type(expected_language) is not str or expected_language != resource.LANGUAGE):
             raise ValueError('snapshot input type or budget')
         for value in (expected_ir_sha256, expected_pdf_sha256, request_sha256):
             _digest(value)
@@ -165,7 +198,8 @@ def execute_pdf_snapshot_inspection_job(
         raise PdfSnapshotInspectionError('pdf_snapshot_inspection_input_invalid') from None
 
     try:
-        result = execute_pdf_structured_source_job(
+        execute = execute_pdf_native_source_job if selected_native else execute_pdf_structured_source_job
+        result = execute(
             presentation_ir=captured, expected_ir_sha256=expected_ir_sha256,
             pdf_bytes=pdf_bytes, expected_pdf_sha256=expected_pdf_sha256,
             page_count=page_count, expected_language=expected_language,
@@ -174,7 +208,8 @@ def execute_pdf_snapshot_inspection_job(
         _profile(expected_source_profile_sha256, expected_resource_profile_sha256)
         if _json_bytes(qa._snapshot_ir(captured)) != presentation_ir_bytes:
             raise ValueError('snapshot decoded source changed')
-        if type(result) is not PdfStructuredSourceResult:
+        result_type = PdfNativeSourceResult if selected_native else PdfStructuredSourceResult
+        if type(result) is not result_type:
             raise ValueError('snapshot result type')
         record = result.to_dict()
         expected = {'pdf_sha256': expected_pdf_sha256, 'ir_sha256': expected_ir_sha256,
