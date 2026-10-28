@@ -13,11 +13,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import signal
 import stat
 import subprocess
 import sys
 import tempfile
+
+from reporting._pdf_process_lifecycle import wait_owned_process_group
 
 from reporting._pdf_object_graph_worker import (
     CPU_SECONDS, IDENTITY_FIELDS, MAX_DOCUMENT_PAGES, MAX_PDF_BYTES, MAX_VISITS,
@@ -134,16 +135,8 @@ def _start(command: list[str], fds: tuple[int, int]) -> subprocess.Popen:
 
 
 def _wait(process: subprocess.Popen) -> int:
-    """Bound worker waiting and reap the owned process group on every exit path."""
-    try:
-        return process.wait(timeout=WALL_SECONDS)
-    finally:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        if process.returncode is None:
-            process.wait(timeout=2)
+    """Keep child identity reserved until original-group cleanup and final reap."""
+    return wait_owned_process_group(process, wall_seconds=WALL_SECONDS)
 
 
 def _run_worker(pdf: bytes, identity: dict) -> bytes:

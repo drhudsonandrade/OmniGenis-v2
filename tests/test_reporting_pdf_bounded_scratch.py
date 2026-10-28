@@ -414,6 +414,7 @@ class PdfBoundedScratchTests(unittest.TestCase):
         self.assertEqual(manifest["max_inodes"],scratch._MAX_INODES)
         self.assertEqual(set(manifest["source_sha256"]),{
             "reporting/_pdf_bounded_scratch.py",
+            "reporting/_pdf_process_lifecycle.py",
             "reporting/_pdf_visual_worker.py",
             "reporting/_pdf_fixed_inspection_worker.py",
             "reporting/pdf_visual.py",

@@ -61,6 +61,7 @@
     "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
-    "reporting/pdf_object_graph.py": "82f844dba9d17a954a48f3d82f6ee1c0d3e8c572204479e008fa77dee2c736d8"
+    "reporting/pdf_object_graph.py": "6a1d7df605929fc83a083fd3d74c2c7586fea6c0fb8fb58a384404c2280d6ca7",
+    "reporting/_pdf_process_lifecycle.py": "38edfb1529aeefb3f1cd105e6153615bd01dc1580186a02a163f26570a61cb85"
   }
 }
