@@ -10,12 +10,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import signal
 import stat
 import subprocess
 import sys
 import tempfile
 from types import MappingProxyType
+
+from reporting._pdf_process_lifecycle import wait_owned_process_group
 
 from reporting._pdf_safety_worker import MAX_PAGES
 from reporting._pdf_validation_worker import (
@@ -109,16 +110,8 @@ def _start(command: list[str], fds: tuple[int, int]) -> subprocess.Popen:
 
 
 def _wait(process: subprocess.Popen) -> int:
-    """Reap the worker and terminate its inherited group on every exit path."""
-    try:
-        return process.wait(timeout=WALL_SECONDS)
-    finally:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        if process.returncode is None:
-            process.wait(timeout=2)
+    """Keep child identity reserved until original-group cleanup and final reap."""
+    return wait_owned_process_group(process, wall_seconds=WALL_SECONDS)
 
 
 def _run(operation: str, pdf: object, expected_digest: object) -> dict:

@@ -54,10 +54,11 @@
     "reporting/pdf_inspection_bundle.py": "03d636617653e940cfdcad4951b867d1cadd258bd0bd00cd8c56f4d4a22c0c51",
     "reporting/pdf_inspection_set.py": "1f5c86e09cf2b492e80a96676f602682c896b309ca8a7996c706c09c7c8a703d",
     "reporting/pdf_mcid_coverage.py": "7f7af447d9ba8154a589012522af8c076564de8c54a211990c6a3d0bcab326ae",
-    "reporting/pdf_object_graph.py": "82f844dba9d17a954a48f3d82f6ee1c0d3e8c572204479e008fa77dee2c736d8",
+    "reporting/pdf_object_graph.py": "6a1d7df605929fc83a083fd3d74c2c7586fea6c0fb8fb58a384404c2280d6ca7",
     "reporting/pdf_page_tags.py": "84b9edf1fe4aefed28029b87943c53dc8ba2b7a77ee78ebf72c158f15f2f0697",
-    "reporting/pdf_raster_windows.py": "8ffbfa520b204b368fb4463d18f0d893fdeb75124a1911387cec84d8a997ad68",
-    "reporting/pdf_text_windows.py": "eff177c4b203fdc30e9e4df196dbaff241d81512b9922218c094e2adc5b0c5cd"
+    "reporting/pdf_raster_windows.py": "c87e9101f2e310e22b6062733f6d4cf80c7b28996f2d14ffd2a00c04cbe6d49e",
+    "reporting/pdf_text_windows.py": "be81c573b7d2145d31d0a049bb946f4eceb0399f01f23c2b38e1c4bbb43f8f81",
+    "reporting/_pdf_process_lifecycle.py": "38edfb1529aeefb3f1cd105e6153615bd01dc1580186a02a163f26570a61cb85"
   },
   "schema_version": "1.0.0",
   "source_code_copied": false

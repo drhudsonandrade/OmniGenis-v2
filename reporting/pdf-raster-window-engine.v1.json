@@ -109,8 +109,9 @@
     "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
     "reporting/_pdf_text_window_worker.py": "c5176a6987b46f484ba4989bbbbee9383906094545ada7ed806bd53dad3b81a1",
     "reporting/_pdf_visual_worker.py": "00564cacfb041488cfc88c36be391b280ab4c77b49f0e5e180d66a8ea70f9c91",
-    "reporting/pdf_text_windows.py": "eff177c4b203fdc30e9e4df196dbaff241d81512b9922218c094e2adc5b0c5cd",
-    "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a"
+    "reporting/pdf_text_windows.py": "be81c573b7d2145d31d0a049bb946f4eceb0399f01f23c2b38e1c4bbb43f8f81",
+    "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a",
+    "reporting/_pdf_process_lifecycle.py": "38edfb1529aeefb3f1cd105e6153615bd01dc1580186a02a163f26570a61cb85"
   },
   "schema_version": "1.0.0",
   "source": "https://poppler.freedesktop.org/",
