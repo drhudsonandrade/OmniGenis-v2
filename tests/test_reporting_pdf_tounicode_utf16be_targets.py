@@ -210,7 +210,8 @@ class PdfToUnicodeUtf16beTargetsTests(unittest.TestCase):
         self.assertNotIn(b"D83D", data)
         with self.assertRaises(FrozenInstanceError):
             receipt.utf16be_code_unit_count = 7
-        object.__setattr__(receipt, "utf16be_code_unit_count", 7)
+        object.__setattr__(receipt, "utf16be_target_count", 7)
+        self.assertEqual(receipt._record()["utf16be_target_count"], 7)
         with self.assertRaises(self.m.PdfToUnicodeUtf16beTargetsError):
             receipt.to_bytes()
 
