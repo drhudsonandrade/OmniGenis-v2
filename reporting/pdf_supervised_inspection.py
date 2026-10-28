@@ -30,6 +30,7 @@ from reporting import _pdf_fixed_inspection_worker as worker
 from reporting import pdf_inspection_result_frame as frame
 from reporting import pdf_request_descriptor as descriptor
 from reporting import pdf_structured_source_job as structured
+from reporting import pdf_native_source_job as native
 from reporting.page_checkpoints import _json_bytes
 
 PROFILE_ID = 'fixed-pdf-supervised-transport-v1'
@@ -39,6 +40,10 @@ ACCEPTANCE_NS = structured.ACCEPTANCE_NS
 CLEANUP_SECONDS = 2
 WORKER_PROFILE_SHA256 = worker.PROFILE_SHA256
 FRAME_PROFILE_SHA256 = frame.PROFILE_SHA256
+NATIVE_PROFILE_ID = 'fixed-pdf-supervised-transport-v2'
+NATIVE_MAX_FRAME_BYTES = frame.NATIVE_MAX_FRAME_BYTES
+NATIVE_WORKER_PROFILE_SHA256 = worker.NATIVE_PROFILE_SHA256
+NATIVE_FRAME_PROFILE_SHA256 = frame.NATIVE_PROFILE_SHA256
 _DISABLE = 'OMNIGENIS_PDF_SUPERVISOR_DISABLED'
 _ROOT = Path(__file__).resolve().parents[1]
 _WORKER = _ROOT / 'reporting/_pdf_fixed_inspection_worker.py'
@@ -82,21 +87,39 @@ def supervisor_profile() -> dict:
 PROFILE_SHA256 = sha256(_json_bytes(supervisor_profile())).hexdigest()
 
 
-def _profile(expected: str) -> None:
+def native_supervisor_profile() -> dict:
+    """Select the complete native wire family while preserving lifecycle and nonclaims."""
+    return {**supervisor_profile(), 'schema_version':'2.0.0', 'profile_id':NATIVE_PROFILE_ID,
+            'worker_profile_sha256':NATIVE_WORKER_PROFILE_SHA256,
+            'frame_profile_sha256':NATIVE_FRAME_PROFILE_SHA256,
+            'max_frame_bytes':NATIVE_MAX_FRAME_BYTES}
+
+
+NATIVE_PROFILE_SHA256 = sha256(_json_bytes(native_supervisor_profile())).hexdigest()
+
+
+def _profile(expected: str) -> bool:
     """Refuse unsupported, disabled, privileged or changed execution contracts."""
-    if (type(expected) is not str or expected != PROFILE_SHA256
+    selected_native = type(expected) is str and expected == NATIVE_PROFILE_SHA256
+    profile_pin = NATIVE_PROFILE_SHA256 if selected_native else PROFILE_SHA256
+    profile = native_supervisor_profile if selected_native else supervisor_profile
+    worker_pin = NATIVE_WORKER_PROFILE_SHA256 if selected_native else WORKER_PROFILE_SHA256
+    frame_pin = NATIVE_FRAME_PROFILE_SHA256 if selected_native else FRAME_PROFILE_SHA256
+    if (type(expected) is not str or expected != profile_pin
             or sys.platform != 'linux' or os.getuid() == 0 or os.geteuid() == 0
             or any(not hasattr(os, name) for name in ('waitid', 'WNOWAIT', 'WEXITED', 'WNOHANG', 'P_PID'))
             or os.environ.get(_DISABLE) == '1'
-            or sha256(_json_bytes(supervisor_profile())).hexdigest() != PROFILE_SHA256
-            or WORKER_PROFILE_SHA256 != worker.PROFILE_SHA256
-            or FRAME_PROFILE_SHA256 != frame.PROFILE_SHA256
+            or sha256(_json_bytes(profile())).hexdigest() != profile_pin
+            or worker_pin != (worker.NATIVE_PROFILE_SHA256 if selected_native else worker.PROFILE_SHA256)
+            or frame_pin != (frame.NATIVE_PROFILE_SHA256 if selected_native else frame.PROFILE_SHA256)
             or MAX_CONTEXT_BYTES != worker.MAX_CONTEXT_BYTES
-            or MAX_FRAME_BYTES != frame.MAX_FRAME_BYTES
-            or ACCEPTANCE_NS != structured.ACCEPTANCE_NS):
+            or (NATIVE_MAX_FRAME_BYTES if selected_native else MAX_FRAME_BYTES)
+                != (frame.NATIVE_MAX_FRAME_BYTES if selected_native else frame.MAX_FRAME_BYTES)
+            or ACCEPTANCE_NS != (native.ACCEPTANCE_NS if selected_native else structured.ACCEPTANCE_NS)):
         raise _Refusal('profile_invalid')
-    worker._profile(WORKER_PROFILE_SHA256)
-    frame._profile(FRAME_PROFILE_SHA256)
+    worker._profile(worker_pin)
+    frame._profile(frame_pin)
+    return selected_native
 
 
 class _Clock:
@@ -178,9 +201,11 @@ def _finish_child(process: subprocess.Popen) -> int:
                 stream.close()
 
 
-def _exchange(request_fd: int, context: bytes, environment: dict[str, str], clock: _Clock) -> bytes:
+def _exchange(request_fd: int, context: bytes, environment: dict[str, str], clock: _Clock,
+              *, selected_native: bool = False) -> bytes:
     """Exchange bounded pipes with only the fixed child and preserve its unreaped identity."""
     clock.remaining()
+    maximum = NATIVE_MAX_FRAME_BYTES if selected_native else MAX_FRAME_BYTES
     # Prepare fallible transport state before creating the owned child.
     output = bytearray()
     sent = 0
@@ -219,7 +244,7 @@ def _exchange(request_fd: int, context: bytes, environment: dict[str, str], cloc
                             process.stdin.close()
                     else:
                         try:
-                            chunk = os.read(event.fd, min(65536, MAX_FRAME_BYTES + 1 - len(output)))
+                            chunk = os.read(event.fd, min(65536, maximum + 1 - len(output)))
                         except BlockingIOError:
                             continue
                         if not chunk:
@@ -228,7 +253,7 @@ def _exchange(request_fd: int, context: bytes, environment: dict[str, str], cloc
                             eof = True
                         else:
                             output.extend(chunk)
-                            if len(output) > MAX_FRAME_BYTES:
+                            if len(output) > maximum:
                                 raise _Refusal('output_budget')
             clock.remaining()
     finally:
@@ -253,9 +278,14 @@ def execute_supervised_pdf_inspection(
     owned = None
     identity = None
     try:
-        _profile(expected_supervisor_profile_sha256)
+        selected_native = _profile(expected_supervisor_profile_sha256)
         clock = _Clock()
         context = worker._parse_context(expected_context)
+        if (context['expected_worker_profile_sha256'] !=
+                (NATIVE_WORKER_PROFILE_SHA256 if selected_native else WORKER_PROFILE_SHA256)
+                or context['expected_frame_profile_sha256'] !=
+                (NATIVE_FRAME_PROFILE_SHA256 if selected_native else FRAME_PROFILE_SHA256)):
+            raise _Refusal('profile_invalid')
         environment = _environment()
         if type(request_fd) is not int or not 3 <= request_fd <= 2**31 - 1:
             raise _Refusal('input_invalid')
@@ -276,7 +306,10 @@ def execute_supervised_pdf_inspection(
                 raise _Refusal('input_invalid')
         del arguments
         clock.remaining()
-        output = _exchange(owned, expected_context, environment, clock)
+        if selected_native:
+            output = _exchange(owned, expected_context, environment, clock, selected_native=True)
+        else:
+            output = _exchange(owned, expected_context, environment, clock)
         result = frame.decode_pdf_inspection_result_frame(output,
             **{key: context[key] for key in RESULT_KEYS})
         _profile(expected_supervisor_profile_sha256)
