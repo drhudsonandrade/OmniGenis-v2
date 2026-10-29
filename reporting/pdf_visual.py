@@ -157,6 +157,7 @@ def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
             env={**os.environ,"TMPDIR":scratch},start_new_session=True,bufsize=0,
         )
+        operation_failed=False
         try:
             try:
                 deadline=time.monotonic()+WALL_SECONDS
@@ -174,8 +175,10 @@ def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
                 raise
             returncode=wait_owned_process_group(process,wall_seconds=remaining)
             return subprocess.CompletedProcess(process.args,returncode,output)
+        except BaseException:
+            operation_failed=True
+            raise
         finally:
-            primary_error=sys.exception()
             close_error=None
             for stream in (process.stdin,process.stdout):
                 if stream is not None:
@@ -183,7 +186,7 @@ def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
                         stream.close()
                     except (OSError,ValueError) as error:
                         close_error=close_error or error
-            if close_error is not None and primary_error is None:
+            if close_error is not None and not operation_failed:
                 raise close_error
 
 

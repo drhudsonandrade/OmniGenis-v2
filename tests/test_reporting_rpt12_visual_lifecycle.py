@@ -389,6 +389,28 @@ def _visual_child_probe(script, *, wall_seconds=2, before_return=None,
                         stream.close()
 
 
+class _RaiseOnRedundantVisualClose:
+    """Fault only a redundant late close, after actual test-owned I/O is closed."""
+
+    def __init__(self, stream, label, attempts, error):
+        self._stream = stream
+        self._label = label
+        self._attempts = attempts
+        self._error = error
+        self._injected = False
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+    def close(self):
+        was_closed = self._stream.closed
+        self._stream.close()
+        if was_closed and not self._injected:
+            self._injected = True
+            self._attempts.append(self._label)
+            raise self._error
+
+
 @unittest.skipUnless(
     sys.platform == "linux" and hasattr(os, "pidfd_open")
     and hasattr(signal, "pidfd_send_signal"), "Linux pidfd required"
@@ -655,6 +677,37 @@ class VisualSupervisorPipeLifecycleTests(unittest.TestCase):
             self.assertEqual(result.errors, ("pdf_visual_worker_failed",))
             self.assertNotIn("SYNTHETIC_PRIVATE_PIPE", json.dumps(result.to_dict()))
             self.assert_owned_cleanup(probe)
+
+    def test_handled_caller_exception_cannot_mask_late_visual_pipe_close_error(self):
+        """Actual successful child output is not PASS when either late close fails."""
+        response = _visual_response(self.pdf)
+        for error_type in (OSError, ValueError):
+            attempts = []
+
+            def wrap_streams(probe):
+                process = probe.process
+                for name in ("stdin", "stdout"):
+                    setattr(
+                        process, name,
+                        _RaiseOnRedundantVisualClose(
+                            getattr(process, name), name, attempts,
+                            error_type("SYNTHETIC_PRIVATE_VISUAL_CLOSE"),
+                        ),
+                    )
+
+            with self.subTest(error=error_type.__name__), _visual_child_probe(
+                _visual_emit_script(response), before_return=wrap_streams
+            ) as probe:
+                try:
+                    raise LookupError("SYNTHETIC_UNRELATED_CALLER")
+                except LookupError:
+                    result = self.validate()
+                self.assertEqual(result.errors, ("pdf_visual_worker_failed",))
+                self.assertFalse(result.passed)
+                self.assertIsNone(result.raster_sha256)
+                self.assertNotIn("SYNTHETIC_PRIVATE", json.dumps(result.to_dict()))
+                self.assertEqual(attempts, ["stdin", "stdout"])
+                self.assert_owned_cleanup(probe)
 
     def test_fragmented_response_preserves_the_exact_protocol_bytes(self):
         """A response is a byte stream, independent of individual read boundaries."""
