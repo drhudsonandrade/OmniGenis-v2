@@ -11,8 +11,10 @@ import json
 import os
 from pathlib import Path
 import re
+import selectors
 import subprocess
 import sys
+import time
 
 from reporting._pdf_safety_worker import (
     ERRORS as WORKER_ERRORS, MAX_PAGES, MAX_PDF_BYTES, MAX_VISITS, POLICY_ID, WALL_SECONDS,
@@ -20,6 +22,8 @@ from reporting._pdf_safety_worker import (
 
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _WORKER = Path(__file__).with_name("_pdf_safety_worker.py")
+_MAX_RESPONSE_BYTES = 4096
+_CLEANUP_SECONDS = 2
 _ERRORS = WORKER_ERRORS | frozenset({
     "expected_pdf_digest_invalid", "pdf_digest_mismatch", "pdf_safety_worker_timeout",
     "pdf_safety_worker_failed", "pdf_safety_worker_invalid_response",
@@ -81,6 +85,127 @@ class PdfSafetyValidation:
         }
 
 
+class _SafetyWorkerResponseOverflow(ValueError):
+    """Refuse output as soon as the existing response allowance is exceeded."""
+
+
+def _exchange_safety_pipes(
+    process: subprocess.Popen, pdf_bytes: bytes, deadline: float,
+) -> bytes:
+    """Transfer input and collect at most the response limit plus one overflow byte."""
+    output = bytearray()
+    pending = memoryview(pdf_bytes)
+    position = 0
+    with selectors.DefaultSelector() as selector:
+        for stream, event in (
+            (process.stdin, selectors.EVENT_WRITE),
+            (process.stdout, selectors.EVENT_READ),
+        ):
+            os.set_blocking(stream.fileno(), False)
+            selector.register(stream, event)
+        while selector.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(process.args, WALL_SECONDS)
+            for key, _ in selector.select(remaining):
+                if key.fileobj is process.stdin:
+                    try:
+                        written = os.write(key.fd, pending[position:position + 65536])
+                    except BlockingIOError:
+                        continue
+                    except BrokenPipeError:
+                        # A worker setup failure can return BLOCKED before reading input.
+                        selector.unregister(key.fileobj)
+                        key.fileobj.close()
+                        continue
+                    if written <= 0:
+                        raise OSError("safety worker input transfer stalled")
+                    position += written
+                    if position == len(pending):
+                        selector.unregister(key.fileobj)
+                        key.fileobj.close()
+                else:
+                    try:
+                        chunk = os.read(key.fd, _MAX_RESPONSE_BYTES + 1 - len(output))
+                    except BlockingIOError:
+                        continue
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        key.fileobj.close()
+                    else:
+                        output.extend(chunk)
+                        if len(output) > _MAX_RESPONSE_BYTES:
+                            raise _SafetyWorkerResponseOverflow("worker protocol budget")
+    return bytes(output)
+
+
+def _wait_safety_worker(process: subprocess.Popen, deadline: float) -> int:
+    """Reap only the exclusively owned child within the original work deadline."""
+    while True:
+        # Popen.wait() treats ECHILD as success. An unknown child cannot attest a PDF.
+        pid, status = os.waitpid(process.pid, os.WNOHANG)
+        if pid == process.pid:
+            process.returncode = os.waitstatus_to_exitcode(status)
+            return process.returncode
+        if pid != 0:
+            raise ChildProcessError("safety worker identity unavailable")
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(process.args, WALL_SECONDS)
+        time.sleep(min(0.01, remaining))
+
+
+def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
+    """Bound pipe exchange and direct-child cleanup without changing the launch session.
+
+    This function exclusively owns the child and its pipes. Cleanup is limited to
+    that child, with a two-second reap allowance after the nonblocking signal; it
+    does not claim process-group or arbitrary-descendant containment.
+    """
+    operation_failed = False
+    process = subprocess.Popen(
+        [sys.executable, "-I", str(_WORKER), str(os.getpid())],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        bufsize=0,
+    )
+    try:
+        try:
+            deadline = time.monotonic() + WALL_SECONDS
+            output = _exchange_safety_pipes(process, pdf_bytes, deadline)
+            if time.monotonic() > deadline:
+                raise subprocess.TimeoutExpired(process.args, WALL_SECONDS)
+            returncode = _wait_safety_worker(process, deadline)
+            return subprocess.CompletedProcess(process.args, returncode, output)
+        except ChildProcessError:
+            # Confirmed ownership loss is terminal; never recover authority from a PID.
+            raise
+        except BaseException:
+            # Popen.kill() checks its child state before signaling, including after reap.
+            # A signal failure must not skip the independent, finite reap attempt.
+            try:
+                process.kill()
+            except OSError:
+                pass
+            try:
+                process.wait(timeout=_CLEANUP_SECONDS)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            raise
+    except BaseException:
+        operation_failed = True
+        raise
+    finally:
+        close_error = None
+        for stream in (process.stdin, process.stdout):
+            if stream is not None:
+                try:
+                    stream.close()
+                except (OSError, ValueError) as error:
+                    close_error = close_error or error
+        if close_error is not None and not operation_failed:
+            raise close_error
+
+
 def validate_pdf_object_safety(*, pdf_bytes: object, expected_pdf_sha256: object) -> PdfSafetyValidation:
     """Bind bytes before resource-limited inspection and validate the complete child protocol."""
     pdf_digest = None
@@ -99,17 +224,17 @@ def validate_pdf_object_safety(*, pdf_bytes: object, expected_pdf_sha256: object
     if pdf_digest != expected_pdf_sha256:
         return fail("pdf_digest_mismatch")
     try:
-        child = subprocess.run([sys.executable, "-I", str(_WORKER), str(os.getpid())], input=pdf_bytes,
-                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                               timeout=WALL_SECONDS, check=False)
+        child = _run_worker(pdf_bytes)
     except subprocess.TimeoutExpired:
         return fail("pdf_safety_worker_timeout")
-    except OSError:
+    except _SafetyWorkerResponseOverflow:
+        return fail("pdf_safety_worker_invalid_response")
+    except (OSError, AttributeError, ValueError):
         return fail("pdf_safety_worker_unavailable")
     if child.returncode != 0:
         return fail("pdf_safety_worker_failed")
     try:
-        if not isinstance(child.stdout, bytes) or len(child.stdout) > 4096:
+        if not isinstance(child.stdout, bytes) or len(child.stdout) > _MAX_RESPONSE_BYTES:
             raise ValueError("worker protocol budget")
         record = json.loads(child.stdout)
         if not isinstance(record, dict) or set(record) != {"status", "pdf_sha256", "page_count", "object_count", "errors"}:
