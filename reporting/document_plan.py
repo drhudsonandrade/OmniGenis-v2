@@ -20,6 +20,8 @@ from reporting import pdf_candidate_qa as qa
 from reporting import pdf_inspection_job as job
 from reporting import pdf_text_windows as text_windows
 from reporting import pdf_raster_windows as raster_windows
+from reporting import _pdf_text_window_worker as text_worker
+from reporting import _pdf_raster_window_worker as raster_worker
 
 PROFILE_ID = "generated-pdf-document-preflight-v1"
 MAX_STAGED_PAGES = text_windows.MAX_DOCUMENT_PAGES
@@ -48,6 +50,49 @@ def document_preflight_profile() -> dict:
         "current_job_profile_sha256": job.PROFILE_SHA256,
         "text_window_width": TEXT_WIDTH, "raster_window_width": RASTER_WIDTH,
         "text_window_profile_id": TEXT_PROFILE, "raster_window_profile_id": RASTER_PROFILE,
+        "native_window_worker_envelopes": {
+            "text": {
+                "profile_id": text_windows.PROFILE_ID,
+                "protocol_version": text_windows.PROTOCOL_VERSION,
+                "identity_fields": list(text_windows.IDENTITY_FIELDS),
+                "extractor_version": text_windows.EXTRACTOR_VERSION,
+                "header_bytes": text_worker.HEADER_BYTES,
+                "max_pdf_bytes": text_windows.MAX_PDF_BYTES,
+                "max_document_pages": text_windows.MAX_DOCUMENT_PAGES,
+                "max_window_pages": text_windows.MAX_WINDOW_PAGES,
+                "max_text_bytes": text_windows.MAX_TEXT_BYTES,
+                "max_decoded_bytes": text_windows.MAX_DECODED_BYTES,
+                "cpu_seconds": text_windows.CPU_SECONDS,
+                "wall_seconds": text_windows.WALL_SECONDS,
+                "memory_bytes": text_windows.MEMORY_BYTES,
+                "open_files": text_windows.OPEN_FILES,
+                "result_bytes": text_windows.RESULT_BYTES,
+            },
+            "raster": {
+                "profile_id": raster_windows.PROFILE_ID,
+                "protocol_version": raster_windows.PROTOCOL_VERSION,
+                "identity_fields": list(raster_windows.IDENTITY_FIELDS),
+                "parser_version": raster_windows.PARSER_VERSION,
+                "pillow_version": raster_windows.PILLOW_VERSION,
+                "tool_version": raster_windows.TOOL_VERSION,
+                "tool_sha256": raster_windows.TOOL_SHA256,
+                "dpi": raster_worker.DPI,
+                "max_pdf_bytes": raster_windows.MAX_PDF_BYTES,
+                "max_png_bytes": raster_worker.MAX_PNG_BYTES,
+                "max_document_pages": raster_windows.MAX_DOCUMENT_PAGES,
+                "max_window_pages": raster_windows.MAX_WINDOW_PAGES,
+                "max_total_pixels": raster_windows.MAX_TOTAL_PIXELS,
+                "max_pixels_per_page": raster_windows.MAX_PIXELS_PER_PAGE,
+                "min_edge_margin_px": raster_windows.MIN_EDGE_MARGIN_PX,
+                "cpu_seconds": raster_windows.CPU_SECONDS,
+                "wall_seconds": raster_windows.WALL_SECONDS,
+                "page_wall_seconds": raster_worker.PAGE_WALL_SECONDS,
+                "memory_bytes": raster_windows.MEMORY_BYTES,
+                "open_files": raster_windows.OPEN_FILES,
+                "file_bytes": raster_windows.FILE_BYTES,
+                "result_bytes": raster_windows.RESULT_BYTES,
+            },
+        },
         "planning_page_ceiling": MAX_STAGED_PAGES,
         "max_staged_pdf_bytes": MAX_STAGED_PDF_BYTES,
         "new_class_proven_by_measurement": False,

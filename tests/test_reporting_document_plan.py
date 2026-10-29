@@ -9,6 +9,9 @@ from reporting import document_plan as subject
 from reporting import pdf_candidate_qa as qa
 from reporting import pdf_inspection_job as job
 from reporting import pdf_text_windows as text
+from reporting import pdf_raster_windows as raster
+from reporting import _pdf_text_window_worker as text_worker
+from reporting import _pdf_raster_window_worker as raster_worker
 
 ROOT = Path(__file__).resolve().parents[1]
 PDF = b"%PDF-1.7\n% synthetic preflight-only bytes\n"
@@ -203,6 +206,45 @@ class PdfDocumentPreflightTests(unittest.TestCase):
         with patch.object(qa, "MAX_PAGES", qa.MAX_PAGES + 1):
             with self.assertRaises(subject.PdfDocumentPreflightError):
                 self.preflight()
+
+    def test_native_window_worker_drift_invalidates_new_and_cached_preflight(self):
+        """Reject stale staged budgets and tool identity without executing workers."""
+        cached = self.preflight(pages=33)
+        stable_sha = cached.preflight_sha256
+        changes = (
+            (text, "EXTRACTOR_VERSION", "999.0"),
+            (text, "PROTOCOL_VERSION", text.PROTOCOL_VERSION + 1),
+            (text, "IDENTITY_FIELDS", ("unreviewed_field",)),
+            (text_worker, "HEADER_BYTES", text_worker.HEADER_BYTES + 1),
+            (text, "MAX_PDF_BYTES", text.MAX_PDF_BYTES + 1),
+            (text, "CPU_SECONDS", text.CPU_SECONDS + 1),
+            (text, "RESULT_BYTES", text.RESULT_BYTES + 1),
+            (raster, "TOOL_SHA256", "0" * 64),
+            (raster, "TOOL_VERSION", "unreviewed"),
+            (raster, "PROTOCOL_VERSION", raster.PROTOCOL_VERSION + 1),
+            (raster_worker, "DPI", raster_worker.DPI + 1),
+            (raster_worker, "MAX_PNG_BYTES", raster_worker.MAX_PNG_BYTES + 1),
+            (raster, "PARSER_VERSION", "999.0"),
+            (raster, "MAX_WINDOW_PAGES", raster.MAX_WINDOW_PAGES + 1),
+            (raster, "MAX_TOTAL_PIXELS", raster.MAX_TOTAL_PIXELS + 1),
+            (raster, "MIN_EDGE_MARGIN_PX", raster.MIN_EDGE_MARGIN_PX + 1),
+            (raster, "MEMORY_BYTES", raster.MEMORY_BYTES + 1),
+            (raster, "WALL_SECONDS", raster.WALL_SECONDS + 1),
+            (raster_worker, "PAGE_WALL_SECONDS", raster_worker.PAGE_WALL_SECONDS + 1),
+            (raster, "FILE_BYTES", raster.FILE_BYTES + 1),
+        )
+        for module, name, replacement in changes:
+            with self.subTest(worker=module.__name__, limit=name), \
+                 patch.object(module, name, replacement):
+                with self.assertRaisesRegex(
+                    subject.PdfDocumentPreflightError, "pdf_document_preflight_input_invalid"
+                ):
+                    self.preflight(pages=33)
+                with self.assertRaisesRegex(
+                    subject.PdfDocumentPreflightError, "pdf_document_preflight_invalid"
+                ):
+                    cached.to_dict()
+        self.assertEqual(cached.preflight_sha256, stable_sha)
 
     def test_manifest_matches_exact_current_profile_and_no_dependency_change(self):
         """Compare published declarative claims against the live profile."""

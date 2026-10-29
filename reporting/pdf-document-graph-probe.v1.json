@@ -22,7 +22,7 @@
     "per_worker_memory_bytes": 268435456,
     "per_worker_open_files": 128,
     "per_worker_wall_seconds": 10,
-    "preflight_profile_sha256": "99978998c67dae94e6350ea3f4a115009113e763115a82dd7a45f6f86469c9b1",
+    "preflight_profile_sha256": "0ac6a49388666b8e66b33c338ea556f3d7612833ded0557edf6666337e0a674a",
     "profile_id": "generated-pdf-preflight-graph-probe-v1",
     "release_authorized": false,
     "schema_version": "1.0.0",
@@ -30,7 +30,7 @@
     "worker_results_authenticated": false
   },
   "profile_id": "generated-pdf-preflight-graph-probe-v1",
-  "profile_sha256": "54dc75ed3813e5278a2f7d9a0395ebbc0732f3aac5b0bd10bf859b58791b9841",
+  "profile_sha256": "df26bf19b437e94a7d657aa77569277462665bd61cfac1a03cf81717a36ad384",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "service_installed": false,
