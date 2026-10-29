@@ -834,6 +834,47 @@ class SafetyWorkerTransportTests(unittest.TestCase):
             with self.assertRaises(ChildProcessError):
                 _SAFETY_REAL_WAITID(os.P_PID, probe.process.pid, _SAFETY_WAIT_FLAGS)
 
+    def test_caller_exception_does_not_hide_successful_worker_close_failure(self):
+        """A caller's handled exception cannot turn local pipe-cleanup failure into PASS."""
+        script = _safety_emit_script(_safety_response(self.pdf))
+        for close_error in (OSError(errno.EIO, "SYNTHETIC_PRIVATE_CLOSE"),
+                            ValueError("SYNTHETIC_PRIVATE_CLOSE")):
+            close_attempts = []
+            close_failures = []
+
+            def observe_pipe_closure(probe):
+                """Inject a late close error only after the real worker exits successfully."""
+                for name in ("stdin", "stdout"):
+                    stream = getattr(probe.process, name)
+                    real_close = stream.close
+
+                    def close(name=name, real_close=real_close):
+                        """Close the actual descriptor and observe both final cleanup attempts."""
+                        successful_exit = probe.process.returncode == 0
+                        if successful_exit:
+                            close_attempts.append(name)
+                        real_close()
+                        if successful_exit and name == "stdin" and not close_failures:
+                            close_failures.append(close_error)
+                            raise close_error
+
+                    injected.enter_context(patch.object(stream, "close", side_effect=close))
+
+            with self.subTest(error=type(close_error).__name__), _safety_child_probe(
+                script, after_launch=observe_pipe_closure,
+            ) as probe, ExitStack() as injected:
+                try:
+                    raise RuntimeError("SYNTHETIC_CALLER_HANDLED_EXCEPTION")
+                except RuntimeError:
+                    result = self.validate()
+                self.assertEqual(close_failures, [close_error])
+                self.assertEqual(set(close_attempts), {"stdin", "stdout"})
+                self.assertTrue(probe.process.stdin.closed)
+                self.assertTrue(probe.process.stdout.closed)
+                self.assertEqual(probe.process.returncode, 0)
+                self.assert_retired(probe)
+                self.assert_refusal(result, "pdf_safety_worker_unavailable")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -162,6 +162,7 @@ def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
     that child, with a two-second reap allowance after the nonblocking signal; it
     does not claim process-group or arbitrary-descendant containment.
     """
+    operation_failed = False
     process = subprocess.Popen(
         [sys.executable, "-I", str(_WORKER), str(os.getpid())],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
@@ -190,8 +191,10 @@ def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
             except (OSError, subprocess.TimeoutExpired):
                 pass
             raise
+    except BaseException:
+        operation_failed = True
+        raise
     finally:
-        primary_error = sys.exception()
         close_error = None
         for stream in (process.stdin, process.stdout):
             if stream is not None:
@@ -199,7 +202,7 @@ def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
                     stream.close()
                 except (OSError, ValueError) as error:
                     close_error = close_error or error
-        if close_error is not None and primary_error is None:
+        if close_error is not None and not operation_failed:
             raise close_error
 
 
