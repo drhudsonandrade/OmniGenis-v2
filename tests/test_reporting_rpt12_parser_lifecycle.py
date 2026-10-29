@@ -158,12 +158,7 @@ class ParserLifecycleTests(unittest.TestCase):
                 worker = importlib.import_module("reporting." + name)
                 expected = getattr(worker, parser)(result.pdf_bytes)
                 self.assertEqual(expected["status"], "PASS")
-                if name == "_pdf_content_worker":
-                    fake = SimpleNamespace(returncode=0, stdout=json.dumps(expected).encode())
-                    launch_context = patch.object(subprocess, "run", return_value=fake)
-                else:
-                    launch_context = patch.object(subprocess, "Popen", wraps=subprocess.Popen)
-                with launch_context as launch:
+                with patch.object(subprocess, "Popen", wraps=subprocess.Popen) as launch:
                     if name == "_pdf_content_worker":
                         accepted = pdf_content.validate_pdf_text_content(
                             presentation_ir=ir, expected_ir_sha256=digest,
@@ -176,10 +171,8 @@ class ParserLifecycleTests(unittest.TestCase):
                 self.assertTrue(accepted.passed, accepted.errors)
                 launch.assert_called_once()
                 self.assertEqual(launch.call_args.args[0], [sys.executable, "-I", str(Path(worker.__file__)), str(os.getpid())])
-                if name == "_pdf_content_worker":
-                    self.assertEqual(launch.call_args.kwargs["timeout"], 10)
-                else:
-                    self.assertEqual(pdf_safety.WALL_SECONDS, 10)
+                launcher = pdf_content if name == "_pdf_content_worker" else pdf_safety
+                self.assertEqual(launcher.WALL_SECONDS, 10)
 
     def test_independent_timer_interrupts_blocked_native_parser(self):
         """A shortened fixture timer terminates native code while the parent lives."""
