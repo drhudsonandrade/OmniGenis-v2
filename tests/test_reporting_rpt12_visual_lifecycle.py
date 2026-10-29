@@ -1,8 +1,9 @@
 """Bound the generated-PDF raster worker to its launching parent and elapsed budget."""
 from __future__ import annotations
 
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 import ctypes
+import errno
 import hashlib
 from io import StringIO
 import json
@@ -269,6 +270,428 @@ os._exit(0)
             self.assertFalse(marker.exists())
             self.assertNotIn("pdf_visual_worker_unavailable",
                              json.dumps(json.loads(child.stdout)))
+
+
+_VISUAL_REAL_POPEN = subprocess.Popen
+_VISUAL_REAL_KILLPG = os.killpg
+_VISUAL_REAL_KILL = os.kill
+_VISUAL_REAL_WAITID = os.waitid
+_VISUAL_REAL_WAITPID = os.waitpid
+_VISUAL_WAIT_FLAGS = os.WEXITED | os.WNOHANG | os.WNOWAIT
+
+
+def _visual_response(pdf, *, blocked=False, size=None):
+    """Build synthetic protocol bytes without invoking any raster executor."""
+    record = {
+        "status": "BLOCKED" if blocked else "PASS",
+        "pdf_sha256": None if blocked else hashlib.sha256(pdf).hexdigest(),
+        "page_count": None if blocked else 1,
+        "raster_sha256": None if blocked else "1" * 64,
+        "min_edge_margin_px": None if blocked else 2,
+        "total_pixels": None if blocked else 100,
+        "errors": ["pdf_visual_worker_unavailable"] if blocked else [],
+    }
+    response = json.dumps(record, sort_keys=True).encode("ascii") + b"\n"
+    if size is not None:
+        if len(response) > size:
+            raise AssertionError("synthetic response exceeds its requested size")
+        response = response.ljust(size, b" ")
+    return response
+
+
+def _visual_emit_script(response, *, exit_code=0):
+    """Consume input and emit one explicit test response before exiting."""
+    return (
+        "import os,sys\n"
+        "sys.stdin.buffer.read()\n"
+        "sys.stdout.buffer.write(" + repr(response) + ")\n"
+        "sys.stdout.buffer.flush()\n"
+        "os._exit(" + str(exit_code) + ")\n"
+    )
+
+
+def _visual_observe_exit(process):
+    """Wait for a test-owned exit while retaining its kernel wait state."""
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        result = _VISUAL_REAL_WAITID(os.P_PID, process.pid, _VISUAL_WAIT_FLAGS)
+        if result is not None:
+            return result
+        time.sleep(0.005)
+    raise AssertionError("disposable visual child did not exit")
+
+
+@contextmanager
+def _visual_child_probe(script, *, wall_seconds=2, before_return=None,
+                        pass_fds=(), group_error=None):
+    """Observe only owned signals and retain pidfds for independent test cleanup.
+
+    The signal guard suppresses the former unsafe signal-after-reap behavior.
+    Cleanup never sends a numeric PID or process-group signal after ownership
+    loss. Extra pidfds are registered before a controlled descendant can exit.
+    """
+    probe = SimpleNamespace(process=None, pidfd=None, extra_pidfds=[], signals=[])
+
+    def launch(_command, *args, **kwargs):
+        if probe.process is not None:
+            raise AssertionError("visual fixture expected exactly one direct child")
+        if kwargs.get("start_new_session") is not True:
+            raise AssertionError("visual worker must own a fresh process group")
+        if pass_fds:
+            kwargs["pass_fds"] = tuple(pass_fds)
+        process = _VISUAL_REAL_POPEN(
+            [sys.executable, "-I", "-B", "-c", script], *args, **kwargs
+        )
+        probe.process = process
+        probe.pidfd = os.pidfd_open(process.pid)
+        if before_return is not None:
+            before_return(probe)
+        return process
+
+    def send(kind, identifier, signum):
+        process = probe.process
+        if process is None or identifier != process.pid:
+            raise AssertionError("signal target is not the disposable visual child")
+        try:
+            _VISUAL_REAL_WAITID(os.P_PID, identifier, _VISUAL_WAIT_FLAGS)
+        except ChildProcessError:
+            probe.signals.append((kind, False))
+            return
+        probe.signals.append((kind, True))
+        if kind == "group" and group_error is not None:
+            raise group_error
+        sender = _VISUAL_REAL_KILLPG if kind == "group" else _VISUAL_REAL_KILL
+        return sender(identifier, signum)
+
+    try:
+        with patch.object(pdf_visual.subprocess, "Popen", side_effect=launch), \
+             patch.object(pdf_visual, "WALL_SECONDS", wall_seconds), \
+             patch.object(os, "killpg", side_effect=lambda pid, sig: send("group", pid, sig)), \
+             patch.object(os, "kill", side_effect=lambda pid, sig: send("child", pid, sig)):
+            yield probe
+    finally:
+        # The product signal patches have exited before this independent cleanup.
+        descriptors = probe.extra_pidfds + ([probe.pidfd] if probe.pidfd is not None else [])
+        try:
+            for descriptor in descriptors:
+                try:
+                    signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            if probe.process is not None:
+                probe.process.wait(timeout=3)
+        finally:
+            for descriptor in descriptors:
+                os.close(descriptor)
+            if probe.process is not None:
+                for stream in (probe.process.stdin, probe.process.stdout, probe.process.stderr):
+                    if stream is not None:
+                        stream.close()
+
+
+@unittest.skipUnless(
+    sys.platform == "linux" and hasattr(os, "pidfd_open")
+    and hasattr(signal, "pidfd_send_signal"), "Linux pidfd required"
+)
+class VisualSupervisorPipeLifecycleTests(unittest.TestCase):
+    """Exercise the public supervisor with bounded real disposable children."""
+
+    pdf = b"%PDF-SYNTHETIC-VISUAL-LIFECYCLE"
+
+    def validate(self, pdf=None):
+        data = self.pdf if pdf is None else pdf
+        return pdf_visual.validate_pdf_visual_geometry(
+            pdf_bytes=data, expected_pdf_sha256=hashlib.sha256(data).hexdigest()
+        )
+
+    def assert_reaped(self, probe):
+        with self.assertRaises(ChildProcessError):
+            _VISUAL_REAL_WAITID(os.P_PID, probe.process.pid, _VISUAL_WAIT_FLAGS)
+
+    def assert_owned_cleanup(self, probe):
+        self.assertIn(("group", True), probe.signals, probe.signals)
+        self.assertTrue(all(owned for _, owned in probe.signals), probe.signals)
+        self.assert_reaped(probe)
+
+    def test_exited_visual_child_is_waitable_at_every_group_signal(self):
+        """Completion must not release the leader PID before original-group cleanup."""
+        for action, expected in (
+            ("os._exit(0)", 0),
+            ("os._exit(7)", 7),
+            ("os.kill(os.getpid(),signal.SIGTERM)", -signal.SIGTERM),
+        ):
+            script = "import os,signal,sys\nsys.stdin.buffer.read()\n" + action
+            with self.subTest(expected=expected), _visual_child_probe(script) as probe:
+                result = pdf_visual._run_worker(self.pdf)
+                self.assertEqual(result.returncode, expected)
+                self.assert_owned_cleanup(probe)
+
+    def test_exited_visual_leader_does_not_leave_original_group_descendant(self):
+        """A pinned same-group descendant must terminate before evidence is returned."""
+        status_read, status_write = os.pipe()
+        release_read, release_write = os.pipe()
+        response = _visual_response(self.pdf)
+        script = (
+            "import os,sys,time\n"
+            "descendant=os.fork()\n"
+            "if descendant==0:\n"
+            "    os.close(0);os.close(1)\n"
+            "    time.sleep(30)\n"
+            "    os._exit(0)\n"
+            "os.write(" + str(status_write) + ",str(descendant).encode()+b'\\n')\n"
+            "os.read(" + str(release_read) + ",1)\n"
+            "sys.stdin.buffer.read()\n"
+            "sys.stdout.buffer.write(" + repr(response) + ")\n"
+            "sys.stdout.buffer.flush()\n"
+            "os._exit(0)\n"
+        )
+
+        def pin_descendant(probe):
+            self.assertTrue(select.select([status_read], [], [], 3)[0])
+            descendant = int(os.read(status_read, 64).strip())
+            descriptor = os.pidfd_open(descendant)
+            probe.extra_pidfds.append(descriptor)
+            self.assertEqual(os.getpgid(descendant), probe.process.pid)
+            os.write(release_write, b"X")
+
+        try:
+            with _visual_child_probe(
+                script, before_return=pin_descendant,
+                pass_fds=(status_write, release_read),
+            ) as probe:
+                result = self.validate()
+                self.assertTrue(result.passed, result.errors)
+                self.assert_owned_cleanup(probe)
+                self.assertTrue(select.select(probe.extra_pidfds, [], [], 2)[0],
+                                "original-group descendant is still alive")
+        finally:
+            for descriptor in (status_read, status_write, release_read, release_write):
+                os.close(descriptor)
+
+    def test_exact_response_budget_preserves_valid_json_evidence(self):
+        """Exactly 8192 bytes remains an accepted existing protocol boundary."""
+        response = _visual_response(self.pdf, size=8192)
+        with _visual_child_probe(_visual_emit_script(response)) as probe:
+            result = self.validate()
+            self.assertTrue(result.passed, result.errors)
+            self.assert_owned_cleanup(probe)
+
+    def test_one_byte_beyond_response_budget_is_refused(self):
+        """A valid JSON prefix cannot authorize an oversized response."""
+        response = _visual_response(self.pdf, size=8193)
+        with _visual_child_probe(_visual_emit_script(response)) as probe:
+            result = self.validate()
+            self.assertEqual(result.errors, ("pdf_visual_worker_invalid_response",))
+            self.assert_owned_cleanup(probe)
+
+    def test_response_overflow_is_detected_without_waiting_for_eof(self):
+        """An oversized response followed by a live writer is a protocol failure."""
+        response = _visual_response(self.pdf, size=8193)
+        script = (
+            "import sys,time\n"
+            "sys.stdout.buffer.write(" + repr(response) + ")\n"
+            "sys.stdout.buffer.flush()\n"
+            "time.sleep(30)\n"
+        )
+        with _visual_child_probe(script, wall_seconds=0.3) as probe:
+            started = time.monotonic()
+            result = self.validate()
+            self.assertEqual(result.errors, ("pdf_visual_worker_invalid_response",))
+            self.assertLess(time.monotonic() - started, 2.5)
+            self.assert_owned_cleanup(probe)
+
+    def test_unread_stdin_is_bounded_by_the_original_wall_deadline(self):
+        """A worker that never reads cannot strand an eight-MiB write."""
+        pdf = b"%PDF-" + b"S" * (8 * 1024 * 1024 - 5)
+        with _visual_child_probe("import time;time.sleep(30)", wall_seconds=0.2) as probe:
+            started = time.monotonic()
+            result = self.validate(pdf)
+            self.assertEqual(result.errors, ("pdf_visual_worker_timeout",))
+            self.assertLess(time.monotonic() - started, 2.5)
+            self.assert_owned_cleanup(probe)
+
+    def test_duplex_transfer_handles_output_before_large_input_is_read(self):
+        """A full output pipe and full input pipe must not deadlock each other."""
+        pdf = b"%PDF-" + b"D" * (1024 * 1024 - 5)
+        response = _visual_response(pdf, size=8192)
+        script = (
+            "import fcntl,hashlib,os,sys\n"
+            "fcntl.fcntl(1,fcntl.F_SETPIPE_SZ,4096)\n"
+            "sys.stdout.buffer.write(" + repr(response) + ")\n"
+            "sys.stdout.buffer.flush()\n"
+            "data=sys.stdin.buffer.read()\n"
+            "os._exit(0 if hashlib.sha256(data).hexdigest()=="
+            + repr(hashlib.sha256(pdf).hexdigest()) + " else 7)\n"
+        )
+        with _visual_child_probe(script) as probe:
+            result = self.validate(pdf)
+            self.assertTrue(result.passed, result.errors)
+            self.assert_owned_cleanup(probe)
+
+    def test_stdout_eof_cannot_accept_a_still_running_child(self):
+        """A closed output descriptor does not establish completed execution."""
+        script = "import os,time\nos.close(1)\ntime.sleep(30)\n"
+        with _visual_child_probe(script, wall_seconds=0.2) as probe:
+            result = self.validate()
+            self.assertEqual(result.errors, ("pdf_visual_worker_timeout",))
+            self.assert_owned_cleanup(probe)
+
+    def test_early_blocked_response_survives_input_broken_pipe(self):
+        """Failure before input admission retains its existing blocked protocol."""
+        pdf = b"%PDF-" + b"B" * (1024 * 1024 - 5)
+        response = _visual_response(pdf, blocked=True)
+        script = (
+            "import os,sys\nos.close(0)\n"
+            "sys.stdout.buffer.write(" + repr(response) + ")\n"
+            "sys.stdout.buffer.flush()\n"
+        )
+        with _visual_child_probe(script) as probe:
+            result = self.validate(pdf)
+            self.assertEqual(result.errors, ("pdf_visual_worker_unavailable",))
+            self.assert_owned_cleanup(probe)
+
+    def test_valid_looking_response_cannot_hide_nonzero_child_exit(self):
+        """All response fields may be valid while the execution itself failed."""
+        script = _visual_emit_script(_visual_response(self.pdf), exit_code=7)
+        with _visual_child_probe(script) as probe:
+            result = self.validate()
+            self.assertEqual(result.errors, ("pdf_visual_worker_failed",))
+            self.assertIsNone(result.page_count)
+            self.assert_owned_cleanup(probe)
+
+    def test_kernel_reap_without_popen_update_refuses_all_numeric_signals(self):
+        """ECHILD cannot be normalized to a successful zero exit by Popen."""
+        def release_identity(probe):
+            _visual_observe_exit(probe.process)
+            _VISUAL_REAL_WAITPID(probe.process.pid, 0)
+            self.assertIsNone(probe.process.returncode)
+
+        with _visual_child_probe("import os;os._exit(0)", before_return=release_identity) as probe:
+            result = self.validate()
+            self.assertEqual(result.errors, ("pdf_visual_worker_failed",))
+            self.assertEqual(probe.signals, [])
+            self.assert_reaped(probe)
+
+    def test_unavailable_ownership_observation_refuses_numeric_signals(self):
+        """Lack of the ownership primitive must never authorize a PID lookup signal."""
+        response = _visual_response(self.pdf)
+        with _visual_child_probe(_visual_emit_script(response)) as probe:
+            with patch.object(os, "waitid", side_effect=OSError(errno.ENOSYS, "unavailable")):
+                result = self.validate()
+            self.assertEqual(result.errors, ("pdf_visual_worker_failed",))
+            self.assertEqual(probe.signals, [])
+
+    def test_group_cleanup_failure_refuses_valid_visual_evidence(self):
+        """Successful output and exit cannot hide an unresolved cleanup operation."""
+        response = _visual_response(self.pdf)
+        with _visual_child_probe(
+            _visual_emit_script(response), group_error=PermissionError("SYNTHETIC_PRIVATE")
+        ) as probe:
+            result = self.validate()
+            self.assertEqual(result.errors, ("pdf_visual_worker_failed",))
+            self.assertNotIn("SYNTHETIC_PRIVATE", json.dumps(result.to_dict()))
+            self.assert_owned_cleanup(probe)
+
+    def test_cancellation_during_pipe_read_still_cleans_and_reaps_child(self):
+        """Cancellation remains the original exception after bounded owned cleanup."""
+        real_read = os.read
+        for cancellation in (KeyboardInterrupt("SYNTHETIC"), SystemExit(13)):
+            with self.subTest(kind=type(cancellation).__name__), _visual_child_probe(
+                "import os,time\nos.write(1,b'x')\ntime.sleep(30)\n"
+            ) as probe:
+                injected = []
+
+                def read(descriptor, count):
+                    if (not injected and probe.process is not None
+                            and descriptor == probe.process.stdout.fileno()):
+                        injected.append(True)
+                        raise cancellation
+                    return real_read(descriptor, count)
+
+                with patch.object(os, "read", side_effect=read):
+                    with self.assertRaises(type(cancellation)) as caught:
+                        pdf_visual._run_worker(self.pdf)
+                self.assertIs(caught.exception, cancellation)
+                self.assertEqual(injected, [True])
+                self.assert_owned_cleanup(probe)
+
+    def test_pipe_configuration_failure_cleans_already_launched_child(self):
+        """A setup error after launch cannot bypass child ownership cleanup."""
+        real_set_blocking = os.set_blocking
+        with _visual_child_probe("import time;time.sleep(30)", wall_seconds=0.2) as probe:
+            injected = []
+
+            def configure(descriptor, blocking):
+                if (not injected and probe.process is not None
+                        and descriptor in (probe.process.stdin.fileno(),
+                                           probe.process.stdout.fileno())):
+                    injected.append(True)
+                    raise OSError(errno.EIO, "SYNTHETIC_PRIVATE_SETUP")
+                return real_set_blocking(descriptor, blocking)
+
+            with patch.object(os, "set_blocking", side_effect=configure):
+                result = self.validate()
+            self.assertEqual(injected, [True])
+            self.assertEqual(result.errors, ("pdf_visual_worker_failed",))
+            self.assertNotIn("SYNTHETIC_PRIVATE_SETUP", json.dumps(result.to_dict()))
+            self.assert_owned_cleanup(probe)
+
+    def test_pipe_read_failure_is_sanitized_after_owned_cleanup(self):
+        """Transport I/O failures cannot leak details or retain the running child."""
+        real_read = os.read
+        with _visual_child_probe("import os,time\nos.write(1,b'x')\ntime.sleep(30)\n") as probe:
+            injected = []
+
+            def read(descriptor, count):
+                if (not injected and probe.process is not None
+                        and descriptor == probe.process.stdout.fileno()):
+                    injected.append(True)
+                    raise OSError(errno.EIO, "SYNTHETIC_PRIVATE_PIPE")
+                return real_read(descriptor, count)
+
+            with patch.object(os, "read", side_effect=read):
+                result = self.validate()
+            self.assertEqual(injected, [True])
+            self.assertEqual(result.errors, ("pdf_visual_worker_failed",))
+            self.assertNotIn("SYNTHETIC_PRIVATE_PIPE", json.dumps(result.to_dict()))
+            self.assert_owned_cleanup(probe)
+
+    def test_fragmented_response_preserves_the_exact_protocol_bytes(self):
+        """A response is a byte stream, independent of individual read boundaries."""
+        response = _visual_response(self.pdf)
+        script = (
+            "import os,sys\nsys.stdin.buffer.read()\n"
+            "data=" + repr(response) + "\n"
+            "for offset in range(0,len(data),7):\n"
+            "    os.write(1,data[offset:offset+7])\n"
+        )
+        with _visual_child_probe(script) as probe:
+            result = pdf_visual._run_worker(self.pdf)
+            self.assertEqual(result.stdout, response)
+            self.assertEqual(result.returncode, 0)
+            self.assert_owned_cleanup(probe)
+
+    def test_cancellation_at_first_postlaunch_deadline_cleans_owned_child(self):
+        """The first supervisor clock operation is inside owned cleanup scope."""
+        real_clock = time.monotonic
+        for cancellation in (KeyboardInterrupt("SYNTHETIC"), SystemExit(13)):
+            with self.subTest(kind=type(cancellation).__name__), _visual_child_probe(
+                "import time;time.sleep(30)", wall_seconds=0.2
+            ) as probe:
+                injected = []
+
+                def clock():
+                    if not injected and probe.process is not None:
+                        injected.append(True)
+                        raise cancellation
+                    return real_clock()
+
+                with patch.object(time, "monotonic", side_effect=clock):
+                    with self.assertRaises(type(cancellation)) as caught:
+                        pdf_visual._run_worker(self.pdf)
+                self.assertIs(caught.exception, cancellation)
+                self.assertEqual(injected, [True])
+                self.assert_owned_cleanup(probe)
 
 
 if __name__ == "__main__":

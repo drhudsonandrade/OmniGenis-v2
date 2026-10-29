@@ -7,12 +7,14 @@ import json
 import os
 from pathlib import Path
 import re
-import signal
+import selectors
 import subprocess
 import sys
 import tempfile
+import time
 
 from reporting._pdf_bounded_scratch import PdfBoundedScratchError, bounded_scratch_parent
+from reporting._pdf_process_lifecycle import wait_owned_process_group
 from reporting._pdf_visual_worker import (
     ERRORS as WORKER_ERRORS,MAX_PAGES,MAX_PDF_BYTES,MAX_TOTAL_PIXELS,
     MIN_EDGE_MARGIN_PX,WALL_SECONDS,
@@ -20,6 +22,7 @@ from reporting._pdf_visual_worker import (
 
 _SHA256=re.compile(r"[0-9a-f]{64}\Z")
 _WORKER=Path(__file__).with_name("_pdf_visual_worker.py")
+_MAX_RESPONSE_BYTES=8192
 _ERRORS=WORKER_ERRORS|frozenset({
     "expected_pdf_digest_invalid","pdf_digest_mismatch","pdf_visual_worker_timeout",
     "pdf_visual_worker_failed","pdf_visual_worker_invalid_response",
@@ -92,23 +95,96 @@ class PdfVisualValidation:
         }
 
 
+class _VisualWorkerResponseOverflow(ValueError):
+    """Refuse a worker response before buffering beyond the protocol boundary."""
+
+
+def _exchange_visual_pipes(
+    process: subprocess.Popen, pdf_bytes: bytes, deadline: float
+) -> bytes:
+    """Exchange bounded bytes without waiting for or reaping the owned child."""
+    output=bytearray()
+    pending=memoryview(pdf_bytes)
+    position=0
+    with selectors.DefaultSelector() as selector:
+        for stream,event in (
+            (process.stdin,selectors.EVENT_WRITE),
+            (process.stdout,selectors.EVENT_READ),
+        ):
+            os.set_blocking(stream.fileno(),False)
+            selector.register(stream,event)
+        while selector.get_map():
+            remaining=deadline-time.monotonic()
+            if remaining<=0:
+                raise subprocess.TimeoutExpired(process.args,WALL_SECONDS)
+            for key,_ in selector.select(remaining):
+                if key.fileobj is process.stdin:
+                    try:
+                        written=os.write(key.fd,pending[position:position+65536])
+                    except BlockingIOError:
+                        continue
+                    except BrokenPipeError:
+                        # A setup failure may return BLOCKED before reading input.
+                        selector.unregister(key.fileobj)
+                        key.fileobj.close()
+                        continue
+                    if written<=0:
+                        raise OSError("visual worker input transfer stalled")
+                    position+=written
+                    if position==len(pending):
+                        selector.unregister(key.fileobj)
+                        key.fileobj.close()
+                else:
+                    try:
+                        chunk=os.read(key.fd,_MAX_RESPONSE_BYTES+1-len(output))
+                    except BlockingIOError:
+                        continue
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        key.fileobj.close()
+                    else:
+                        output.extend(chunk)
+                        if len(output)>_MAX_RESPONSE_BYTES:
+                            raise _VisualWorkerResponseOverflow("worker protocol budget")
+    return bytes(output)
+
+
 def _run_worker(pdf_bytes: bytes) -> subprocess.CompletedProcess:
-    """Own the worker process group and temporary files through every exit."""
+    """Keep the child identity through pipe exchange, group cleanup and reap."""
     with tempfile.TemporaryDirectory(prefix="omnigenis-pdf-visual-supervisor-", dir=bounded_scratch_parent()) as scratch:
-        with subprocess.Popen(
+        process=subprocess.Popen(
             [sys.executable,"-I",str(_WORKER),str(os.getpid())],
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
-            env={**os.environ,"TMPDIR":scratch},start_new_session=True,
-        ) as process:
+            env={**os.environ,"TMPDIR":scratch},start_new_session=True,bufsize=0,
+        )
+        try:
             try:
-                output,_=process.communicate(input=pdf_bytes,timeout=WALL_SECONDS)
-            finally:
+                deadline=time.monotonic()+WALL_SECONDS
+                output=_exchange_visual_pipes(process,pdf_bytes,deadline)
+                remaining=deadline-time.monotonic()
+                if remaining<0:
+                    raise subprocess.TimeoutExpired(process.args,WALL_SECONDS)
+            except BaseException:
+                # The shared helper keeps identity until signaling and reap.
+                # Its zero work allowance still performs bounded owned cleanup.
                 try:
-                    os.killpg(process.pid,signal.SIGKILL)
-                except ProcessLookupError:
+                    wait_owned_process_group(process,wall_seconds=0)
+                except (OSError,subprocess.TimeoutExpired,AttributeError,ValueError):
                     pass
-                process.wait(timeout=2)
-            return subprocess.CompletedProcess(process.args,process.returncode,output)
+                raise
+            returncode=wait_owned_process_group(process,wall_seconds=remaining)
+            return subprocess.CompletedProcess(process.args,returncode,output)
+        finally:
+            primary_error=sys.exception()
+            close_error=None
+            for stream in (process.stdin,process.stdout):
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except (OSError,ValueError) as error:
+                        close_error=close_error or error
+            if close_error is not None and primary_error is None:
+                raise close_error
 
 
 def validate_pdf_visual_geometry(
@@ -136,14 +212,16 @@ def validate_pdf_visual_geometry(
         child=_run_worker(pdf_bytes)
     except subprocess.TimeoutExpired:
         return fail("pdf_visual_worker_timeout")
+    except _VisualWorkerResponseOverflow:
+        return fail("pdf_visual_worker_invalid_response")
     except PdfBoundedScratchError:
         return fail("pdf_visual_worker_unavailable")
-    except OSError:
+    except (OSError,AttributeError,ValueError):
         return fail("pdf_visual_worker_failed")
     if child.returncode!=0:
         return fail("pdf_visual_worker_failed")
     try:
-        if not isinstance(child.stdout,bytes) or len(child.stdout)>8192:
+        if not isinstance(child.stdout,bytes) or len(child.stdout)>_MAX_RESPONSE_BYTES:
             raise ValueError("worker protocol budget")
         record=json.loads(child.stdout)
         required={
