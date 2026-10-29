@@ -83,6 +83,57 @@ class SupervisedInspectionTests(unittest.TestCase):
                     if stream is not None:
                         stream.close()
 
+    @contextmanager
+    def group_signal_fault_child(self, script, marker, *, short_deadline=False):
+        """Pin a ready real child before injecting only its group-signal failure."""
+        launches = []
+        clocks = []
+        clock_class = self.m._Clock
+
+        def clock():
+            """Start the narrow test budget after child startup and readiness."""
+            value = clock_class()
+            clocks.append(value)
+            return value
+
+        def launch(command, **options):
+            """Keep the production child settings and pin its identity with a pidfd."""
+            process = REAL_POPEN([sys.executable, '-I', '-B', '-c', script], **options)
+            item = {'command': command, 'options': options, 'process': process, 'pidfd': None}
+            launches.append(item)
+            item['pidfd'] = os.pidfd_open(process.pid)
+            ready_by = time.monotonic() + 5
+            while not marker.exists():
+                if select.select([item['pidfd']], [], [], 0)[0]:
+                    raise AssertionError('fixture child exited before readiness')
+                if time.monotonic() >= ready_by:
+                    raise AssertionError('fixture child readiness missing')
+                time.sleep(0.005)
+            clocks[0].deadline = time.monotonic_ns() + (
+                350_000_000 if short_deadline else 2_000_000_000)
+            return process
+
+        try:
+            with patch.object(self.m, '_Clock', side_effect=clock), \
+                 patch.object(self.m.subprocess, 'Popen', side_effect=launch), \
+                 patch.object(self.m.os, 'killpg', side_effect=PermissionError('group denied')) as group:
+                yield launches, group
+        finally:
+            # The test assertions precede rescue; rescue cannot prove production reap.
+            for item in launches:
+                process, pidfd = item['process'], item['pidfd']
+                if pidfd is not None:
+                    try:
+                        signal.pidfd_send_signal(pidfd, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                process.wait(timeout=3)
+                for stream in (process.stdin, process.stdout):
+                    if stream is not None:
+                        stream.close()
+                if pidfd is not None:
+                    os.close(pidfd)
+
     def fail_with_child(self, script, *, short=False):
         """Run a fault against a real sealed request and require a fixed safe error."""
         with self.h.request() as (fd, expected, args, _):
@@ -350,6 +401,124 @@ class SupervisedInspectionTests(unittest.TestCase):
         direct.assert_not_called()
         self.assertTrue(process.stdin.closed and process.stdout.closed)
 
+    def test_definitive_ownership_loss_after_group_prevents_direct_signal(self):
+        """Losing the waitable child after group signalling is terminal."""
+        import io
+        from types import SimpleNamespace
+        process = SimpleNamespace(pid=42, returncode=None, stdin=io.BytesIO(),
+                                  stdout=io.BytesIO())
+        with patch.object(self.m, '_unreaped_exit', side_effect=[None, ChildProcessError('lost')]), \
+             patch.object(self.m.os, 'killpg') as group, \
+             patch.object(self.m.os, 'kill') as direct, \
+             self.assertRaises(self.m._Refusal) as caught:
+            self.m._finish_child(process)
+        self.assertEqual(str(caught.exception), 'cleanup_unresolved')
+        group.assert_called_once_with(42, signal.SIGKILL)
+        direct.assert_not_called()
+        self.assertTrue(process.stdin.closed and process.stdout.closed)
+
+    def test_unconfirmed_reap_cannot_become_synthetic_zero(self):
+        """An ECHILD during explicit waitpid cannot accept Popen's synthetic zero."""
+        import io
+        from types import SimpleNamespace
+        process = SimpleNamespace(pid=42, returncode=None, stdin=io.BytesIO(),
+                                  stdout=io.BytesIO(), wait=lambda **unused: 0)
+        with patch.object(self.m, '_unreaped_exit', return_value=0), \
+             patch.object(self.m.os, 'killpg'), \
+             patch.object(self.m.os, 'kill') as direct, \
+             patch.object(self.m.os, 'waitpid', side_effect=ChildProcessError('ECHILD')), \
+             self.assertRaises(self.m._Refusal) as caught:
+            self.m._finish_child(process)
+        self.assertEqual(str(caught.exception), 'cleanup_unresolved')
+        self.assertIsNone(process.returncode)
+        direct.assert_not_called()
+        self.assertTrue(process.stdin.closed and process.stdout.closed)
+
+    def test_group_signal_failure_reaps_live_child_before_fixture_rescue(self):
+        """A failed group signal still retires the owned live direct child."""
+        with self.h.request() as (fd, expected, args, packet):
+            raw = _json_bytes(self.fixture.context(expected, args))
+            os.lseek(fd, 9, os.SEEK_SET)
+            with tempfile.TemporaryDirectory(prefix='supervisor-group-failure-') as directory:
+                marker = Path(directory) / 'ready'
+                script = ('from pathlib import Path;import time;Path(' + repr(str(marker))
+                          + ').touch();time.sleep(10)')
+                with self.group_signal_fault_child(script, marker, short_deadline=True) as (launches, group):
+                    with self.assertRaises(self.m.PdfSupervisedInspectionError) as caught:
+                        self.invoke(fd, raw)
+                    self.assertEqual(str(caught.exception),
+                                     'pdf_supervised_inspection_cleanup_unresolved')
+                    group.assert_called_once()
+                    self.assertEqual(len(launches), 1)
+                    item = launches[0]
+                    process = item['process']
+                    self.assertEqual(process.returncode, -signal.SIGKILL,
+                                     'production must reap the real direct child')
+                    with self.assertRaises(ChildProcessError):
+                        os.waitpid(process.pid, os.WNOHANG)
+                    self.assertTrue(select.select([item['pidfd']], [], [], 0)[0])
+                    self.assertTrue(process.stdin.closed and process.stdout.closed)
+            self.assertEqual(os.pread(fd, len(packet), 0), packet)
+            self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), 9)
+
+    def test_group_signal_failure_reaps_exited_child_and_withholds_frame(self):
+        """A complete zero-exit frame remains refused after failed group cleanup."""
+        with self.h.request() as (fd, expected, args, packet):
+            context = self.fixture.context(expected, args)
+            encoded, _ = self.synthetic_frame(context)
+            os.lseek(fd, 11, os.SEEK_SET)
+            with tempfile.TemporaryDirectory(prefix='supervisor-group-exited-') as directory:
+                marker = Path(directory) / 'ready'
+                script = ('from pathlib import Path;import sys;Path(' + repr(str(marker))
+                          + ').touch();sys.stdin.buffer.read();sys.stdout.buffer.write(' + repr(encoded)
+                          + ');sys.stdout.buffer.flush()')
+                with self.group_signal_fault_child(script, marker) as (launches, group):
+                    with self.assertRaises(self.m.PdfSupervisedInspectionError) as caught:
+                        self.invoke(fd, _json_bytes(context))
+                    self.assertEqual(str(caught.exception),
+                                     'pdf_supervised_inspection_cleanup_unresolved')
+                    group.assert_called_once()
+                    self.assertEqual(len(launches), 1)
+                    process = launches[0]['process']
+                    self.assertEqual(process.returncode, 0,
+                                     'production must reap the exited child')
+                    with self.assertRaises(ChildProcessError):
+                        os.waitpid(process.pid, os.WNOHANG)
+                    self.assertTrue(process.stdin.closed and process.stdout.closed)
+            self.assertEqual(os.pread(fd, len(packet), 0), packet)
+            self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), 11)
+
+    def test_group_failure_survives_owned_stream_close_error(self):
+        """One close failure cannot skip the other close or erase group refusal."""
+        from types import SimpleNamespace
+
+        class FailedClose:
+            """Raise during owned stdin close."""
+            def close(self):
+                """Simulate an independent stream teardown fault."""
+                raise OSError('synthetic stdin close fault')
+
+        class Closed:
+            """Record that stdout was still closed."""
+            closed = False
+
+            def close(self):
+                """Retire stdout despite a preceding stdin failure."""
+                self.closed = True
+
+        output = Closed()
+        process = SimpleNamespace(pid=42, returncode=None, stdin=FailedClose(),
+                                  stdout=output)
+        with patch.object(self.m, '_unreaped_exit', return_value=0), \
+             patch.object(self.m.os, 'killpg', side_effect=PermissionError('group denied')), \
+             patch.object(self.m.os, 'kill') as direct, \
+             patch.object(self.m.os, 'waitpid', return_value=(42, 0)), \
+             self.assertRaises(self.m._Refusal) as caught:
+            self.m._finish_child(process)
+        self.assertEqual(str(caught.exception), 'cleanup_unresolved')
+        self.assertTrue(output.closed)
+        direct.assert_not_called()
+
     def test_cleanup_wait_failure_prevents_success(self):
         """Unknown direct-child termination remains a failure, not an assumed reap."""
         import io
@@ -357,9 +526,10 @@ class SupervisedInspectionTests(unittest.TestCase):
         def unresolved(**unused):
             """Simulate a bounded wait failure without creating a real unreaped process."""
             raise subprocess.TimeoutExpired('synthetic', 2)
-        process = SimpleNamespace(pid=42, returncode=None, stdin=io.BytesIO(),
-                                  stdout=io.BytesIO(), wait=unresolved)
+        process = SimpleNamespace(pid=42, args=['synthetic'], returncode=None,
+                                  stdin=io.BytesIO(), stdout=io.BytesIO(), wait=unresolved)
         with patch.object(self.m, '_unreaped_exit', return_value=None), \
+             patch.object(self.m, 'monotonic_ns', side_effect=[0, 2_000_000_001]), \
              patch.object(self.m.os, 'killpg'), patch.object(self.m.os, 'kill'), \
              self.assertRaises(self.m._Refusal) as caught:
             self.m._finish_child(process)

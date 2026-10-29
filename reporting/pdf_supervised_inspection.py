@@ -24,7 +24,7 @@ import selectors
 import signal
 import subprocess
 import sys
-from time import monotonic_ns
+from time import monotonic_ns, sleep
 
 from reporting import _pdf_fixed_inspection_worker as worker
 from reporting import pdf_inspection_result_frame as frame
@@ -181,24 +181,49 @@ def _unreaped_exit(process: subprocess.Popen) -> int | None:
 
 
 def _finish_child(process: subprocess.Popen) -> int:
-    """Signal only an unreaped owned child/group, then wait with a finite cleanup bound."""
+    """Retire and explicitly reap an owned child despite an original-group signal fault."""
+    unresolved = False
+    exit_code = None
     try:
+        cleanup_deadline = monotonic_ns() + CLEANUP_SECONDS * 1_000_000_000
         _unreaped_exit(process)
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
-        try:
-            os.kill(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        return process.wait(timeout=CLEANUP_SECONDS)
+        except OSError:
+            # A group failure remains unresolved, but it cannot block safe
+            # independent retirement of our still-owned direct child.
+            unresolved = True
+        if _unreaped_exit(process) is None:
+            try:
+                os.kill(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        while True:
+            if _unreaped_exit(process) is not None:
+                pid, status = os.waitpid(process.pid, os.WNOHANG)
+                if pid != process.pid:
+                    raise ChildProcessError('direct-child reap unresolved')
+                exit_code = os.waitstatus_to_exitcode(status)
+                process.returncode = exit_code
+                break
+            remaining = (cleanup_deadline - monotonic_ns()) / 1_000_000_000
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(process.args, CLEANUP_SECONDS)
+            sleep(min(0.01, remaining))
     except Exception:
-        raise _Refusal('cleanup_unresolved') from None
+        unresolved = True
     finally:
         for stream in (process.stdin, process.stdout):
             if stream is not None:
-                stream.close()
+                try:
+                    stream.close()
+                except Exception:
+                    unresolved = True
+    if unresolved:
+        raise _Refusal('cleanup_unresolved') from None
+    return exit_code
 
 
 def _exchange(request_fd: int, context: bytes, environment: dict[str, str], clock: _Clock,
