@@ -241,7 +241,7 @@
   "reused_source_sha256": {
     "reporting/_pdf_fixed_inspection_worker.py": "7964a87a78fd517769a84f47913bd8df14c0acc527597b9acad7847fe98ed000",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-bounded-scratch.v1.json": "b7334170002c2d8d05400a0471cdca09ece40fe873a00467e72973f3118af873",
+    "reporting/pdf-bounded-scratch.v1.json": "7430b2967f98f057ee9f5c6c7c3ee53cb03fdd45c3ae7955d95da95d2e752487",
     "reporting/pdf-fixed-inspection-worker.v1.json": "1da1b326f0dcd4e866f6a2045ddfcf778458ed08e0d390d10673addd85bed67e",
     "reporting/pdf-fixed-worker-admission.v1.json": "6d9f94eae2057fdb5b3caa752eb5cf8ad4ec13b3377b74322a31e2743eae583c",
     "reporting/pdf-inspection-request.v1.json": "b8cd153be3cdb0631653f8a82035ad35c4aa75e1d6ded156873b10daf2bc7ffa",
