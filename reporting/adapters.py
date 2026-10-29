@@ -9,7 +9,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import signal
 import stat
 import subprocess
 import sys
@@ -17,6 +16,7 @@ import tempfile
 import threading
 from collections.abc import Mapping
 
+from reporting._pdf_process_lifecycle import wait_owned_process_group
 from reporting.localization import is_supported_report_locale
 from reporting._pdf_render_worker import (
     HTML_BYTES as PDF_RENDER_MAX_HTML_BYTES,
@@ -218,30 +218,16 @@ def _start_pdf_render_worker(
     )
 
 
-def _terminate_pdf_render_group(pid: int) -> None:
-    """Best-effort termination for the worker and every inherited descendant."""
-    try:
-        os.killpg(pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-
-
 def _wait_pdf_render_worker(
     process: subprocess.Popen, *, wall_seconds: float = 30
 ) -> int:
-    """Wait for the renderer and guarantee process-group cleanup."""
+    """Retain renderer ownership through its five-second group cleanup budget."""
     try:
-        try:
-            return process.wait(timeout=wall_seconds)
-        except subprocess.TimeoutExpired as exc:
-            _terminate_pdf_render_group(process.pid)
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                pass
-            raise RuntimeError("pdf_render_failed") from exc
-    finally:
-        _terminate_pdf_render_group(process.pid)
+        return wait_owned_process_group(
+            process, wall_seconds=wall_seconds, cleanup_seconds=5
+        )
+    except (OSError, subprocess.TimeoutExpired, AttributeError, ValueError) as exc:
+        raise RuntimeError("pdf_render_failed") from exc
 
 
 def _decode_pdf_render_result(

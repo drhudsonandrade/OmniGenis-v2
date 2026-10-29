@@ -64,7 +64,7 @@
     "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
     "reporting/pdf_object_graph.py": "6a1d7df605929fc83a083fd3d74c2c7586fea6c0fb8fb58a384404c2280d6ca7",
     "reporting/pdf_qa.py": "ea8e895590468829d1ed0bdcb22b06ef47dfd3801f3ed5fac6d5266bc6002c97",
-    "reporting/_pdf_process_lifecycle.py": "38edfb1529aeefb3f1cd105e6153615bd01dc1580186a02a163f26570a61cb85"
+    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
   },
   "schema_version": "1.0.0",
   "source_code_copied": false,

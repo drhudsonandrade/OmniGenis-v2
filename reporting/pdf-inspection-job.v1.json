@@ -58,7 +58,7 @@
     "reporting/pdf_page_tags.py": "84b9edf1fe4aefed28029b87943c53dc8ba2b7a77ee78ebf72c158f15f2f0697",
     "reporting/pdf_raster_windows.py": "c87e9101f2e310e22b6062733f6d4cf80c7b28996f2d14ffd2a00c04cbe6d49e",
     "reporting/pdf_text_windows.py": "be81c573b7d2145d31d0a049bb946f4eceb0399f01f23c2b38e1c4bbb43f8f81",
-    "reporting/_pdf_process_lifecycle.py": "38edfb1529aeefb3f1cd105e6153615bd01dc1580186a02a163f26570a61cb85"
+    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
   },
   "schema_version": "1.0.0",
   "source_code_copied": false

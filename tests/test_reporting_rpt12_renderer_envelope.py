@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -20,6 +21,23 @@ from reporting import adapters
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@contextmanager
+def guard_renderer_group_signals(process):
+    """Suppress unsafe legacy signals after reap, retaining the intended RED failure."""
+    real_waitid, real_killpg = os.waitid, os.killpg
+    def signal_group(pid, sig):
+        """Signal only while the kernel still reserves the owned leader PID."""
+        if pid != process.pid:
+            raise AssertionError("unexpected renderer group")
+        try:
+            real_waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        except ChildProcessError:
+            return
+        real_killpg(pid, sig)
+    with patch.object(os, "killpg", side_effect=signal_group):
+        yield
+
+
 class RendererEnvelopeTests(unittest.TestCase):
     @staticmethod
     def process_running(pid):
@@ -34,10 +52,27 @@ class RendererEnvelopeTests(unittest.TestCase):
     def cleanup_process(process):
         """Always stop and reap test-owned processes even after an assertion fails."""
         try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
+            # A waitable child reserves the group leader PID even after exit.
+            os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        except ChildProcessError:
             pass
+        else:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
         process.wait(timeout=5)
+
+    @staticmethod
+    def cleanup_pidfd(descriptor):
+        """Stop only the descendant identity retained before the product could reap."""
+        try:
+            try:
+                signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        finally:
+            os.close(descriptor)
 
     def test_manifest_declares_enforced_renderer_envelope(self):
         """Verify manifest declares enforced renderer envelope."""
@@ -193,9 +228,12 @@ class RendererEnvelopeTests(unittest.TestCase):
                 time.sleep(0.02)
             self.assertTrue(pid_file.exists())
             child_pid = int(pid_file.read_text())
+            descriptor = os.pidfd_open(child_pid)
+            self.addCleanup(self.cleanup_pidfd, descriptor)
 
-            with self.assertRaisesRegex(RuntimeError, "pdf_render_failed"):
-                adapters._wait_pdf_render_worker(process, wall_seconds=0.2)
+            with guard_renderer_group_signals(process):
+                with self.assertRaisesRegex(RuntimeError, "pdf_render_failed"):
+                    adapters._wait_pdf_render_worker(process, wall_seconds=0.2)
 
             def child_running():
                 return self.process_running(child_pid)
@@ -225,10 +263,13 @@ class RendererEnvelopeTests(unittest.TestCase):
                 time.sleep(0.02)
             self.assertTrue(pid_file.exists())
             child_pid = int(pid_file.read_text())
+            descriptor = os.pidfd_open(child_pid)
+            self.addCleanup(self.cleanup_pidfd, descriptor)
 
-            self.assertEqual(
-                adapters._wait_pdf_render_worker(process, wall_seconds=2), 7
-            )
+            with guard_renderer_group_signals(process):
+                self.assertEqual(
+                    adapters._wait_pdf_render_worker(process, wall_seconds=2), 7
+                )
 
             def child_running():
                 return self.process_running(child_pid)
@@ -244,7 +285,8 @@ class RendererEnvelopeTests(unittest.TestCase):
             [sys.executable, "-c", "raise SystemExit(7)"],
             env=os.environ.copy(),
         )
-        self.assertEqual(adapters._wait_pdf_render_worker(process, wall_seconds=2), 7)
+        with guard_renderer_group_signals(process):
+            self.assertEqual(adapters._wait_pdf_render_worker(process, wall_seconds=2), 7)
         with self.assertRaisesRegex(RuntimeError, "pdf_render_failed"):
             adapters._decode_pdf_render_result(
                 b"not-json", expected_pdf_path=None
@@ -444,6 +486,122 @@ class RendererEnvelopeTests(unittest.TestCase):
             with self.subTest(error=type(error).__name__):
                 with patch.object(Path, "read_text", side_effect=error):
                     self.assertFalse(self.process_running(123456))
+
+
+@contextmanager
+def released_renderer_with_success_descriptors():
+    """Forge valid-looking output from a child already reaped by its kernel owner.
+
+    Numeric old-renderer signals are suppressed after ECHILD; the retained pidfd
+    is the sole fallback signal target. Teardown is never counted as product proof.
+    """
+    process = subprocess.Popen([sys.executable, "-I", "-B", "-c", "pass"],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, start_new_session=True)
+    descriptor = os.pidfd_open(process.pid)
+    real_waitid, real_killpg = os.waitid, os.killpg
+    try:
+        real_waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)
+        os.waitpid(process.pid, 0)
+        if process.returncode is not None:
+            raise AssertionError("fixture populated Popen returncode")
+        pdf = b"%PDF-1.7\nvalid-looking-lifecycle-output\n"
+        record = json.dumps({"protocol_version": 1, "status": "PASS",
+                             "pdf_bytes": len(pdf), "pdf_sha256": hashlib.sha256(pdf).hexdigest(),
+                             "limits": adapters._PDF_RENDER_LIMITS}).encode("ascii")
+        def start(command, *, env, pass_fds=()):
+            """Populate the three existing protocol descriptors with consistent output."""
+            if len(pass_fds) != 3:
+                raise AssertionError("renderer protocol descriptors changed")
+            os.write(pass_fds[1], pdf)
+            os.write(pass_fds[2], record)
+            return process
+        def signal_group(pid, sig):
+            """Suppress legacy numeric signaling after the fixture's external reap."""
+            if pid != process.pid:
+                raise AssertionError("unexpected signal target")
+            try:
+                real_waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+            except ChildProcessError:
+                return
+            real_killpg(pid, sig)
+        with patch.object(adapters, "_start_pdf_render_worker", side_effect=start), \
+             patch.object(os, "killpg", side_effect=signal_group):
+            yield
+    finally:
+        try:
+            signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        os.close(descriptor)
+        process.wait(timeout=3)
+
+
+@unittest.skipUnless(sys.platform == "linux" and hasattr(os, "pidfd_open"), "Linux pidfd required")
+class RendererLifecycleBoundaryTests(unittest.TestCase):
+    def test_released_ownership_refuses_valid_descriptors_before_decoder(self):
+        """Descriptor contents never override a renderer lifecycle refusal."""
+        html = "<html><body>fixture</body></html>"
+        with released_renderer_with_success_descriptors(), \
+             patch.object(adapters, "_decode_pdf_render_result", wraps=adapters._decode_pdf_render_result) as decode:
+            with self.assertRaisesRegex(RuntimeError, "^pdf_render_failed$"):
+                adapters._render_pdf(html, hashlib.sha256(html.encode()).hexdigest())
+        decode.assert_not_called()
+
+    def test_adapter_lifecycle_refusal_withholds_candidate_and_all_downstream_qa(self):
+        """Valid-looking bytes cannot enter structure or QA after ownership loss."""
+        ir = {"report_id": "synthetic-report", "locale_id": "en-US", "components": [{
+            "component_id": "summary", "component_type": "semantic-section",
+            "title": "Summary", "state": "PRESENT", "content": {},
+        }]}
+        with released_renderer_with_success_descriptors(), \
+             patch.object(adapters, "_decode_pdf_render_result", wraps=adapters._decode_pdf_render_result) as decode, \
+             patch.object(adapters, "_validate_pdf_structure", side_effect=RuntimeError("unexpected_structure")) as structure, \
+             patch.object(adapters, "validate_pdf_candidate_qa") as qa:
+            result = adapters.build_html_css_and_pdf_adapter(presentation_ir=ir)
+        self.assertFalse(result.passed)
+        self.assertEqual(result.pdf_reason, "pdf_render_failed")
+        self.assertIsNone(result.pdf_bytes)
+        self.assertIsNone(result.pdf_sha256)
+        self.assertIsNone(result.conformance)
+        decode.assert_not_called()
+        structure.assert_not_called()
+        qa.assert_not_called()
+
+    def test_lifecycle_cancellation_propagates_after_owned_cleanup(self):
+        """KeyboardInterrupt and SystemExit remain cancellation after safe cleanup."""
+        for cancellation in (KeyboardInterrupt("cancel"), SystemExit(17)):
+            with self.subTest(kind=type(cancellation).__name__):
+                process = subprocess.Popen([sys.executable, "-I", "-B", "-c", "pass"],
+                                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                           stderr=subprocess.DEVNULL, start_new_session=True)
+                descriptor = os.pidfd_open(process.pid)
+                real_waitid = os.waitid
+                real_waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)
+                first = True
+                def observe(*args):
+                    """Cancel one observation, then allow independently owned cleanup."""
+                    nonlocal first
+                    if first:
+                        first = False
+                        raise cancellation
+                    return real_waitid(*args)
+                try:
+                    with guard_renderer_group_signals(process), \
+                         patch.object(os, "waitid", side_effect=observe):
+                        with self.assertRaises(type(cancellation)) as caught:
+                            adapters._wait_pdf_render_worker(process)
+                    self.assertIs(caught.exception, cancellation)
+                    self.assertEqual(process.returncode, 0)
+                    with self.assertRaises(ChildProcessError):
+                        real_waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                finally:
+                    try:
+                        signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    os.close(descriptor)
+                    process.wait(timeout=3)
 
 
 if __name__ == "__main__":
