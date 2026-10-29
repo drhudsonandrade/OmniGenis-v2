@@ -12,6 +12,7 @@ from reporting import pdf_text_windows as text
 from reporting import pdf_raster_windows as raster
 from reporting import _pdf_text_window_worker as text_worker
 from reporting import _pdf_raster_window_worker as raster_worker
+from reporting import _pdf_raster_executor as raster_executor
 
 ROOT = Path(__file__).resolve().parents[1]
 PDF = b"%PDF-1.7\n% synthetic preflight-only bytes\n"
@@ -232,6 +233,13 @@ class PdfDocumentPreflightTests(unittest.TestCase):
             (raster, "WALL_SECONDS", raster.WALL_SECONDS + 1),
             (raster_worker, "PAGE_WALL_SECONDS", raster_worker.PAGE_WALL_SECONDS + 1),
             (raster, "FILE_BYTES", raster.FILE_BYTES + 1),
+            (raster_executor, "TOOL_PATH", "/unreviewed/pdftoppm"),
+            (raster_executor, "MAX_EXECUTABLE_BYTES", raster_executor.MAX_EXECUTABLE_BYTES + 1),
+            (raster_executor, "FILE_BYTES", raster_executor.FILE_BYTES + 1),
+            (raster_executor, "OPEN_FILES", raster_executor.OPEN_FILES + 1),
+            (raster_executor, "CPU_SECONDS", raster_executor.CPU_SECONDS + 1),
+            (raster_executor, "MEMORY_BYTES", raster_executor.MEMORY_BYTES + 1),
+            (raster_executor, "PAGE_WALL_SECONDS", raster_executor.PAGE_WALL_SECONDS + 1),
         )
         for module, name, replacement in changes:
             with self.subTest(worker=module.__name__, limit=name), \
