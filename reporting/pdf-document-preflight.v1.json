@@ -3,7 +3,7 @@
   "profile_id": "generated-pdf-document-preflight-v1",
   "status": "STAGED_UNQUALIFIED",
   "conformance_scope": "EXACT_PDF_DIGEST_AND_COMPLETE_DECLARED_WINDOWS_ONLY",
-  "profile_sha256": "e434fb8c49b2562a301becf59704f99867de20aed11afeba861bb579002b651e",
+  "profile_sha256": "8fc3dc0e38047f39d0d0a64ed3c94dd1209fe7718705a70f8df602317c4711db",
   "profile": {
     "actual_pdf_page_count_verified": false,
     "aggregate_job_resources_qualified": false,
@@ -61,6 +61,15 @@
         "page_wall_seconds": 8,
         "tool_path": "/usr/bin/pdftoppm",
         "tool_sha256": "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d"
+      },
+      "raster_probe": {
+        "memory_bytes": 536870912,
+        "open_files": 128,
+        "output_bytes": 4096,
+        "tool_path": "/usr/bin/pdftoppm",
+        "tool_sha256": "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d",
+        "tool_version": "24.02.0",
+        "wall_seconds": 3
       },
       "text": {
         "cpu_seconds": 5,

@@ -15,7 +15,7 @@
     "native_raster_profile_id": "generated-pdf-raster-window-v1",
     "native_raster_tool_sha256": "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d",
     "ordered_digest_kind": "RASTER_WINDOW_METADATA_ONLY_NOT_FULL_IMAGE",
-    "parent_content_profile_sha256": "6cd25c508a26ea11acf3f37d3ed50c249b5747fc20bf602c8b877f1b2e683739",
+    "parent_content_profile_sha256": "8f954fa5950af51b81fba8f3cc8304e35e953609c4482f5777482727199f3b5e",
     "profile_id": "generated-pdf-document-raster-coverage-v1",
     "raster_window_pages": 4,
     "release_authorized": false,
@@ -24,6 +24,6 @@
     "whole_document_visual_equivalence_verified": false,
     "worker_results_authenticated": false
   },
-  "profile_sha256": "9ea48da7190d362337af674c73d18ebc2026111717ad645ab313c41548921539",
+  "profile_sha256": "23c98bb9068c7b5d14557f14e43b933a9e5c4aac802c1a39cfa905f7a75bc6b7",
   "release_authorized": false
 }

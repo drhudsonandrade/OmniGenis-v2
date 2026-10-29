@@ -13,6 +13,7 @@ from reporting import pdf_raster_windows as raster
 from reporting import _pdf_text_window_worker as text_worker
 from reporting import _pdf_raster_window_worker as raster_worker
 from reporting import _pdf_raster_executor as raster_executor
+from reporting import _pdf_raster_probe as raster_probe
 
 ROOT = Path(__file__).resolve().parents[1]
 PDF = b"%PDF-1.7\n% synthetic preflight-only bytes\n"
@@ -240,6 +241,13 @@ class PdfDocumentPreflightTests(unittest.TestCase):
             (raster_executor, "CPU_SECONDS", raster_executor.CPU_SECONDS + 1),
             (raster_executor, "MEMORY_BYTES", raster_executor.MEMORY_BYTES + 1),
             (raster_executor, "PAGE_WALL_SECONDS", raster_executor.PAGE_WALL_SECONDS + 1),
+            (raster_probe, "WALL_SECONDS", raster_probe.WALL_SECONDS + 1),
+            (raster_probe, "OUTPUT_BYTES", raster_probe.OUTPUT_BYTES + 1),
+            (raster_probe, "OPEN_FILES", raster_probe.OPEN_FILES + 1),
+            (raster_probe, "MEMORY_BYTES", raster_probe.MEMORY_BYTES + 1),
+            (raster_probe, "TOOL_PATH", "/unreviewed/pdftoppm"),
+            (raster_probe, "TOOL_VERSION", "unreviewed"),
+            (raster_probe, "TOOL_SHA256", "0" * 64),
         )
         for module, name, replacement in changes:
             with self.subTest(worker=module.__name__, limit=name), \

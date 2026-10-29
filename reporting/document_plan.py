@@ -23,6 +23,7 @@ from reporting import pdf_raster_windows as raster_windows
 from reporting import _pdf_text_window_worker as text_worker
 from reporting import _pdf_raster_window_worker as raster_worker
 from reporting import _pdf_raster_executor as raster_executor
+from reporting import _pdf_raster_probe as raster_probe
 
 PROFILE_ID = "generated-pdf-document-preflight-v1"
 MAX_STAGED_PAGES = text_windows.MAX_DOCUMENT_PAGES
@@ -104,6 +105,15 @@ def document_preflight_profile() -> dict:
                 "memory_bytes": raster_executor.MEMORY_BYTES,
                 "file_bytes": raster_executor.FILE_BYTES,
                 "open_files": raster_executor.OPEN_FILES,
+            },
+            "raster_probe": {
+                "tool_path": raster_probe.TOOL_PATH,
+                "tool_sha256": raster_probe.TOOL_SHA256,
+                "tool_version": raster_probe.TOOL_VERSION,
+                "wall_seconds": raster_probe.WALL_SECONDS,
+                "output_bytes": raster_probe.OUTPUT_BYTES,
+                "open_files": raster_probe.OPEN_FILES,
+                "memory_bytes": raster_probe.MEMORY_BYTES,
             },
         },
         "planning_page_ceiling": MAX_STAGED_PAGES,
