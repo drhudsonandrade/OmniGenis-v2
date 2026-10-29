@@ -251,7 +251,7 @@
     "reporting/pdf-sealed-inspection.v1.json": "419027c16a40ff2513f700085645420ce5f3ec002cd9a3a49c340a3a2c0483eb",
     "reporting/pdf-snapshot-inspection.v1.json": "3535e308de8bd06d61780a330705eec953b2c143b7cf48f00ca4714b1b4f54b3",
     "reporting/pdf-structured-source-job.v1.json": "34b80d7dedda9a142e95edf00dee1a1de1022362cc8d1e41f8a4223798f3cda6",
-    "reporting/pdf-supervised-inspection.v1.json": "4413f496fd2551ffc07c08ee0f1d47937c28f1f460724dbc10bb27ec5a7a8216",
+    "reporting/pdf-supervised-inspection.v1.json": "3aee455953095e2d06d52edb3c08cf86365d5fab744f66547fedd622e3e0fbd2",
     "reporting/pdf-tounicode-width-coverage.v1.json": "bf7a9a44f7db35ff4376e9a9c79280c24d670051ce1fdeed61b6db51ee350e3d",
     "reporting/pdf_inspection_request.py": "f9e72d162992debe09f081dc945edd1bc6740730682e4de4a5f1c80d43113dd3",
     "reporting/pdf_inspection_result_frame.py": "105d904ef1fa904342fb733a2a64bcdb8028d1a575c0299bd8cf935abf64f95d",
@@ -260,7 +260,7 @@
     "reporting/pdf_sealed_inspection.py": "8193ba835f3036104cdcadbf4d16f8b21803e46852935bb20f3af0b4e45ecd2f",
     "reporting/pdf_snapshot_inspection.py": "833069a527d554ce09c1dba165de47cdfda4178b07ce674724c80d5c5e7856b5",
     "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
-    "reporting/pdf_supervised_inspection.py": "f7600fb7433512c0146b5585d8fd4f3cac5fc507432b7f9fd70c62636820f3ca",
+    "reporting/pdf_supervised_inspection.py": "6c00305aa8a96276452d38071ced0600d8755b35a8c3eac63529be82ea00c61f",
     "reporting/pdf_text_windows.py": "be81c573b7d2145d31d0a049bb946f4eceb0399f01f23c2b38e1c4bbb43f8f81",
     "reporting/pdf_tounicode_width_coverage.py": "a161b31fca3fc7cc457289e6fa9558e3814d5d222f86c6b42ff794faf0cd8e43",
     "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"

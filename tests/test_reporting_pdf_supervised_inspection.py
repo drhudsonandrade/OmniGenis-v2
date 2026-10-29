@@ -488,6 +488,34 @@ class SupervisedInspectionTests(unittest.TestCase):
             self.assertEqual(os.pread(fd, len(packet), 0), packet)
             self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), 11)
 
+    def test_group_and_direct_signal_failures_still_reap_independent_exit(self):
+        """Even two denied signals leave finite time to reap a self-exiting child."""
+        with self.h.request() as (fd, expected, args, packet):
+            raw = _json_bytes(self.fixture.context(expected, args))
+            os.lseek(fd, 13, os.SEEK_SET)
+            with tempfile.TemporaryDirectory(prefix='supervisor-both-signals-') as directory:
+                marker = Path(directory) / 'ready'
+                script = ('from pathlib import Path;import time;Path(' + repr(str(marker))
+                          + ').touch();time.sleep(0.9)')
+                with self.group_signal_fault_child(script, marker, short_deadline=True) as (launches, group), \
+                     patch.object(self.m.os, 'kill', side_effect=PermissionError('direct denied')) as direct:
+                    with self.assertRaises(self.m.PdfSupervisedInspectionError) as caught:
+                        self.invoke(fd, raw)
+                    self.assertEqual(str(caught.exception),
+                                     'pdf_supervised_inspection_cleanup_unresolved')
+                    self.assertEqual(len(launches), 1)
+                    process = launches[0]['process']
+                    group.assert_called_once_with(process.pid, signal.SIGKILL)
+                    direct.assert_called_once_with(process.pid, signal.SIGKILL)
+                    self.assertEqual(process.returncode, 0,
+                                     'production must reap the child after both signals fail')
+                    with self.assertRaises(ChildProcessError):
+                        os.waitpid(process.pid, os.WNOHANG)
+                    self.assertTrue(select.select([launches[0]['pidfd']], [], [], 0)[0])
+                    self.assertTrue(process.stdin.closed and process.stdout.closed)
+            self.assertEqual(os.pread(fd, len(packet), 0), packet)
+            self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), 13)
+
     def test_group_failure_survives_owned_stream_close_error(self):
         """One close failure cannot skip the other close or erase group refusal."""
         from types import SimpleNamespace

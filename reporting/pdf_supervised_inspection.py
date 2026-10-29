@@ -200,6 +200,10 @@ def _finish_child(process: subprocess.Popen) -> int:
                 os.kill(process.pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
+            except OSError:
+                # A denied direct signal still permits a finite attempt to
+                # reap a child that exits independently before the deadline.
+                unresolved = True
         while True:
             if _unreaped_exit(process) is not None:
                 pid, status = os.waitpid(process.pid, os.WNOHANG)
