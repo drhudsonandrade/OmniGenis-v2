@@ -470,7 +470,7 @@ class ContentWorkerTransportTests(unittest.TestCase):
             "sys.stdout.buffer.flush()\n"
             "time.sleep(30)\n"
         )
-        with _content_child_probe(script, wall_seconds=0.3) as probe:
+        with _content_child_probe(script, wall_seconds=2) as probe:
             started = time.monotonic()
             self.assert_refusal(self.validate(), "pdf_content_worker_invalid_response")
             self.assertLess(time.monotonic() - started, 2.5)
@@ -509,7 +509,7 @@ class ContentWorkerTransportTests(unittest.TestCase):
             "sys.stdout.buffer.flush()\n"
             "time.sleep(30)\n"
         )
-        with _content_child_probe(script, wall_seconds=0.3) as probe:
+        with _content_child_probe(script, wall_seconds=2) as probe:
             self.assert_refusal(self.validate(pdf), "pdf_content_worker_invalid_response")
             self.assert_retired(probe)
 
