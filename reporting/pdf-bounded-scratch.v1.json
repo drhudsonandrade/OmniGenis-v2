@@ -34,7 +34,7 @@
   "scientific_equivalence_verified": false,
   "source_sha256": {
     "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a",
-    "reporting/_pdf_fixed_inspection_worker.py": "12f44babe79e89fe012a5902a47a45f76a2e0ceec6d15a8129f09c4f1a5ed253",
+    "reporting/_pdf_fixed_inspection_worker.py": "e156f113bb7d9c1ab6e047fcd418f2fd2ea361bf2e50611c8ad03f0965339eed",
     "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd",
     "reporting/_pdf_visual_worker.py": "00564cacfb041488cfc88c36be391b280ab4c77b49f0e5e180d66a8ea70f9c91",
     "reporting/pdf_raster_windows.py": "c87e9101f2e310e22b6062733f6d4cf80c7b28996f2d14ffd2a00c04cbe6d49e",
