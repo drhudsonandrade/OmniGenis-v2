@@ -10,7 +10,9 @@
   "native_profile_qualified": false,
   "observation_limitations": [
     "Namespace-local paths do not authenticate the global host.",
-    "Rechecks observe snapshots, not transient changes between snapshots.",
+    "Rechecks observe snapshots; selected event-counter continuity does not establish continuous monitoring.",
+    "Events after the final pre-write observation are outside the observed interval.",
+    "PID-event coverage depends on the running kernel; arbitrary descendant coverage is not qualified.",
     "Inherited process CPU limits and cgroup bandwidth are not cumulative job CPU budgets.",
     "Free scratch space may change; the policy observes total capacity and inodes.",
     "A failed pipe write may leave a prefix; partial output is never acceptance."
@@ -29,6 +31,10 @@
     "cgroup_type": "domain",
     "default_pipeline_activated": false,
     "descendant_cleanup_qualified": false,
+    "forbidden_cgroup_superoptions": [
+      "memory_localevents",
+      "pids_localevents"
+    ],
     "hard_job_deadline_enforced": false,
     "host_authenticated": false,
     "native_profile_qualified": false,
@@ -63,6 +69,31 @@
       "BEFORE_FRAME_WRITE"
     ],
     "release_authorized": false,
+    "resource_event_counters": {
+      "baseline": "BEFORE_CONTEXT",
+      "continuity": "SAME_KEYS_NONDECREASING_COUNTERS",
+      "max_counter": 18446744073709551615,
+      "max_record_bytes": 4096,
+      "optional_refusal_fields": {
+        "memory.events": [
+          "oom_group_kill"
+        ],
+        "pids.events": []
+      },
+      "refusal": "SELECTED_COUNTER_INCREASE",
+      "required_fields": {
+        "memory.events": [
+          "max",
+          "oom",
+          "oom_kill"
+        ],
+        "pids.events": [
+          "max"
+        ]
+      },
+      "scope": "NAMESPACE_LOCAL_CGROUP_COUNTERS",
+      "snapshot_update": "BOTH_RECORDS_AFTER_VALIDATION"
+    },
     "retained_descriptors_required": true,
     "schema_version": "1.0.0",
     "scratch_bytes": 134217728,
@@ -82,13 +113,13 @@
     "unprivileged_process_required": true,
     "zero_capability_sets_required": true
   },
-  "profile_sha256": "ff971470b83f8dbc6e39788bb26451512154462d5fde7173009f48ac1abcaa7f",
+  "profile_sha256": "2f9ebad864d2b74641489cdca9798fe7fce4ee34b5de2fd0d5002fc6507591f4",
   "profile_values_are": "EXPLICIT_OPTIONAL_POLICY_NOT_MEASURED_CAPACITY",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "service_installed": false,
   "source_sha256": {
     "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a",
-    "reporting/_pdf_fixed_inspection_worker.py": "7964a87a78fd517769a84f47913bd8df14c0acc527597b9acad7847fe98ed000"
+    "reporting/_pdf_fixed_inspection_worker.py": "12f44babe79e89fe012a5902a47a45f76a2e0ceec6d15a8129f09c4f1a5ed253"
   }
 }

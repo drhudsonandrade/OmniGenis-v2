@@ -104,6 +104,13 @@ _CGROUP_POLICY = {
     'memory.max': b'2147483648\n', 'memory.swap.max': b'0\n',
     'pids.max': b'32\n', 'cpu.max': b'200000 100000\n',
 }
+_EVENT_RECORD_BYTES = 4096
+_EVENT_COUNTER_MAX = 2**64 - 1
+_EVENT_REQUIRED = {
+    'memory.events': ('max', 'oom', 'oom_kill'), 'pids.events': ('max',),
+}
+_EVENT_OPTIONAL = {'memory.events': ('oom_group_kill',), 'pids.events': ()}
+_LOCAL_EVENT_OPTIONS = frozenset({'memory_localevents', 'pids_localevents'})
 _PROCESS_LIMITS = {
     'RLIMIT_AS': (1073741824, 1073741824), 'RLIMIT_CPU': (300, 300),
     'RLIMIT_FSIZE': (67108864, 67108864), 'RLIMIT_NOFILE': (128, 128),
@@ -127,6 +134,17 @@ def kernel_admission_profile() -> dict:
         'cgroup_type': 'domain', 'cgroup_mount_readonly': True,
         'cgroup_controls': {key: value.decode('ascii').rstrip('\n')
                             for key, value in _CGROUP_POLICY.items()},
+        'forbidden_cgroup_superoptions': sorted(_LOCAL_EVENT_OPTIONS),
+        'resource_event_counters': {
+            'max_record_bytes': _EVENT_RECORD_BYTES, 'max_counter': _EVENT_COUNTER_MAX,
+            'required_fields': {name: list(keys) for name, keys in _EVENT_REQUIRED.items()},
+            'optional_refusal_fields': {name: list(keys) for name, keys in _EVENT_OPTIONAL.items()},
+            'baseline': 'BEFORE_CONTEXT',
+            'continuity': 'SAME_KEYS_NONDECREASING_COUNTERS',
+            'refusal': 'SELECTED_COUNTER_INCREASE',
+            'snapshot_update': 'BOTH_RECORDS_AFTER_VALIDATION',
+            'scope': 'NAMESPACE_LOCAL_CGROUP_COUNTERS',
+        },
         'process_limits': {key: list(value) for key, value in _PROCESS_LIMITS.items()},
         'scratch_path': '/run/omnigenis-pdf-bounded-scratch',
         'scratch_bytes': 134217728, 'scratch_inodes': 4096,
@@ -194,6 +212,24 @@ def _kernel_unsigned(raw: bytes, maximum: int, *, minimum: int = 0) -> int:
     return number
 
 
+def _kernel_events(raw: bytes, required: tuple[str, ...]) -> dict[str, int]:
+    """Parse one bounded flat kernel record without guessing missing counters."""
+    if not raw or len(raw) > _EVENT_RECORD_BYTES or not raw.endswith(b'\n'):
+        raise ValueError('kernel admission event record invalid')
+    counters = {}
+    for line in raw[:-1].split(b'\n'):
+        key, separator, value = line.partition(b' ')
+        if not separator or not key.isascii():
+            raise ValueError('kernel admission event field invalid')
+        name = key.decode('ascii')
+        if not name.isidentifier() or name in counters:
+            raise ValueError('kernel admission event field ambiguous')
+        counters[name] = _kernel_unsigned(value + b'\n', _EVENT_COUNTER_MAX)
+    if not set(required) <= counters.keys():
+        raise ValueError('kernel admission event fields missing')
+    return counters
+
+
 class _KernelAdmission:
     """Own namespace-local observation FDs until the fixed worker exits.
 
@@ -208,6 +244,7 @@ class _KernelAdmission:
         self.paths = {}
         self.mount_ids = {}
         self.namespaces = {}
+        self.event_counters = None
         self.pid = os.getpid()
         self.parent = os.getppid()
         self.uid = os.getuid()
@@ -352,6 +389,7 @@ class _KernelAdmission:
                         or fields[2] != f'{os.major(info.st_dev)}:{os.minor(info.st_dev)}'
                         or fields[3] != '/' or detail[0] != kind
                         or (kind == 'tmpfs' and detail[1] != 'tmpfs')
+                        or (kind == 'cgroup2' and _LOCAL_EVENT_OPTIONS.intersection(detail[2].split(',')))
                         or not flags <= frozenset(fields[5].split(','))):
                     raise ValueError('kernel admission mount mapping invalid')
                 found.append(fields)
@@ -382,6 +420,25 @@ class _KernelAdmission:
             if actual != magic or flags & required_flags != required_flags or flags & forbidden_flags:
                 raise ValueError('kernel admission filesystem policy invalid')
 
+    def _resource_events(self) -> None:
+        """Refuse observed exhaustion or counter drift before advancing both snapshots."""
+        observed = {
+            name: _kernel_events(self._read_at(
+                self.cgroup, name, _EVENT_RECORD_BYTES, _CGROUP_MAGIC,
+                mount=self.mount_ids[self.cgroup]), required)
+            for name, required in _EVENT_REQUIRED.items()
+        }
+        if self.event_counters is not None:
+            for name, current in observed.items():
+                previous = self.event_counters[name]
+                if (current.keys() != previous.keys()
+                        or any(value < previous[key] for key, value in current.items())):
+                    raise ValueError('kernel admission event counters changed')
+                selected = _EVENT_REQUIRED[name] + _EVENT_OPTIONAL[name]
+                if any(current[key] != previous[key] for key in selected if key in current):
+                    raise ValueError('kernel admission resource exhaustion observed')
+        self.event_counters = observed
+
     def _policy(self) -> None:
         """Observe finite limits and current occupancy without configuring the host."""
         if self._proc('cgroup', 4096) != ('0::' + _CGROUP_PATH + '\n').encode('ascii'):
@@ -405,6 +462,7 @@ class _KernelAdmission:
         info = os.fstat(self.scratch)
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o1777:
             raise ValueError('kernel admission scratch owner or mode invalid')
+        self._resource_events()
 
     def admit(self) -> None:
         """Acquire real fixed observations before consuming any context or request."""

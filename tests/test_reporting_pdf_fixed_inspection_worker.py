@@ -293,6 +293,8 @@ class KernelObservationFixture:
         b'NoNewPrivs:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\n'
         b'CapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\n'
     )
+    MEMORY_EVENTS = b'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n'
+    PIDS_EVENTS = b'max 0\n'
 
     def __init__(self, worker):
         """Create backing files before redirecting the process-wide OS module."""
@@ -325,6 +327,7 @@ class KernelObservationFixture:
             'cgroup.type': b'domain\n', 'memory.max': b'2147483648\n',
             'memory.swap.max': b'0\n', 'pids.max': b'32\n', 'cpu.max': b'200000 100000\n',
             'memory.current': b'1048576\n', 'memory.swap.current': b'0\n', 'pids.current': b'3\n',
+            'memory.events': self.MEMORY_EVENTS, 'pids.events': self.PIDS_EVENTS,
         }.items():
             self.edit(self.CGROUP + '/' + name, data)
         self.edit(self.PROC + '/status', self.STATUS)
@@ -715,6 +718,240 @@ class FixedKernelObservationTests(unittest.TestCase):
             self.assertTrue(guard.close())
             self.assert_released(f)
 
+    def test_resource_events_admit_unchanged_history_and_optional_absence(self):
+        """Historical nonzero counts and an absent optional OOM field do not refuse a new invocation."""
+        memory = b'low 5\nhigh 7\nmax 11\noom 13\noom_kill 17\nfuture_memory_2 19\n'
+        for optional in (b'', b'oom_group_kill 23\n'):
+            with self.subTest(optional=bool(optional)), KernelObservationFixture(self.worker) as f:
+                f.edit(f.CGROUP + '/memory.events', memory + optional)
+                f.edit(f.CGROUP + '/pids.events', b'max 18446744073709551615\nfuture_pids_2 29\n')
+                guard = self.worker._open_kernel_admission(f.request_fd)
+                guard.recheck()
+                guard.recheck()
+                self.assertTrue(guard.close())
+                self.assert_released(f)
+
+    def test_resource_events_allow_benign_increases_and_record_reordering(self):
+        """Only selected exhaustion increases refuse work; field order does not change event identity."""
+        with KernelObservationFixture(self.worker) as f:
+            f.edit(f.CGROUP + '/memory.events',
+                b'low 5\nhigh 7\nmax 11\noom 13\noom_kill 17\nfuture_memory_2 19\n')
+            f.edit(f.CGROUP + '/pids.events', b'max 23\nfuture_pids_2 29\n')
+            guard = self.worker._open_kernel_admission(f.request_fd)
+            f.edit(f.CGROUP + '/memory.events',
+                b'future_memory_2 31\noom_kill 17\noom 13\nmax 11\nhigh 9\nlow 8\n')
+            f.edit(f.CGROUP + '/pids.events', b'future_pids_2 37\nmax 23\n')
+            guard.recheck()
+            self.assertTrue(guard.close())
+            self.assert_released(f)
+
+    def test_resource_events_compare_regressions_with_previous_snapshot(self):
+        """A benign count that advances from five to nine cannot later fall to seven."""
+        for name, initial in (
+            ('memory.events', b'low 5\nmax 0\noom 0\noom_kill 0\n'),
+            ('memory.events', b'high 5\nmax 0\noom 0\noom_kill 0\n'),
+            ('memory.events', b'future_memory_2 5\nmax 0\noom 0\noom_kill 0\n'),
+            ('pids.events', b'future_pids_2 5\nmax 0\n'),
+        ):
+            with self.subTest(record=name, initial=initial), KernelObservationFixture(self.worker) as f:
+                path = f.CGROUP + '/' + name
+                f.edit(path, initial)
+                guard = self.worker._open_kernel_admission(f.request_fd)
+                f.edit(path, initial.replace(b' 5\n', b' 9\n'))
+                guard.recheck()
+                f.edit(path, initial.replace(b' 5\n', b' 7\n'))
+                with self.assertRaises(ValueError):
+                    guard.recheck()
+                self.assertTrue(guard.close())
+                self.assert_released(f)
+
+    def test_resource_events_reject_selected_counter_resets(self):
+        """Counter resets do not erase exhaustion history within an admitted invocation."""
+        cases = tuple(('memory.events', name) for name in ('max', 'oom', 'oom_kill', 'oom_group_kill'))
+        for name, counter in (*cases, ('pids.events', 'max')):
+            with self.subTest(record=name, counter=counter), KernelObservationFixture(self.worker) as f:
+                path = f.CGROUP + '/' + name
+                initial = f.MEMORY_EVENTS if name == 'memory.events' else f.PIDS_EVENTS
+                f.edit(path, initial.replace((counter + ' 0\n').encode(), (counter + ' 5\n').encode()))
+                guard = self.worker._open_kernel_admission(f.request_fd)
+                f.edit(path, initial)
+                with self.assertRaises(ValueError):
+                    guard.recheck()
+                self.assertTrue(guard.close())
+                self.assert_released(f)
+
+    def test_resource_events_reject_field_addition_or_disappearance(self):
+        """Optional and future event fields retain the key set captured before context consumption."""
+        memory = KernelObservationFixture.MEMORY_EVENTS
+        cases = (
+            ('memory.events', memory, memory.replace(b'oom_group_kill 0\n', b'')),
+            ('memory.events', memory.replace(b'oom_group_kill 0\n', b''), memory),
+            ('memory.events', memory, memory.replace(b'low 0\n', b'')),
+            ('memory.events', memory, memory + b'future_memory_2 0\n'),
+            ('pids.events', b'max 0\n', b'max 0\nfuture_pids_2 0\n'),
+            ('pids.events', b'max 0\nfuture_pids_2 0\n', b'max 0\n'),
+        )
+        for name, initial, changed in cases:
+            with self.subTest(record=name, initial=initial, changed=changed), KernelObservationFixture(self.worker) as f:
+                path = f.CGROUP + '/' + name
+                f.edit(path, initial)
+                guard = self.worker._open_kernel_admission(f.request_fd)
+                f.edit(path, changed)
+                with self.assertRaises(ValueError):
+                    guard.recheck()
+                self.assertTrue(guard.close())
+                self.assert_released(f)
+
+    def test_resource_events_failed_pair_does_not_commit_half_a_snapshot(self):
+        """A rejected PID record cannot advance the remembered memory-event baseline."""
+        with KernelObservationFixture(self.worker) as f:
+            path = f.CGROUP + '/memory.events'
+            f.edit(path, b'low 5\nmax 0\noom 0\noom_kill 0\n')
+            guard = self.worker._open_kernel_admission(f.request_fd)
+            f.edit(path, b'low 9\nmax 0\noom 0\noom_kill 0\n')
+            f.edit(f.CGROUP + '/pids.events', b'max invalid\n')
+            with self.assertRaises(ValueError):
+                guard.recheck()
+            f.edit(path, b'low 7\nmax 0\noom 0\noom_kill 0\n')
+            f.edit(f.CGROUP + '/pids.events', b'max 0\n')
+            guard.recheck()
+            self.assertTrue(guard.close())
+            self.assert_released(f)
+
+    def test_resource_events_refuse_malformed_records_initially_and_on_recheck(self):
+        """Ambiguous keys, noncanonical counters, incomplete records and uint64 overflow never qualify."""
+        memory = KernelObservationFixture.MEMORY_EVENTS
+        cases = [
+            ('memory.events', b''), ('pids.events', b''),
+            *[('memory.events', memory.replace(row, b'')) for row in
+              (b'max 0\n', b'oom 0\n', b'oom_kill 0\n')],
+            ('pids.events', b'future_pids_2 0\n'),
+            ('memory.events', memory + b'oom 0\n'),
+            ('pids.events', b'max 0\nfuture_pids_2 0\nfuture_pids_2 0\n'),
+            *[('memory.events', memory + row) for row in (
+                b'9counter 0\n', b'future-counter 0\n', b'future.counter 0\n',
+                b'future_\xff 0\n', b'future 0\x00\n', b'\n')],
+            *[('pids.events', row) for row in (
+                b'max 01\n', b'max +1\n', b'max -1\n', b'max 1.0\n',
+                b'max 18446744073709551616\n', b'max ' + b'9' * 100 + b'\n',
+                b'max \xff\n', b'max  0\n', b'max\t0\n', b' max 0\n',
+                b'max 0 \n', b'max 0\r\n', b'max 0', b'max\n')],
+        ]
+        for phase in ('initial', 'recheck'):
+            for name, payload in cases:
+                with self.subTest(phase=phase, record=name, payload=payload[:70]), KernelObservationFixture(self.worker) as f:
+                    guard = self.worker._open_kernel_admission(f.request_fd) if phase == 'recheck' else None
+                    f.edit(f.CGROUP + '/' + name, payload)
+                    with self.assertRaises(ValueError):
+                        if guard is None:
+                            self.worker._open_kernel_admission(f.request_fd)
+                        else:
+                            guard.recheck()
+                    if guard is not None:
+                        self.assertTrue(guard.close())
+                    self.assert_released(f)
+
+    def test_resource_event_short_reads_and_exact_record_byte_limit(self):
+        """Complete 4096-byte event records survive short reads; one more byte fails admission."""
+        for name, seed in (
+            ('memory.events', KernelObservationFixture.MEMORY_EVENTS),
+            ('pids.events', KernelObservationFixture.PIDS_EVENTS),
+        ):
+            exact = seed + b'x' * (4096 - len(seed) - 3) + b' 0\n'
+            overflow = seed + b'x' * (4097 - len(seed) - 3) + b' 0\n'
+            with self.subTest(record=name, size=4096), KernelObservationFixture(self.worker) as f:
+                f.read_chunk = 7
+                path = f.CGROUP + '/' + name
+                f.edit(path, exact)
+                guard = self.worker._open_kernel_admission(f.request_fd)
+                guard.recheck()
+                f.edit(path, exact.replace(b'max 0\n', b'max 1\n'))
+                with self.assertRaises(ValueError):
+                    guard.recheck()
+                reads = [(requested, returned) for logical, requested, returned in f.reads if logical == path]
+                self.assertTrue(reads)
+                self.assertTrue(all(requested <= 4097 and returned <= 7 for requested, returned in reads))
+                self.assertTrue(guard.close())
+                self.assert_released(f)
+            with self.subTest(record=name, size=4097), KernelObservationFixture(self.worker) as f:
+                f.read_chunk = 7
+                f.edit(f.CGROUP + '/' + name, overflow)
+                with self.assertRaises(ValueError):
+                    self.worker._open_kernel_admission(f.request_fd)
+                self.assert_released(f)
+
+    def test_resource_event_files_require_bound_metadata_and_cleanup(self):
+        """Both event observations use the retained cgroup mount and reject foreign or delegated files."""
+        cases = (
+            ('metadata', {'st_uid': 1000}),
+            ('metadata', {'st_mode': stat.S_IFREG | 0o666}),
+            ('metadata', {'st_mode': stat.S_IFIFO | 0o644}),
+            ('metadata', {'st_dev': os.makedev(0, 99)}),
+            ('filesystems', (0x01021994, 15)), ('mount_ids', 99),
+        )
+        for name in ('memory.events', 'pids.events'):
+            for phase in ('initial', 'recheck'):
+                for kind, value in cases:
+                    with self.subTest(record=name, phase=phase, kind=kind, value=value), KernelObservationFixture(self.worker) as f:
+                        guard = self.worker._open_kernel_admission(f.request_fd) if phase == 'recheck' else None
+                        getattr(f, kind)[f.CGROUP + '/' + name] = value
+                        with self.assertRaises(ValueError):
+                            if guard is None:
+                                self.worker._open_kernel_admission(f.request_fd)
+                            else:
+                                guard.recheck()
+                        if guard is not None:
+                            self.assertTrue(guard.close())
+                        self.assert_released(f)
+
+    def test_resource_event_unavailable_files_and_interrupted_reads_release_descriptors(self):
+        """Unavailable records and interruptions during event reads retain no owned descriptor."""
+        for name in ('memory.events', 'pids.events'):
+            for failure in ('missing', KeyboardInterrupt, SystemExit, MemoryError, 'cleanup'):
+                with self.subTest(record=name, failure=failure), KernelObservationFixture(self.worker) as f:
+                    path = f.CGROUP + '/' + name
+                    if failure == 'missing':
+                        f.backing(path).unlink()
+                        expected = (ValueError, OSError)
+                    elif failure == 'cleanup':
+                        f.fail_at = 'fstat', path, 3, KeyboardInterrupt
+                        expected = ValueError
+                    else:
+                        f.fail_at = 'read', path, 1, failure
+                        expected = failure
+                    with self.assertRaises(expected):
+                        self.worker._open_kernel_admission(f.request_fd)
+                    self.assert_released(f)
+
+    def test_resource_event_local_mount_options_refuse_initially_and_on_recheck(self):
+        """Local-only memory or PID event mounts cannot support the selected event-observation policy."""
+        for option in (b'memory_localevents', b'pids_localevents'):
+            for phase in ('initial', 'recheck'):
+                with self.subTest(option=option, phase=phase), KernelObservationFixture(self.worker) as f:
+                    guard = self.worker._open_kernel_admission(f.request_fd) if phase == 'recheck' else None
+                    f.edit(f.PROC + '/mountinfo', f.MOUNTINFO.replace(
+                        b' - cgroup2 cgroup2 ro\n', b' - cgroup2 cgroup2 ro,' + option + b'\n'))
+                    with self.assertRaises(ValueError):
+                        if guard is None:
+                            self.worker._open_kernel_admission(f.request_fd)
+                        else:
+                            guard.recheck()
+                    if guard is not None:
+                        self.assertTrue(guard.close())
+                    self.assert_released(f)
+
+    def test_resource_event_policy_keeps_harmless_cgroup_superoptions(self):
+        """Unrelated cgroup superoptions remain admissible at both observation boundaries."""
+        with KernelObservationFixture(self.worker) as f:
+            f.edit(f.PROC + '/mountinfo', f.MOUNTINFO.replace(
+                b' - cgroup2 cgroup2 ro\n', b' - cgroup2 cgroup2 ro,nsdelegate\n'))
+            guard = self.worker._open_kernel_admission(f.request_fd)
+            f.edit(f.PROC + '/mountinfo', f.MOUNTINFO.replace(
+                b' - cgroup2 cgroup2 ro\n', b' - cgroup2 cgroup2 ro,nsdelegate,memory_recursiveprot\n'))
+            guard.recheck()
+            self.assertTrue(guard.close())
+            self.assert_released(f)
+
 
 class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
     """Real guard and entrypoint reject drift before work and before publication."""
@@ -724,29 +961,29 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
         self.worker = importlib.import_module('reporting._pdf_fixed_inspection_worker')
         self.control = '/sys/fs/cgroup/system.slice/omnigenis-pdf-fixed-inspection-v1.service/memory.max'
 
-    def context_bytes(self):
+    def context_bytes(self, *, native=False):
         """Encode a synthetic context with the current pinned profiles and fixed request identities."""
         return _json_bytes({
-            'expected_worker_profile_sha256': self.worker.PROFILE_SHA256,
+            'expected_worker_profile_sha256': self.worker.NATIVE_PROFILE_SHA256 if native else self.worker.PROFILE_SHA256,
             'expected_packet_sha256': 'a'*64,
-            'expected_protocol_profile_sha256': codec.PROFILE_SHA256,
+            'expected_protocol_profile_sha256': codec.NATIVE_PROFILE_SHA256 if native else codec.PROFILE_SHA256,
             'expected_namespace_id': 'kernel-test', 'expected_job_id': 'kernel-job',
             'expected_request_sha256': 'b'*64,
-            'expected_descriptor_profile_sha256': descriptor.PROFILE_SHA256,
-            'expected_execution_profile_sha256': sealed.PROFILE_SHA256,
+            'expected_descriptor_profile_sha256': descriptor.NATIVE_PROFILE_SHA256 if native else descriptor.PROFILE_SHA256,
+            'expected_execution_profile_sha256': sealed.NATIVE_PROFILE_SHA256 if native else sealed.PROFILE_SHA256,
             'expected_pdf_sha256': 'c'*64, 'expected_ir_sha256': 'd'*64,
             'expected_page_count': 1, 'expected_language': structured.LANGUAGE,
-            'expected_resource_profile_sha256': structured.PROFILE_SHA256,
-            'expected_frame_profile_sha256': framed.PROFILE_SHA256,
+            'expected_resource_profile_sha256': sealed.NATIVE_RESOURCE_PROFILE_SHA256 if native else structured.PROFILE_SHA256,
+            'expected_frame_profile_sha256': framed.NATIVE_PROFILE_SHA256 if native else framed.PROFILE_SHA256,
         })
 
     def exercise(self, fixture, *, after_context=None, during_work=None,
-                 during_encode=None, partial_write=False):
+                 during_encode=None, partial_write=False, native=False):
         """Run the entrypoint with staged observation hooks and captured writes, returning status, bytes, and event order."""
         from contextlib import ExitStack
         from types import SimpleNamespace
         events, output = [], bytearray()
-        raw = self.context_bytes()
+        raw = self.context_bytes(native=native)
         original_write = os.write
 
         def read():
@@ -828,6 +1065,86 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
                 self.assertEqual((code, output), (70, b''))
                 self.assertEqual(events, ['context', 'sealed', 'encode'])
                 self.assertFalse(fixture.active)
+
+    def test_resource_event_increases_withhold_frames_in_both_context_families(self):
+        """Recovered occupancy cannot conceal any selected exhaustion event before publication."""
+        cases = tuple(('memory.events', name) for name in ('max', 'oom', 'oom_kill', 'oom_group_kill'))
+        for native in (False, True):
+            for stage in ('after_context', 'during_work', 'during_encode'):
+                for name, counter in (*cases, ('pids.events', 'max')):
+                    with self.subTest(native=native, stage=stage, record=name, counter=counter), KernelObservationFixture(self.worker) as fixture:
+                        initial = fixture.MEMORY_EVENTS if name == 'memory.events' else fixture.PIDS_EVENTS
+                        changed = initial.replace((counter + ' 0\n').encode(), (counter + ' 1\n').encode())
+
+                        def exhaust_then_recover():
+                            """Preserve an exhaustion event while bringing instantaneous occupancy back into policy."""
+                            fixture.edit(fixture.CGROUP + '/memory.current', b'2147483648\n')
+                            fixture.edit(fixture.CGROUP + '/pids.current', b'32\n')
+                            fixture.edit(fixture.CGROUP + '/' + name, changed)
+                            fixture.edit(fixture.CGROUP + '/memory.current', b'1048576\n')
+                            fixture.edit(fixture.CGROUP + '/pids.current', b'3\n')
+
+                        code, output, events = self.exercise(fixture, native=native,
+                            **{stage: exhaust_then_recover})
+                        self.assertEqual((code, output), (70, b''))
+                        self.assertEqual(events, ['context'] if stage == 'after_context'
+                            else ['context', 'sealed', 'encode'])
+                        self.assertFalse(fixture.active)
+                        for fd in (0, 1, 2, fixture.request_fd):
+                            fixture.real_fstat(fd)
+
+    def test_resource_event_history_and_benign_updates_preserve_both_families(self):
+        """A valid result remains publishable with stable historical failures and increasing benign fields."""
+        for native in (False, True):
+            with self.subTest(native=native), KernelObservationFixture(self.worker) as fixture:
+                fixture.edit(fixture.CGROUP + '/memory.events',
+                    b'low 5\nhigh 7\nmax 11\noom 13\noom_kill 17\nfuture_memory_2 19\n')
+                fixture.edit(fixture.CGROUP + '/pids.events', b'max 23\nfuture_pids_2 29\n')
+
+                def benign_update():
+                    """Advance only unrelated counters while retaining every originally observed key."""
+                    fixture.edit(fixture.CGROUP + '/memory.events',
+                        b'low 8\nhigh 9\nmax 11\noom 13\noom_kill 17\nfuture_memory_2 31\n')
+                    fixture.edit(fixture.CGROUP + '/pids.events', b'max 23\nfuture_pids_2 37\n')
+
+                code, output, events = self.exercise(fixture, native=native,
+                    after_context=benign_update)
+                self.assertEqual((code, output, events),
+                    (0, b'frame', ['context', 'sealed', 'encode', 'write']))
+                self.assertFalse(fixture.active)
+                fixture.real_fstat(fixture.request_fd)
+
+    def test_resource_event_regression_after_context_withholds_both_family_frames(self):
+        """The before-frame comparison retains the later pre-work snapshot rather than the admission baseline."""
+        for native in (False, True):
+            for name, initial in (
+                ('memory.events', b'low 5\nmax 0\noom 0\noom_kill 0\n'),
+                ('pids.events', b'future_pids_2 5\nmax 0\n'),
+            ):
+                with self.subTest(native=native, record=name), KernelObservationFixture(self.worker) as fixture:
+                    path = fixture.CGROUP + '/' + name
+                    fixture.edit(path, initial)
+                    code, output, events = self.exercise(fixture, native=native,
+                        after_context=lambda: fixture.edit(path, initial.replace(b' 5\n', b' 9\n')),
+                        during_work=lambda: fixture.edit(path, initial.replace(b' 5\n', b' 7\n')))
+                    self.assertEqual((code, output, events), (70, b'', ['context', 'sealed', 'encode']))
+                    self.assertFalse(fixture.active)
+                    fixture.real_fstat(fixture.request_fd)
+
+    def test_resource_event_unavailable_or_malformed_record_prevents_context(self):
+        """Both wire families refuse missing or malformed event evidence before consuming context."""
+        for native in (False, True):
+            for name, payload in (('memory.events', None), ('pids.events', b'max invalid\n')):
+                with self.subTest(native=native, record=name), KernelObservationFixture(self.worker) as fixture:
+                    path = fixture.CGROUP + '/' + name
+                    if payload is None:
+                        fixture.backing(path).unlink()
+                    else:
+                        fixture.edit(path, payload)
+                    code, output, events = self.exercise(fixture, native=native)
+                    self.assertEqual((code, output, events), (70, b'', []))
+                    self.assertFalse(fixture.active)
+                    fixture.real_fstat(fixture.request_fd)
 
     def test_late_baseexception_closes_owned_fds_and_preserves_request(self):
         """Convert late interrupts, exits, and allocation failures into empty failure output while preserving the request descriptor."""

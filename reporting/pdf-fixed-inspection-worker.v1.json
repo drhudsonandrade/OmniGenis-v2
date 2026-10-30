@@ -8,7 +8,7 @@
   "optional_kernel_admission": {
     "default_enabled": false,
     "manifest": "reporting/pdf-fixed-worker-admission.v1.json",
-    "profile_sha256": "ff971470b83f8dbc6e39788bb26451512154462d5fde7173009f48ac1abcaa7f",
+    "profile_sha256": "2f9ebad864d2b74641489cdca9798fe7fce4ee34b5de2fd0d5002fc6507591f4",
     "selector": "OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1=1"
   },
   "origin_authenticated": false,

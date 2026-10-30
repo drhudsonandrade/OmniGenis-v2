@@ -3,7 +3,7 @@
     "descriptor": "b20fbf3f0325cd678aad69319c49f04bf8b96f4c6d07be81cab8c25537c3938a",
     "execution": "25ab5fac415b6f9571b15535644ade1fa04b836e3a17473274c62ceb30afeb43",
     "frame": "c994251417266d15ac74cca19b0fb145f868b83ce7f6ee0934218c4fa05dc9b5",
-    "kernel_admission": "ff971470b83f8dbc6e39788bb26451512154462d5fde7173009f48ac1abcaa7f",
+    "kernel_admission": "2f9ebad864d2b74641489cdca9798fe7fce4ee34b5de2fd0d5002fc6507591f4",
     "request": "24f7e7f65a95e0c071ffae4dcf51c38fc4c6a1aff8eff5a490e67e8f23cf5484",
     "snapshot": "d9c1963782511051a1952df6f5f1a15f92966bd924b635b5023f5a7d88a32d7c",
     "supervisor": "faaeb3370d9077b635a2bcbc09427bbfcbb925d90e81124d606dfb8cea9f2bb6",
@@ -239,11 +239,12 @@
     }
   },
   "reused_source_sha256": {
-    "reporting/_pdf_fixed_inspection_worker.py": "7964a87a78fd517769a84f47913bd8df14c0acc527597b9acad7847fe98ed000",
+    "reporting/_pdf_fixed_inspection_worker.py": "12f44babe79e89fe012a5902a47a45f76a2e0ceec6d15a8129f09c4f1a5ed253",
+    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-bounded-scratch.v1.json": "7430b2967f98f057ee9f5c6c7c3ee53cb03fdd45c3ae7955d95da95d2e752487",
-    "reporting/pdf-fixed-inspection-worker.v1.json": "1da1b326f0dcd4e866f6a2045ddfcf778458ed08e0d390d10673addd85bed67e",
-    "reporting/pdf-fixed-worker-admission.v1.json": "6d9f94eae2057fdb5b3caa752eb5cf8ad4ec13b3377b74322a31e2743eae583c",
+    "reporting/pdf-bounded-scratch.v1.json": "36bb1e191fac096b9cdefb66a71cf05da085971c8bfffe96673ee74aa1fdad67",
+    "reporting/pdf-fixed-inspection-worker.v1.json": "4754b73910503eb1768c935115fb06c5b76dc4703e0f7090b255f8db797beae8",
+    "reporting/pdf-fixed-worker-admission.v1.json": "d916d63194e8f3aad9530fcc253ef49ebf86b9c055f021eb4b324bdeec8cc59d",
     "reporting/pdf-inspection-request.v1.json": "b8cd153be3cdb0631653f8a82035ad35c4aa75e1d6ded156873b10daf2bc7ffa",
     "reporting/pdf-inspection-result-frame.v1.json": "bc094df6fbfc4af2c40f4c261633a469f89d35ecedc64090fdea04a293953ea9",
     "reporting/pdf-native-source-job.v1.json": "404967921b26430ffa0df66e9a99b1ad4de886e35fbd7ac4d1b460613a2bfc45",
@@ -251,7 +252,7 @@
     "reporting/pdf-sealed-inspection.v1.json": "419027c16a40ff2513f700085645420ce5f3ec002cd9a3a49c340a3a2c0483eb",
     "reporting/pdf-snapshot-inspection.v1.json": "3535e308de8bd06d61780a330705eec953b2c143b7cf48f00ca4714b1b4f54b3",
     "reporting/pdf-structured-source-job.v1.json": "34b80d7dedda9a142e95edf00dee1a1de1022362cc8d1e41f8a4223798f3cda6",
-    "reporting/pdf-supervised-inspection.v1.json": "3aee455953095e2d06d52edb3c08cf86365d5fab744f66547fedd622e3e0fbd2",
+    "reporting/pdf-supervised-inspection.v1.json": "36f49ca4968bed880991302265bcedab6dd813c0e762c28c77eb38b0b7d4660d",
     "reporting/pdf-tounicode-width-coverage.v1.json": "bf7a9a44f7db35ff4376e9a9c79280c24d670051ce1fdeed61b6db51ee350e3d",
     "reporting/pdf_inspection_request.py": "f9e72d162992debe09f081dc945edd1bc6740730682e4de4a5f1c80d43113dd3",
     "reporting/pdf_inspection_result_frame.py": "105d904ef1fa904342fb733a2a64bcdb8028d1a575c0299bd8cf935abf64f95d",
@@ -262,8 +263,7 @@
     "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
     "reporting/pdf_supervised_inspection.py": "6c00305aa8a96276452d38071ced0600d8755b35a8c3eac63529be82ea00c61f",
     "reporting/pdf_text_windows.py": "be81c573b7d2145d31d0a049bb946f4eceb0399f01f23c2b38e1c4bbb43f8f81",
-    "reporting/pdf_tounicode_width_coverage.py": "a161b31fca3fc7cc457289e6fa9558e3814d5d222f86c6b42ff794faf0cd8e43",
-    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
+    "reporting/pdf_tounicode_width_coverage.py": "a161b31fca3fc7cc457289e6fa9558e3814d5d222f86c6b42ff794faf0cd8e43"
   },
   "schema_version": "2.0.0"
 }

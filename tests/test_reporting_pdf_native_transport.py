@@ -231,7 +231,7 @@ class PdfNativeTransportTests(unittest.TestCase):
                 self.assertEqual(module.PROFILE_SHA256, digest)
                 self.assertEqual(sha256(_json_bytes(getattr(module, name)())).hexdigest(), digest)
         self.assertEqual(worker.KERNEL_ADMISSION_PROFILE_SHA256,
-                         "ff971470b83f8dbc6e39788bb26451512154462d5fde7173009f48ac1abcaa7f")
+                         "2f9ebad864d2b74641489cdca9798fe7fce4ee34b5de2fd0d5002fc6507591f4")
         self.assertEqual(frame.MAX_RESULT_BYTES, 294912)
         self.assertEqual(frame.MAX_FRAME_BYTES, 294956)
         self.assertEqual(codec.MAGIC, b"OGPDFRQ1")
