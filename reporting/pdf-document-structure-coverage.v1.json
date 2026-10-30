@@ -15,7 +15,7 @@
     "mcid_coverage_profile_id": "generated-pdf-mcid-parenttree-v1",
     "page_tags_policy_id": "page-tag-parenttree-references-v1",
     "page_tags_profile_id": "generated-pdf-page-tag-parenttree-v1",
-    "parent_raster_profile_sha256": "23c98bb9068c7b5d14557f14e43b933a9e5c4aac802c1a39cfa905f7a75bc6b7",
+    "parent_raster_profile_sha256": "44b4d6c6820f1ac968ce728516c02da4d41e9c0334b9e41aa229d1bebb844f52",
     "pdf_ua_qualified": false,
     "profile_id": "generated-pdf-document-structure-coverage-v1",
     "reading_order_verified": false,
@@ -31,6 +31,6 @@
     "whole_pdf_safety_qualified": false,
     "worker_results_authenticated": false
   },
-  "profile_sha256": "1d6141c41bf6061e14acb95218cbc2b72161a77c00820fa5a7f2c915aab30656",
+  "profile_sha256": "4e6676ef2affdbb8e251eb227df9679688cbc08502df2afa6d776111d0fd79e4",
   "release_authorized": false
 }
