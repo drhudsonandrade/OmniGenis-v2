@@ -19,6 +19,7 @@ import sys
 import tempfile
 
 from reporting._pdf_process_lifecycle import wait_owned_process_group
+from reporting._pdf_native_launch_budget import admit_launch
 
 from reporting._pdf_bounded_scratch import (
     _open_verified_bounded_child, _require_same_bounded_mount,
@@ -148,10 +149,11 @@ def _decode(data: bytes, expected: dict) -> PdfRasterWindowInspection:
 
 def _start(command: list[str], fds: tuple[int, int, int], scratch: str) -> subprocess.Popen:
     """Launch the isolated worker with only declared protocol and private scratch descriptors."""
-    return subprocess.Popen(command, cwd=Path(__file__).resolve().parents[1],
-        env=raster_child_environment(scratch), shell=False,
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        close_fds=True, pass_fds=fds, start_new_session=True)
+    with admit_launch("raster_windows", command, fds, scratch):
+        return subprocess.Popen(command, cwd=Path(__file__).resolve().parents[1],
+            env=raster_child_environment(scratch), shell=False,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            close_fds=True, pass_fds=fds, start_new_session=True)
 
 
 def _wait(process: subprocess.Popen) -> int:

@@ -10,6 +10,11 @@
   ],
   "existing_profiles_changed": false,
   "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
+  "launch_attempt_budget_policy": {
+    "path": "reporting/pdf-native-launch-budget.v1.json",
+    "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
+    "sha256": "d28e6ce1f31c15f1f45c8887305057dc31a4688ac2b6cf733204257767d49437"
+  },
   "known_issues": [
     "The two outer stages reuse the full pinned native ancestry and the unchanged structured-source job. Two stages do not mean two native processes; no aggregate native CPU, RSS, scratch, descriptor or descendant budget is qualified.",
     "The 300-second post-admission limit checks elapsed acceptance after synchronous stages and before return. It does not preempt a running child or establish a hard aggregate job deadline.",
@@ -46,12 +51,13 @@
   "profile_sha256": "e184a018dc547f5749f3f28c88f8003b142de1bf4709a63e345e850109c2f2e1",
   "release_authorized": false,
   "reused_source_sha256": {
+    "reporting/pdf-native-launch-budget.v1.json": "d28e6ce1f31c15f1f45c8887305057dc31a4688ac2b6cf733204257767d49437",
     "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
     "THIRD-PARTY-NOTICES.txt": "d08cd95ba4f026b427deb502a284aee6ba2159c0e372674bf5e1e384afa80788",
     "reporting/_pdf_tounicode_width_coverage_worker.py": "4d0a8efb3506b27cb66bd1da90a928464de480f41ead43b8585b7c1f9166bbb5",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-structured-source-job.v1.json": "34b80d7dedda9a142e95edf00dee1a1de1022362cc8d1e41f8a4223798f3cda6",
+    "reporting/pdf-structured-source-job.v1.json": "debddcb481f15ce01c917d0180819ad05fe6101347fbff9eba0759a66e4f521b",
     "reporting/pdf-tounicode-width-coverage.v1.json": "bf7a9a44f7db35ff4376e9a9c79280c24d670051ce1fdeed61b6db51ee350e3d",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
