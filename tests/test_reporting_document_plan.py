@@ -308,6 +308,56 @@ class PdfDocumentPreflightTests(unittest.TestCase):
                     cached.to_dict()
         self.assertEqual(cached.preflight_sha256, stable_sha)
 
+    def test_fixed_native_inspector_envelopes_pin_resource_and_policy_limits(self):
+        """Expose real fixed-worker bounds and reject any stale planning receipt."""
+        roles = (
+            ("object_graph", graph_worker, ("PARSER_VERSION", "POLICY_ID", "MAX_VISITS", "MAX_DEPTH")),
+            ("document_metadata", metadata_worker, ("PARSER_VERSION", "METADATA_PROFILE_ID", "LANGUAGE")),
+            ("page_tags", page_tags_worker, ("PARSER_VERSION", "POLICY_ID", "MAX_VISITS", "MAX_DEPTH", "LANGUAGE")),
+            ("mcid_coverage", mcid_worker, ("PARSER_VERSION", "POLICY_ID", "MAX_VISITS", "MAX_DEPTH", "LANGUAGE", "MAX_DECODED_BYTES")),
+        )
+        field_names = {
+            "MAX_PDF_BYTES": "max_pdf_bytes",
+            "MAX_DOCUMENT_PAGES": "max_document_pages",
+            "MEMORY_BYTES": "memory_bytes",
+            "WALL_SECONDS": "wall_seconds",
+            "OPEN_FILES": "open_files",
+            "RESULT_BYTES": "result_bytes",
+            "PARSER_VERSION": "parser_version",
+            "POLICY_ID": "policy_id",
+            "MAX_VISITS": "max_visits",
+            "MAX_DEPTH": "max_depth",
+            "METADATA_PROFILE_ID": "metadata_profile_id",
+            "LANGUAGE": "language",
+            "MAX_DECODED_BYTES": "max_decoded_bytes",
+        }
+        common = ("MAX_PDF_BYTES", "MAX_DOCUMENT_PAGES", "MEMORY_BYTES",
+                  "WALL_SECONDS", "OPEN_FILES", "RESULT_BYTES")
+        profile = subject.document_preflight_profile()["native_fixed_inspection_worker_envelopes"]
+        for role, module, extra in roles:
+            with self.subTest(role=role):
+                for field in common + extra:
+                    self.assertIn(field_names[field], profile[role])
+                    self.assertEqual(profile[role][field_names[field]], getattr(module, field))
+        cached = self.preflight(pages=33)
+        original = cached.preflight_sha256
+        for role, module, extra in roles:
+            for field in common + extra:
+                value = getattr(module, field)
+                replacement = value + 1 if type(value) is int else value + "-drift"
+                with self.subTest(role=role, field=field), patch.object(module, field, replacement):
+                    with self.assertRaisesRegex(
+                        subject.PdfDocumentPreflightError, "pdf_document_preflight_input_invalid"
+                    ):
+                        self.preflight(pages=33)
+                    with self.assertRaisesRegex(
+                        subject.PdfDocumentPreflightError, "pdf_document_preflight_invalid"
+                    ):
+                        cached.to_dict()
+        self.assertEqual(cached.preflight_sha256, original)
+        self.assertFalse(cached.to_dict()["aggregate_job_resources_qualified"])
+        self.assertFalse(cached.to_dict()["release_authorized"])
+
     def test_manifest_matches_exact_current_profile_and_no_dependency_change(self):
         """Compare published declarative claims against the live profile."""
         manifest = json.loads((ROOT / "reporting/pdf-document-preflight.v1.json").read_text())
