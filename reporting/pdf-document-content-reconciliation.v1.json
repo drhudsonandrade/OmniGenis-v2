@@ -10,7 +10,7 @@
   "profile": {
     "aggregate_job_resources_qualified": false,
     "default_pipeline_activated": false,
-    "document_inspection_profile_sha256": "e458e451305fab367815b7e9e04225862a3993a072fcc1ef6fac58c61c8585bb",
+    "document_inspection_profile_sha256": "4adcfabac873827f83433f8072aed03c6edfe92ff23c1d6684f3eb656d5a503f",
     "language": "en-US",
     "max_bound_pages": 64,
     "max_bound_pdf_bytes": 8388608,
@@ -26,7 +26,7 @@
     "worker_results_authenticated": false
   },
   "profile_id": "generated-pdf-document-content-reconciliation-v1",
-  "profile_sha256": "5f16e0270f640a8516a96a1129c1bd357399498944b001babe31d5c0cc683417",
+  "profile_sha256": "4a26fc5e1fe6ad749d155034154a07e21317c7d9317c95987385064ae6d74f88",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "service_installed": false,

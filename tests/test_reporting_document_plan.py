@@ -14,6 +14,10 @@ from reporting import _pdf_text_window_worker as text_worker
 from reporting import _pdf_raster_window_worker as raster_worker
 from reporting import _pdf_raster_executor as raster_executor
 from reporting import _pdf_raster_probe as raster_probe
+from reporting import _pdf_object_graph_worker as graph_worker
+from reporting import _pdf_document_metadata_worker as metadata_worker
+from reporting import _pdf_page_tags_worker as page_tags_worker
+from reporting import _pdf_mcid_coverage_worker as mcid_worker
 
 ROOT = Path(__file__).resolve().parents[1]
 PDF = b"%PDF-1.7\n% synthetic preflight-only bytes\n"
@@ -78,15 +82,15 @@ class PdfDocumentPreflightTests(unittest.TestCase):
 
     def test_declared_native_process_fanout_accounts_for_raster_helpers_and_cpu_limits(self):
         """Do not hide per-window probes or per-page raster executors in abstract counts."""
-        # Literals derived from 16-page text and 4-page raster plans and
-        # current 5/20/3/20-second individual child-process CPU limits.
+        # One each of graph/metadata/page-tags/MCID (5 s CPU each), plus
+        # 16-page text and 4-page raster plans with 5/20/3/20-s child limits.
         cases = (
-            (1, 1, 1, 4, 48),
-            (32, 2, 8, 50, 834),
-            (33, 3, 9, 54, 882),
-            (64, 4, 16, 100, 1668),
-            (129, 9, 33, 204, 3384),
-            (512, 32, 128, 800, 13344),
+            (1, 1, 1, 8, 68),
+            (32, 2, 8, 54, 854),
+            (33, 3, 9, 58, 902),
+            (64, 4, 16, 104, 1688),
+            (129, 9, 33, 208, 3404),
+            (512, 32, 128, 804, 13364),
         )
         for pages, text_count, raster_count, starts, cpu_seconds in cases:
             with self.subTest(pages=pages):
@@ -95,6 +99,10 @@ class PdfDocumentPreflightTests(unittest.TestCase):
                 self.assertIn("native_process_fanout", record)
                 self.assertEqual(record["native_process_fanout"], {
                     "accounting_basis": "DECLARED_ONE_PASS_NOT_RUNTIME_ENFORCED",
+                    "fixed_inspection_workers": {
+                        "object_graph": 1, "document_metadata": 1,
+                        "page_tags": 1, "mcid_coverage": 1,
+                    },
                     "text_window_workers": text_count,
                     "raster_window_workers": raster_count,
                     "raster_version_probes": raster_count,
@@ -248,6 +256,10 @@ class PdfDocumentPreflightTests(unittest.TestCase):
         cached = self.preflight(pages=33)
         stable_sha = cached.preflight_sha256
         changes = (
+            (graph_worker, "CPU_SECONDS", graph_worker.CPU_SECONDS + 1),
+            (metadata_worker, "CPU_SECONDS", metadata_worker.CPU_SECONDS + 1),
+            (page_tags_worker, "CPU_SECONDS", page_tags_worker.CPU_SECONDS + 1),
+            (mcid_worker, "CPU_SECONDS", mcid_worker.CPU_SECONDS + 1),
             (text, "EXTRACTOR_VERSION", "999.0"),
             (text, "PROTOCOL_VERSION", text.PROTOCOL_VERSION + 1),
             (text, "IDENTITY_FIELDS", ("unreviewed_field",)),

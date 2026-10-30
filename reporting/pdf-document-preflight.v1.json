@@ -3,7 +3,7 @@
   "profile_id": "generated-pdf-document-preflight-v1",
   "status": "STAGED_UNQUALIFIED",
   "conformance_scope": "EXACT_PDF_DIGEST_AND_COMPLETE_DECLARED_WINDOWS_ONLY",
-  "profile_sha256": "70cee10a9ec8bd76dd889141ddd758084efa18a2fe5baaab3fa6b892651336cb",
+  "profile_sha256": "655263e7eafae53676f00a679be6d6ef5f56d490a3b0135f69d0bc4f63d811c9",
   "profile": {
     "actual_pdf_page_count_verified": false,
     "aggregate_job_resources_qualified": false,
@@ -17,9 +17,28 @@
     "existing_qa_profile_id": "omnigenis-generated-pdf-candidate-qa-v1",
     "max_staged_pdf_bytes": 33554432,
     "native_executor_activated": false,
+    "native_fixed_inspection_worker_envelopes": {
+      "document_metadata": {
+        "cpu_seconds": 5,
+        "profile_id": "generated-pdf-document-metadata-v1"
+      },
+      "mcid_coverage": {
+        "cpu_seconds": 5,
+        "profile_id": "generated-pdf-mcid-parenttree-v1"
+      },
+      "object_graph": {
+        "cpu_seconds": 5,
+        "profile_id": "generated-pdf-effective-object-graph-v1"
+      },
+      "page_tags": {
+        "cpu_seconds": 5,
+        "profile_id": "generated-pdf-page-tag-parenttree-v1"
+      }
+    },
     "native_process_fanout_accounting": {
       "accounting_basis": "DECLARED_ONE_PASS_NOT_RUNTIME_ENFORCED",
       "aggregate_supervision_enforced": false,
+      "fixed_inspection_workers_per_job": 4,
       "raster_page_executors_per_declared_page": 1,
       "raster_version_probes_per_window": 1,
       "schema_version": "1.0.0"

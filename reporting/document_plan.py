@@ -24,6 +24,10 @@ from reporting import _pdf_text_window_worker as text_worker
 from reporting import _pdf_raster_window_worker as raster_worker
 from reporting import _pdf_raster_executor as raster_executor
 from reporting import _pdf_raster_probe as raster_probe
+from reporting import _pdf_object_graph_worker as graph_worker
+from reporting import _pdf_document_metadata_worker as metadata_worker
+from reporting import _pdf_page_tags_worker as page_tags_worker
+from reporting import _pdf_mcid_coverage_worker as mcid_worker
 
 PROFILE_ID = "generated-pdf-document-preflight-v1"
 MAX_STAGED_PAGES = text_windows.MAX_DOCUMENT_PAGES
@@ -52,6 +56,20 @@ def document_preflight_profile() -> dict:
         "current_job_profile_sha256": job.PROFILE_SHA256,
         "text_window_width": TEXT_WIDTH, "raster_window_width": RASTER_WIDTH,
         "text_window_profile_id": TEXT_PROFILE, "raster_window_profile_id": RASTER_PROFILE,
+        "native_fixed_inspection_worker_envelopes": {
+            "object_graph": {
+                "profile_id": graph_worker.PROFILE_ID, "cpu_seconds": graph_worker.CPU_SECONDS,
+            },
+            "document_metadata": {
+                "profile_id": metadata_worker.PROFILE_ID, "cpu_seconds": metadata_worker.CPU_SECONDS,
+            },
+            "page_tags": {
+                "profile_id": page_tags_worker.PROFILE_ID, "cpu_seconds": page_tags_worker.CPU_SECONDS,
+            },
+            "mcid_coverage": {
+                "profile_id": mcid_worker.PROFILE_ID, "cpu_seconds": mcid_worker.CPU_SECONDS,
+            },
+        },
         "native_window_worker_envelopes": {
             "text": {
                 "profile_id": text_windows.PROFILE_ID,
@@ -119,6 +137,7 @@ def document_preflight_profile() -> dict:
         "native_process_fanout_accounting": {
             "schema_version": "1.0.0",
             "accounting_basis": "DECLARED_ONE_PASS_NOT_RUNTIME_ENFORCED",
+            "fixed_inspection_workers_per_job": 4,
             "raster_version_probes_per_window": 1,
             "raster_page_executors_per_declared_page": 1,
             "aggregate_supervision_enforced": False,
@@ -221,13 +240,21 @@ class PdfDocumentPreflight:
         planned_calls = 4 + text_count + raster_count
         native_fanout = {
             "accounting_basis": "DECLARED_ONE_PASS_NOT_RUNTIME_ENFORCED",
+            "fixed_inspection_workers": {
+                "object_graph": 1, "document_metadata": 1,
+                "page_tags": 1, "mcid_coverage": 1,
+            },
             "text_window_workers": text_count,
             "raster_window_workers": raster_count,
             "raster_version_probes": raster_count,
             "raster_page_executors": self.declared_page_count,
-            "total_native_child_starts_planned": text_count + 2 * raster_count + self.declared_page_count,
+            "total_native_child_starts_planned": planned_calls + raster_count + self.declared_page_count,
             "sum_child_cpu_rlimit_seconds": (
-                text_count * text_windows.CPU_SECONDS
+                graph_worker.CPU_SECONDS
+                + metadata_worker.CPU_SECONDS
+                + page_tags_worker.CPU_SECONDS
+                + mcid_worker.CPU_SECONDS
+                + text_count * text_windows.CPU_SECONDS
                 + raster_count * raster_windows.CPU_SECONDS
                 + raster_count * raster_probe.WALL_SECONDS
                 + self.declared_page_count * raster_executor.CPU_SECONDS
