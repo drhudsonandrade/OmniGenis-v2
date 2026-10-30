@@ -43,6 +43,21 @@ class PdfDocumentPreflightError(ValueError):
     """Fixed content-free refusal, never an incomplete plan."""
 
 
+def _fixed_native_envelope(worker, **specific: object) -> dict:
+    """Pin declared fixed native worker limits without invoking any worker."""
+    return {
+        "profile_id": worker.PROFILE_ID,
+        "cpu_seconds": worker.CPU_SECONDS,
+        "wall_seconds": worker.WALL_SECONDS,
+        "memory_bytes": worker.MEMORY_BYTES,
+        "open_files": worker.OPEN_FILES,
+        "result_bytes": worker.RESULT_BYTES,
+        "max_pdf_bytes": worker.MAX_PDF_BYTES,
+        "max_document_pages": worker.MAX_DOCUMENT_PAGES,
+        **specific,
+    }
+
+
 def document_preflight_profile() -> dict:
     """Describe finite planning bounds without implying tested runtime capacity."""
     return {
@@ -57,18 +72,31 @@ def document_preflight_profile() -> dict:
         "text_window_width": TEXT_WIDTH, "raster_window_width": RASTER_WIDTH,
         "text_window_profile_id": TEXT_PROFILE, "raster_window_profile_id": RASTER_PROFILE,
         "native_fixed_inspection_worker_envelopes": {
-            "object_graph": {
-                "profile_id": graph_worker.PROFILE_ID, "cpu_seconds": graph_worker.CPU_SECONDS,
-            },
-            "document_metadata": {
-                "profile_id": metadata_worker.PROFILE_ID, "cpu_seconds": metadata_worker.CPU_SECONDS,
-            },
-            "page_tags": {
-                "profile_id": page_tags_worker.PROFILE_ID, "cpu_seconds": page_tags_worker.CPU_SECONDS,
-            },
-            "mcid_coverage": {
-                "profile_id": mcid_worker.PROFILE_ID, "cpu_seconds": mcid_worker.CPU_SECONDS,
-            },
+            "object_graph": _fixed_native_envelope(
+                graph_worker, parser_version=graph_worker.PARSER_VERSION,
+                policy_id=graph_worker.POLICY_ID, max_visits=graph_worker.MAX_VISITS,
+                max_depth=graph_worker.MAX_DEPTH,
+            ),
+            "document_metadata": _fixed_native_envelope(
+                metadata_worker, parser_version=metadata_worker.PARSER_VERSION,
+                metadata_profile_id=metadata_worker.METADATA_PROFILE_ID,
+                language=metadata_worker.LANGUAGE,
+            ),
+            "page_tags": _fixed_native_envelope(
+                page_tags_worker, parser_version=page_tags_worker.PARSER_VERSION,
+                policy_id=page_tags_worker.POLICY_ID,
+                max_visits=page_tags_worker.MAX_VISITS,
+                max_depth=page_tags_worker.MAX_DEPTH,
+                language=page_tags_worker.LANGUAGE,
+            ),
+            "mcid_coverage": _fixed_native_envelope(
+                mcid_worker, parser_version=mcid_worker.PARSER_VERSION,
+                policy_id=mcid_worker.POLICY_ID,
+                max_visits=mcid_worker.MAX_VISITS,
+                max_depth=mcid_worker.MAX_DEPTH,
+                language=mcid_worker.LANGUAGE,
+                max_decoded_bytes=mcid_worker.MAX_DECODED_BYTES,
+            ),
         },
         "native_window_worker_envelopes": {
             "text": {

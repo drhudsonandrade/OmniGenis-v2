@@ -3,7 +3,7 @@
   "profile_id": "generated-pdf-document-preflight-v1",
   "status": "STAGED_UNQUALIFIED",
   "conformance_scope": "EXACT_PDF_DIGEST_AND_COMPLETE_DECLARED_WINDOWS_ONLY",
-  "profile_sha256": "655263e7eafae53676f00a679be6d6ef5f56d490a3b0135f69d0bc4f63d811c9",
+  "profile_sha256": "09d124ddb69da0cceedb55099404a0c36c12c4ed0d86e23aefce4e6e9f9ab6a8",
   "profile": {
     "actual_pdf_page_count_verified": false,
     "aggregate_job_resources_qualified": false,
@@ -20,19 +20,61 @@
     "native_fixed_inspection_worker_envelopes": {
       "document_metadata": {
         "cpu_seconds": 5,
-        "profile_id": "generated-pdf-document-metadata-v1"
+        "language": "en-US",
+        "max_document_pages": 512,
+        "max_pdf_bytes": 8388608,
+        "memory_bytes": 268435456,
+        "metadata_profile_id": "omnigenis-generated-pdf-metadata-v1",
+        "open_files": 128,
+        "parser_version": "6.19.0",
+        "profile_id": "generated-pdf-document-metadata-v1",
+        "result_bytes": 4096,
+        "wall_seconds": 10
       },
       "mcid_coverage": {
         "cpu_seconds": 5,
-        "profile_id": "generated-pdf-mcid-parenttree-v1"
+        "language": "en-US",
+        "max_decoded_bytes": 8388608,
+        "max_depth": 64,
+        "max_document_pages": 512,
+        "max_pdf_bytes": 8388608,
+        "max_visits": 20000,
+        "memory_bytes": 268435456,
+        "open_files": 128,
+        "parser_version": "6.19.0",
+        "policy_id": "page-mcid-parenttree-consistency-v1",
+        "profile_id": "generated-pdf-mcid-parenttree-v1",
+        "result_bytes": 4096,
+        "wall_seconds": 10
       },
       "object_graph": {
         "cpu_seconds": 5,
-        "profile_id": "generated-pdf-effective-object-graph-v1"
+        "max_depth": 64,
+        "max_document_pages": 512,
+        "max_pdf_bytes": 8388608,
+        "max_visits": 20000,
+        "memory_bytes": 268435456,
+        "open_files": 128,
+        "parser_version": "6.19.0",
+        "policy_id": "passive-report-pdf-v1",
+        "profile_id": "generated-pdf-effective-object-graph-v1",
+        "result_bytes": 4096,
+        "wall_seconds": 10
       },
       "page_tags": {
         "cpu_seconds": 5,
-        "profile_id": "generated-pdf-page-tag-parenttree-v1"
+        "language": "en-US",
+        "max_depth": 64,
+        "max_document_pages": 512,
+        "max_pdf_bytes": 8388608,
+        "max_visits": 20000,
+        "memory_bytes": 268435456,
+        "open_files": 128,
+        "parser_version": "6.19.0",
+        "policy_id": "page-tag-parenttree-references-v1",
+        "profile_id": "generated-pdf-page-tag-parenttree-v1",
+        "result_bytes": 4096,
+        "wall_seconds": 10
       }
     },
     "native_process_fanout_accounting": {
