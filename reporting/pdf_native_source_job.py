@@ -16,6 +16,7 @@ from time import monotonic_ns
 from reporting import pdf_inspection_job as legacy
 from reporting import pdf_structured_source_job as structured
 from reporting import pdf_tounicode_width_coverage as native
+from reporting._pdf_native_launch_budget import NativeLaunchScope, require_no_active_scope
 from reporting.pdf_structured_source_job import (
     PdfStructuredSourceResult, execute_pdf_structured_source_job,
 )
@@ -215,6 +216,7 @@ def execute_pdf_native_source_job(
     aggregate CPU, RSS, scratch, descriptors or descendant-process budgets.
     """
     try:
+        require_no_active_scope()
         _profile(expected_resource_profile_sha256)
         if (type(pdf_bytes) is not bytes or not pdf_bytes.startswith(b"%PDF-1.7")
                 or len(pdf_bytes) > MAX_PDF_BYTES or type(page_count) is not int
@@ -258,7 +260,10 @@ def execute_pdf_native_source_job(
             raise ValueError("native source acceptance deadline")
         previous = current
 
+    launches = None
     try:
+        launches = NativeLaunchScope(plan, len(pdf_bytes))
+        launches.__enter__()
         check()
         first = inspect_pdf_tounicode_width_coverage(
             pdf_bytes=pdf_bytes, plan=plan,
@@ -294,6 +299,10 @@ def execute_pdf_native_source_job(
         )
         result.to_bytes()
         check()
+        launches.require_complete()
         return result
     except Exception:
         raise PdfNativeSourceJobError("pdf_native_source_job_execution_failed") from None
+    finally:
+        if launches is not None:
+            launches.close()

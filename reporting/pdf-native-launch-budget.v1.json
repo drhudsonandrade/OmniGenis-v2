@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0.0",
+  "policy": {
+    "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
+    "max_pages": 64,
+    "max_pdf_bytes": 8388608,
+    "text_window_pages": 16,
+    "raster_window_pages": 4,
+    "fixed_roles": [
+      "structure_role_edges", "single_revision", "xref_entries", "xref_resolution",
+      "trailer_catalog", "page_surface", "resource_leaves", "font_descriptor",
+      "cid_widths", "tounicode_header", "tounicode_zlib", "tounicode_cmap_frame",
+      "tounicode_utf16be_targets", "tounicode_bfchar_sources", "tounicode_width_coverage",
+      "structure_tree", "document_content", "object_graph", "document_metadata",
+      "page_tags", "mcid_coverage"
+    ],
+    "launchers": {
+      "object_graph": "reporting/pdf_object_graph.py",
+      "text_windows": "reporting/pdf_text_windows.py",
+      "raster_windows": "reporting/pdf_raster_windows.py"
+    },
+    "direct_attempts": "21+ceil(P/16)+ceil(P/4)",
+    "reserved_raster_child_attempts": "ceil(P/4)+P",
+    "composed_attempt_ceiling": "21+ceil(P/16)+2*ceil(P/4)+P",
+    "at_64_pages": {
+      "direct_attempts": 41,
+      "reserved_raster_child_attempts": 80,
+      "composed_attempt_ceiling": 121,
+      "with_optional_fixed_supervisor": 122
+    },
+    "aggregate_job_resources_qualified": false,
+    "default_pipeline_activated": false,
+    "release_authorized": false,
+    "retries": 0,
+    "refunds": false,
+    "persistent_checkpoints": false
+  },
+  "source_sha256": {
+    "reporting/_pdf_native_launch_budget.py": "56a38471ea66d3c31b25e332d02d29a1d80bc1cd6b2279a603cca67c49a2489e",
+    "reporting/pdf_native_source_job.py": "bdc84e9f0a5f20d0227d09b59f4a2c54782a5af72f39ddfbfb26e9fcbc425892",
+    "reporting/pdf_object_graph.py": "a5a67d0a9991e717b801590ab35199181479dab1dd4b20fbba61662af8d0cce5",
+    "reporting/pdf_text_windows.py": "9976f59ed721684693e9c5788cbab8ac91ab886cbd8466ed58d7921a4d365eef",
+    "reporting/pdf_raster_windows.py": "bac1d7055d85ed0d89400167f9b7298cf5de15d3748a00e6237037f6345d148e",
+    "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
+    "reporting/_pdf_raster_probe.py": "f20284855e6392dc5b318a150eea479bfe01e9ed716d47b30f5c34b54398eed0",
+    "reporting/_pdf_raster_window_worker.py": "8755dcdb5aedb39ec0dce9f5b619a79b60960541a13254858cd32e6d0c46e8a1"
+  },
+  "known_issues": [
+    "Counts are spent launch attempts and reserved child ceilings, never observed process counts or successful execution attestations.",
+    "For P admitted pages, T=ceil(P/16) and R=ceil(P/4): direct=21+T+R, reserved=R+P, composed=21+T+2R+P. At 64 pages these are 41+80=121 below the coordinator; an optional fixed supervisor adds one, giving 122.",
+    "Each raster parent reserves one probe plus its exact selected pages. The unchanged PR133 raster worker budget enforces those downstream attempts; arbitrary descendants and replacement Python forging receipts are not authenticated.",
+    "Bounded pread binds the exact declared ASCII header and observable descriptor identity without reading or rehashing the PDF body. Adversarial concurrent mutation, including mutate-and-restore, is unsupported.",
+    "A foreign PID rejects its inherited copied state before the lock. Poisoning a child's memory does not poison the parent copy.",
+    "The fixed worker and default rendering/QA route are outside this scope. document_plan.py legacy estimates remain unchanged and are distinct from this cumulative attempt ceiling.",
+    "No aggregate CPU, RSS, scratch, descriptors, hard wall-time, arbitrary-descendant resource qualification, default activation or release authority is established."
+  ]
+}

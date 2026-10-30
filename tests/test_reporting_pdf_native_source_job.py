@@ -13,6 +13,8 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 import zlib
@@ -25,6 +27,7 @@ from reporting.page_windows import plan_pdf_page_windows
 from reporting.pdf_content import _expected_content
 from tests import test_reporting_pdf_source_inspection_job as source_tests
 from tests import test_reporting_pdf_structured_source_job as structured_tests
+from tests.test_reporting_pdf_native_launch_budget import launch_one, launch_specs
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -148,8 +151,8 @@ class PdfNativeSourceJobTests(unittest.TestCase):
         self.fail("fixture has no unique native ToUnicode stream for bounded mutation")
 
     @contextmanager
-    def mocked(self, change=None):
-        """Replace native boundaries while executing the real existing child coordinators."""
+    def mocked(self, change=None, *, receipt_only=False, child=None, swallow_spawn=False):
+        """Traverse real launchers, then synthesize unsigned child observations only."""
         calls = []
         helper = structured_tests.PdfStructuredSourceJobTests()
         helper.setUp()
@@ -159,6 +162,9 @@ class PdfNativeSourceJobTests(unittest.TestCase):
             calls.append(NATIVE)
             self.stage_inputs[NATIVE] = values
             plan = values["plan"]
+            if not receipt_only:
+                for spec in launch_specs(plan)[:15]:
+                    launch_one(spec, values["pdf_bytes"], child=child, swallow_spawn=swallow_spawn)
             identity = {key: getattr(plan, key) for key in
                         ("pdf_sha256", "ir_sha256", "plan_sha256", "page_count")}
             receipt = native.PdfToUnicodeWidthCoverage(
@@ -174,6 +180,10 @@ class PdfNativeSourceJobTests(unittest.TestCase):
             """Run the unchanged structured/source coordinators with typed mocked inspectors."""
             calls.append(STRUCTURED)
             self.stage_inputs[STRUCTURED] = values
+            if not receipt_only:
+                plan = self.stage_inputs[NATIVE]["plan"]
+                for spec in launch_specs(plan)[15:]:
+                    launch_one(spec, values["pdf_bytes"], child=child, swallow_spawn=swallow_spawn)
             receipt = structured.execute_pdf_structured_source_job(**values)
             return change(STRUCTURED, values, receipt) if change else receipt
 
@@ -200,6 +210,139 @@ class PdfNativeSourceJobTests(unittest.TestCase):
             self.assertIsNot(child_input["presentation_ir"]["components"], self.ir["components"])
             self.assertEqual(child_input["presentation_ir"], self.ir)
             self.assertEqual(result.to_dict()["page_count"], pages)
+
+    def test_receipt_only_chain_cannot_return_native_success_without_launches(self):
+        """Missing cumulative completion must reject otherwise valid unsigned receipts."""
+        # Keep this fixture deliberately receipt-only: it exercises the public
+        # coordinator's acceptance check, not a replacement budget helper.
+        with self.mocked(receipt_only=True), self.assertRaises(self.m.PdfNativeSourceJobError):
+            self.run_job()
+
+    def test_invalid_nested_api_entry_poisons_outer_job_even_when_caught(self):
+        """Entry ownership is checked before even invalid nested input admission."""
+        def nested(stage, values, receipt):
+            """Catch a deliberately invalid nested request without forgiving the outer job."""
+            if stage == NATIVE:
+                with self.assertRaises(self.m.PdfNativeSourceJobError):
+                    self.run_job(pdf_bytes=None)
+            return receipt
+
+        with self.mocked(nested), self.assertRaises(self.m.PdfNativeSourceJobError):
+            self.run_job(page_count=1)
+
+    def test_swallowed_last_spawn_baseexception_cannot_complete_job(self):
+        """Even the last consumed slot is poisoned when its Popen never returns."""
+        class SpawnInterrupt(BaseException):
+            """Represent interrupt-like failure at the external creation boundary."""
+
+        attempts = []
+
+        def fail_last(command, **kwargs):
+            """Fail precisely the one-page schedule's final raster launch."""
+            attempts.append(command)
+            if len(attempts) == 23:
+                raise SpawnInterrupt()
+            return object()
+
+        with self.mocked(child=fail_last, swallow_spawn=True), \
+                self.assertRaises(self.m.PdfNativeSourceJobError):
+            self.run_job(page_count=1)
+        self.assertEqual(len(attempts), 23)
+
+    def test_interrupt_like_stage_exit_clears_scope_before_unrelated_job(self):
+        """Both coordinator stages unwind BaseException without leaking later job state."""
+        class InterruptedJob(BaseException):
+            """Represent an interrupt rather than an ordinary adapter failure."""
+
+        for interrupted_stage in (NATIVE, STRUCTURED):
+            def interrupt(stage, values, receipt):
+                """Interrupt after actual synthetic launch traversal at the selected stage."""
+                if stage == interrupted_stage:
+                    raise InterruptedJob()
+                return receipt
+            with self.subTest(stage=interrupted_stage):
+                with self.mocked(interrupt), self.assertRaises(InterruptedJob):
+                    self.run_job(page_count=1)
+                with self.mocked():
+                    result = self.run_job(page_count=1)
+                self.assertEqual(result.page_count, 1)
+
+    def test_missing_launch_in_each_schedule_region_never_returns_a_result(self):
+        """Unsigned positive child receipts cannot conceal omissions in any graph region."""
+        real_launch = launch_one
+        for missing in (0, 14, 15, 20, 21, 22):
+            attempted = [0]
+
+            def omit(spec, pdf, **kwargs):
+                """Skip one actual boundary, keeping every unsigned child receipt unchanged."""
+                index = attempted[0]
+                attempted[0] += 1
+                if index != missing:
+                    return real_launch(spec, pdf, **kwargs)
+                return None
+
+            with self.subTest(missing=missing), self.mocked(), \
+                    patch(__name__ + ".launch_one", side_effect=omit), \
+                    self.assertRaises(self.m.PdfNativeSourceJobError):
+                self.run_job(page_count=1)
+
+    def test_scope_remains_active_through_final_clock_acceptance(self):
+        """Nested entry during the last acceptance check still poisons final return."""
+        calls = [0]
+
+        def final_clock():
+            """Try a caught invalid nested request at the fifth and final clock check."""
+            calls[0] += 1
+            if calls[0] == 5:
+                with self.assertRaises(self.m.PdfNativeSourceJobError):
+                    self.run_job(pdf_bytes=None)
+            return 0
+
+        with self.mocked(), patch.object(self.m, "monotonic_ns", side_effect=final_clock), \
+                self.assertRaises(self.m.PdfNativeSourceJobError):
+            self.run_job(page_count=1)
+        self.assertEqual(calls[0], 5)
+
+    def test_unexpected_actual_launcher_is_refused_before_popen(self):
+        """An out-of-order shared launcher must not spawn during the native job."""
+        from reporting import pdf_object_graph as graph
+
+        attempted = []
+
+        def child_boundary(*args, **kwargs):
+            """Observe only actual attempts to cross the external child boundary."""
+            attempted.append((args, kwargs))
+            return object()
+
+        def inject(stage, values, receipt):
+            """Offer a valid request to the wrong first worker through the real launcher."""
+            if stage == NATIVE:
+                plan = values["plan"]
+                header = (f"1 {plan.pdf_sha256} {plan.ir_sha256} "
+                          f"{plan.plan_sha256} {plan.page_count}\n").encode("ascii")
+                with tempfile.TemporaryFile() as source, tempfile.TemporaryFile() as result:
+                    source.write(header + values["pdf_bytes"])
+                    source.flush()
+                    fds = source.fileno(), result.fileno()
+                    command = [sys.executable, "-I",
+                               str(ROOT / "reporting" / "_pdf_object_graph_worker.py"),
+                               *(str(fd) for fd in fds), str(os.getpid())]
+                    # A stage may swallow a rejected launch, but it must not
+                    # recover the poisoned job or manufacture a successful result.
+                    try:
+                        graph._start(command, fds)
+                    except ValueError:
+                        pass
+            return receipt
+
+        rejected = False
+        with self.mocked(inject), patch.object(graph.subprocess, "Popen", side_effect=child_boundary):
+            try:
+                self.run_job()
+            except self.m.PdfNativeSourceJobError:
+                rejected = True
+        self.assertEqual(attempted, [], "unexpected native worker reached the real Popen boundary")
+        self.assertTrue(rejected, "swallowed launch rejection must poison final job acceptance")
 
     def test_real_native_one_33_64_pages_without_parent_pdf_parsing(self):
         """Execute both real chains on identical final bytes with complete page coverage."""

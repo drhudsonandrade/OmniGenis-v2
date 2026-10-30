@@ -20,6 +20,7 @@ import sys
 import tempfile
 
 from reporting._pdf_process_lifecycle import wait_owned_process_group
+from reporting._pdf_native_launch_budget import admit_launch
 
 from reporting._pdf_text_window_worker import (
     CPU_SECONDS, EXTRACTOR_VERSION, IDENTITY_FIELDS, MAX_DECODED_BYTES,
@@ -161,12 +162,13 @@ def _decode(data: bytes, expected: dict) -> PdfTextWindowInspection:
 
 def _start(command: list[str], fds: tuple[int, int]) -> subprocess.Popen:
     """Launch an isolated child with only the two declared protocol descriptors."""
-    return subprocess.Popen(
-        command, cwd=Path(__file__).resolve().parents[1],
-        env={"PATH": os.defpath, "LANG": "C.UTF-8"}, shell=False,
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        close_fds=True, pass_fds=fds, start_new_session=True,
-    )
+    with admit_launch("text_windows", command, fds):
+        return subprocess.Popen(
+            command, cwd=Path(__file__).resolve().parents[1],
+            env={"PATH": os.defpath, "LANG": "C.UTF-8"}, shell=False,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            close_fds=True, pass_fds=fds, start_new_session=True,
+        )
 
 
 def _wait(process: subprocess.Popen) -> int:
