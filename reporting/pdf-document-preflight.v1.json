@@ -3,7 +3,7 @@
   "profile_id": "generated-pdf-document-preflight-v1",
   "status": "STAGED_UNQUALIFIED",
   "conformance_scope": "EXACT_PDF_DIGEST_AND_COMPLETE_DECLARED_WINDOWS_ONLY",
-  "profile_sha256": "8fc3dc0e38047f39d0d0a64ed3c94dd1209fe7718705a70f8df602317c4711db",
+  "profile_sha256": "70cee10a9ec8bd76dd889141ddd758084efa18a2fe5baaab3fa6b892651336cb",
   "profile": {
     "actual_pdf_page_count_verified": false,
     "aggregate_job_resources_qualified": false,
@@ -17,6 +17,13 @@
     "existing_qa_profile_id": "omnigenis-generated-pdf-candidate-qa-v1",
     "max_staged_pdf_bytes": 33554432,
     "native_executor_activated": false,
+    "native_process_fanout_accounting": {
+      "accounting_basis": "DECLARED_ONE_PASS_NOT_RUNTIME_ENFORCED",
+      "aggregate_supervision_enforced": false,
+      "raster_page_executors_per_declared_page": 1,
+      "raster_version_probes_per_window": 1,
+      "schema_version": "1.0.0"
+    },
     "native_window_worker_envelopes": {
       "raster": {
         "cpu_seconds": 20,

@@ -116,6 +116,13 @@ def document_preflight_profile() -> dict:
                 "memory_bytes": raster_probe.MEMORY_BYTES,
             },
         },
+        "native_process_fanout_accounting": {
+            "schema_version": "1.0.0",
+            "accounting_basis": "DECLARED_ONE_PASS_NOT_RUNTIME_ENFORCED",
+            "raster_version_probes_per_window": 1,
+            "raster_page_executors_per_declared_page": 1,
+            "aggregate_supervision_enforced": False,
+        },
         "planning_page_ceiling": MAX_STAGED_PAGES,
         "max_staged_pdf_bytes": MAX_STAGED_PDF_BYTES,
         "new_class_proven_by_measurement": False,
@@ -209,7 +216,25 @@ class PdfDocumentPreflight:
                     or not plan.windows or plan.windows[0].first_page != 1
                     or plan.windows[-1].last_page != self.declared_page_count):
                 raise ValueError("document preflight plan identity or coverage invalid")
-        planned_calls = 4 + self.text_plan.window_count + self.raster_plan.window_count
+        text_count = self.text_plan.window_count
+        raster_count = self.raster_plan.window_count
+        planned_calls = 4 + text_count + raster_count
+        native_fanout = {
+            "accounting_basis": "DECLARED_ONE_PASS_NOT_RUNTIME_ENFORCED",
+            "text_window_workers": text_count,
+            "raster_window_workers": raster_count,
+            "raster_version_probes": raster_count,
+            "raster_page_executors": self.declared_page_count,
+            "total_native_child_starts_planned": text_count + 2 * raster_count + self.declared_page_count,
+            "sum_child_cpu_rlimit_seconds": (
+                text_count * text_windows.CPU_SECONDS
+                + raster_count * raster_windows.CPU_SECONDS
+                + raster_count * raster_probe.WALL_SECONDS
+                + self.declared_page_count * raster_executor.CPU_SECONDS
+            ),
+            "aggregate_supervision_enforced": False,
+            "actual_pdf_page_count_verified": False,
+        }
         return {
             "schema_version": "1.0.0", "profile_id": PROFILE_ID,
             "preflight_profile_sha256": self.preflight_profile_sha256,
@@ -231,6 +256,7 @@ class PdfDocumentPreflight:
             "text_windows": [w.to_dict() for w in self.text_plan.windows],
             "raster_windows": [w.to_dict() for w in self.raster_plan.windows],
             "planned_inspector_invocations": planned_calls,
+            "native_process_fanout": native_fanout,
             "current_job_invocation_limit_exceeded": planned_calls > job.MAX_INVOCATIONS,
             "current_job_pdf_budget_exceeded": self.pdf_byte_count > job.MAX_PDF_BYTES,
             "current_job_page_budget_exceeded": self.declared_page_count > job.MAX_PAGES,

@@ -76,6 +76,40 @@ class PdfDocumentPreflightTests(unittest.TestCase):
                 self.assertEqual(result.text_plan.windows[-1].last_page, count)
                 self.assertEqual(result.raster_plan.windows[-1].last_page, count)
 
+    def test_declared_native_process_fanout_accounts_for_raster_helpers_and_cpu_limits(self):
+        """Do not hide per-window probes or per-page raster executors in abstract counts."""
+        # Literals derived from 16-page text and 4-page raster plans and
+        # current 5/20/3/20-second individual child-process CPU limits.
+        cases = (
+            (1, 1, 1, 4, 48),
+            (32, 2, 8, 50, 834),
+            (33, 3, 9, 54, 882),
+            (64, 4, 16, 100, 1668),
+            (129, 9, 33, 204, 3384),
+            (512, 32, 128, 800, 13344),
+        )
+        for pages, text_count, raster_count, starts, cpu_seconds in cases:
+            with self.subTest(pages=pages):
+                receipt = self.preflight(pages=pages)
+                record = receipt.to_dict()
+                self.assertIn("native_process_fanout", record)
+                self.assertEqual(record["native_process_fanout"], {
+                    "accounting_basis": "DECLARED_ONE_PASS_NOT_RUNTIME_ENFORCED",
+                    "text_window_workers": text_count,
+                    "raster_window_workers": raster_count,
+                    "raster_version_probes": raster_count,
+                    "raster_page_executors": pages,
+                    "total_native_child_starts_planned": starts,
+                    "sum_child_cpu_rlimit_seconds": cpu_seconds,
+                    "aggregate_supervision_enforced": False,
+                    "actual_pdf_page_count_verified": False,
+                })
+                self.assertEqual(record["planned_inspector_invocations"],
+                                 4 + text_count + raster_count)
+                self.assertEqual(record["execution_decision"], "DEFERRED_NOT_QUALIFIED")
+                self.assertFalse(record["aggregate_job_resources_qualified"])
+                self.assertFalse(record["release_authorized"])
+
     def test_current_32_page_envelope_still_grants_no_execution(self):
         """Even a legacy-size candidate is metadata-only at this boundary."""
         data = self.preflight(pages=32).to_dict()
