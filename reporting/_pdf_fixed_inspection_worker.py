@@ -6,7 +6,11 @@ controller. Stdin is a single bounded canonical context through a private pipe;
 the source/PDF request is an existing kernel-sealed borrowed descriptor. Stdout
 contains only the complete existing bounded result frame after acceptance.
 
-The kernel parent-death signal covers only this worker, not every descendant.
+The kernel parent-death signal and independent elapsed timer cover only this
+worker, not every descendant. The timer starts at lifetime registration; imports
+and pre-main scratch preparation are outside it. This dedicated process must
+not concurrently mutate its signal/timer policy. Signal delivery is not a hard
+real-time guarantee, including when this worker is stopped or uninterruptible.
 Aggregate CPU/memory/wall/scratch/process enforcement, process-tree cleanup,
 private caller authorization and release remain outside this module. No service
 is installed, no renderer/default route is enabled and no fallback is allowed.
@@ -95,6 +99,30 @@ def native_worker_profile() -> dict:
 
 
 NATIVE_PROFILE_SHA256=sha256(_json_bytes(native_worker_profile())).hexdigest()
+
+
+WORKER_WALL_SECONDS = 300
+
+
+def worker_lifetime_profile() -> dict:
+    """Pin direct-worker termination separately from the unchanged wire profiles."""
+    return {
+        'schema_version': '1.0.0', 'profile_id': 'fixed-pdf-worker-lifetime-v1',
+        'platform': 'linux', 'wall_seconds': WORKER_WALL_SECONDS,
+        'timer': 'ITIMER_REAL', 'interval_seconds': 0,
+        'expiry_signal': 'SIGALRM', 'signal_action': 'SIG_DFL',
+        'signal_unblocked': True, 'parent_death_signal': 'SIGKILL',
+        'preexisting_timer': 'REFUSE',
+        'registration': 'ONCE_BEFORE_KERNEL_ADMISSION_AND_CONTEXT',
+        'scope': 'DIRECT_FIXED_WORKER_UNTIL_PROCESS_EXIT',
+        'startup_and_pre_main_scratch_covered': False,
+        'descendant_cleanup_qualified': False,
+        'hard_job_deadline_enforced': False,
+        'aggregate_job_resources_qualified': False, 'release_authorized': False,
+    }
+
+
+WORKER_LIFETIME_PROFILE_SHA256 = sha256(_json_bytes(worker_lifetime_profile())).hexdigest()
 
 
 _ADMISSION_SWITCH = 'OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1'
@@ -599,10 +627,21 @@ def _parse_context(raw: object) -> dict:
 
 
 def _parent_lifetime(expected_parent: int) -> None:
-    """Require actual Linux parent identity and SIGKILL on this worker's parent death."""
+    """Bind parent death and one independent timer for this dedicated worker only.
+
+    Keep the default-action alarm armed through work, writes, cleanup and exit.
+    A live parent cannot extend it by ceasing to progress. No descendant or
+    hard whole-job deadline qualification follows from this registration.
+    """
     if (type(expected_parent) is not int or expected_parent<=1
             or os.getppid()!=expected_parent):
         raise ValueError('worker launched from unexpected parent')
+    if (type(WORKER_WALL_SECONDS) is not int or WORKER_WALL_SECONDS != 300
+            or structured.ACCEPTANCE_NS != WORKER_WALL_SECONDS * 1_000_000_000
+            or native.ACCEPTANCE_NS != WORKER_WALL_SECONDS * 1_000_000_000
+            or sha256(_json_bytes(worker_lifetime_profile())).hexdigest()
+                != WORKER_LIFETIME_PROFILE_SHA256):
+        raise ValueError('worker lifetime policy invalid')
     libc=ctypes.CDLL(None,use_errno=True)
     prctl=libc.prctl
     prctl.restype=ctypes.c_int
@@ -612,6 +651,12 @@ def _parent_lifetime(expected_parent: int) -> None:
         raise OSError(ctypes.get_errno(),'worker parent-death guard failed')
     if os.getppid()!=expected_parent:
         raise ValueError('worker parent changed while arming lifetime')
+    if signal.getitimer(signal.ITIMER_REAL) != (0.0, 0.0):
+        raise ValueError('worker elapsed timer already configured')
+    signal.signal(signal.SIGALRM, signal.SIG_DFL)
+    signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGALRM})
+    if signal.setitimer(signal.ITIMER_REAL, WORKER_WALL_SECONDS, 0.0) != (0.0, 0.0):
+        raise ValueError('worker elapsed timer changed during registration')
 
 
 def _read_pipe() -> bytes:

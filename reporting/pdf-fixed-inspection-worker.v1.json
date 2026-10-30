@@ -4,6 +4,36 @@
   "dependencies_changed": false,
   "descendant_cleanup_qualified": false,
   "execution_host_qualified": false,
+  "lifetime_policy": {
+    "limitations": [
+      "The independent one-shot timer starts after parent lifetime registration and stays armed until this dedicated worker exits.",
+      "Interpreter startup, imports and pre-main bounded-scratch environment preparation precede registration.",
+      "Signal delivery is not hard real-time and does not qualify a stopped worker, uninterruptible system calls, arbitrary descendants, scratch-file cleanup or reap while the parent is stopped.",
+      "A signaled child is unsuccessful even when a partial or complete frame was written before expiry.",
+      "Unchanged transport profile hashes do not identify the lifecycle implementation; deployment must also bind the pinned source and lifecycle manifest."
+    ],
+    "profile": {
+      "aggregate_job_resources_qualified": false,
+      "descendant_cleanup_qualified": false,
+      "expiry_signal": "SIGALRM",
+      "hard_job_deadline_enforced": false,
+      "interval_seconds": 0,
+      "parent_death_signal": "SIGKILL",
+      "platform": "linux",
+      "preexisting_timer": "REFUSE",
+      "profile_id": "fixed-pdf-worker-lifetime-v1",
+      "registration": "ONCE_BEFORE_KERNEL_ADMISSION_AND_CONTEXT",
+      "release_authorized": false,
+      "schema_version": "1.0.0",
+      "scope": "DIRECT_FIXED_WORKER_UNTIL_PROCESS_EXIT",
+      "signal_action": "SIG_DFL",
+      "signal_unblocked": true,
+      "startup_and_pre_main_scratch_covered": false,
+      "timer": "ITIMER_REAL",
+      "wall_seconds": 300
+    },
+    "profile_sha256": "715b9ff60f0ac65ac9389925f404c72ad464e088d7c3a7084dd0c546d89a234e"
+  },
   "notes": "Optional fixed worker only. Supervisor admission and release separately governed.",
   "optional_kernel_admission": {
     "default_enabled": false,
