@@ -183,11 +183,16 @@ class RasterMetadataBridgeTests(unittest.TestCase):
     def test_bounded_page_passes_only_current_metadata_handle(self):
         """Add no report handles to the direct raster child descriptor allowlist."""
         from reporting import _pdf_raster_window_worker as worker
+        from reporting._pdf_raster_launch_budget import RasterLaunchBudget
         from types import SimpleNamespace
+        budget = RasterLaunchBudget((1,))
+        budget.consume_probe()
+        self.addCleanup(budget.close)
         with patch.dict(os.environ, {"OMNIGENIS_PDF_BOUNDED_SCRATCH_V1": "1"}), \
              scratch.mountinfo_scope() as fd, \
              patch.object(worker.subprocess, "run", return_value=SimpleNamespace(returncode=0)) as run:
-            worker._raster_page('/usr/bin/pdftoppm', Path('/tmp/candidate.pdf'), Path('/tmp/page-1'), 1)
+            worker._raster_page('/usr/bin/pdftoppm', Path('/tmp/candidate.pdf'), Path('/tmp/page-1'), 1,
+                                launch_budget=budget)
             self.assertEqual(run.call_args.kwargs.get('pass_fds'), (fd,))
             self.assertEqual(run.call_args.args[0][-1], str(fd))
             self.assertTrue(run.call_args.kwargs['close_fds'])
@@ -195,10 +200,15 @@ class RasterMetadataBridgeTests(unittest.TestCase):
     def test_bounded_page_without_metadata_fails_before_launch(self):
         """Never attempt an ambient proc fallback from an already confined parent."""
         from reporting import _pdf_raster_window_worker as worker
+        from reporting._pdf_raster_launch_budget import RasterLaunchBudget
+        budget = RasterLaunchBudget((1,))
+        budget.consume_probe()
+        self.addCleanup(budget.close)
         with patch.dict(os.environ, {"OMNIGENIS_PDF_BOUNDED_SCRATCH_V1": "1"}), \
              patch.object(worker.subprocess, 'run') as run:
             with self.assertRaises(scratch.PdfBoundedScratchError):
-                worker._raster_page('/usr/bin/pdftoppm', Path('/tmp/candidate.pdf'), Path('/tmp/page-1'), 1)
+                worker._raster_page('/usr/bin/pdftoppm', Path('/tmp/candidate.pdf'), Path('/tmp/page-1'), 1,
+                                    launch_budget=budget)
             run.assert_not_called()
 
     def test_bounded_executor_refuses_missing_metadata_before_lifetime(self):

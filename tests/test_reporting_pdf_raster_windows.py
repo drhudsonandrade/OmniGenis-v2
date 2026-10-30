@@ -417,10 +417,15 @@ class PdfRasterWindowTests(unittest.TestCase):
     def test_no_host_parser_or_native_protocol_fd_inheritance(self):
         """Parsing runs only in the isolated child and native raster inherits no protocol files."""
         import pypdf
+        from reporting._pdf_raster_launch_budget import RasterLaunchBudget
         with patch.object(pypdf, "PdfReader", side_effect=AssertionError("host parser")):
             self.inspect(window_index=8)
+        budget = RasterLaunchBudget((3,))
+        budget.consume_probe()
+        self.addCleanup(budget.close)
         with tempfile.TemporaryDirectory() as td, patch.object(self.w.subprocess, "run", return_value=Mock(returncode=0)) as native:
-            self.w._raster_page("/usr/bin/pdftoppm", Path(td) / "candidate.pdf", Path(td) / "page", 3)
+            self.w._raster_page("/usr/bin/pdftoppm", Path(td) / "candidate.pdf", Path(td) / "page", 3,
+                                launch_budget=budget)
             self.assertIs(native.call_args.kwargs["close_fds"], True)
             command = native.call_args.args[0]
             self.assertEqual(command[:2], [sys.executable, "-I"])
@@ -518,12 +523,19 @@ class PdfRasterWindowTests(unittest.TestCase):
 
     def test_native_raster_nonzero_and_timeout_are_failures(self):
         """Failed or timed-out native raster commands cannot be mistaken for PNG completion."""
+        from reporting._pdf_raster_launch_budget import RasterLaunchBudget
+        failed_budget, timeout_budget = RasterLaunchBudget((1,)), RasterLaunchBudget((1,))
+        for budget in (failed_budget, timeout_budget):
+            budget.consume_probe()
+            self.addCleanup(budget.close)
         with tempfile.TemporaryDirectory() as td:
             source, prefix = Path(td) / "candidate.pdf", Path(td) / "page"
             with patch.object(self.w.subprocess, "run", return_value=Mock(returncode=2)):
-                with self.assertRaises(ValueError): self.w._raster_page("pdftoppm", source, prefix, 1)
+                with self.assertRaises(ValueError):
+                    self.w._raster_page("pdftoppm", source, prefix, 1, launch_budget=failed_budget)
             with patch.object(self.w.subprocess, "run", side_effect=subprocess.TimeoutExpired("pdftoppm", 8)):
-                with self.assertRaises(subprocess.TimeoutExpired): self.w._raster_page("pdftoppm", source, prefix, 1)
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    self.w._raster_page("pdftoppm", source, prefix, 1, launch_budget=timeout_budget)
 
     def test_live_supervisor_cleans_owned_scratch_on_success_and_failure(self):
         """The live supervisor removes its own scratch after normal and failed native work."""

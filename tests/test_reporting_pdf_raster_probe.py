@@ -169,8 +169,11 @@ class RasterVersionProbeTests(unittest.TestCase):
 
     def test_actual_launch_is_isolated_and_has_no_protocol_inheritance(self):
         """The fixed command and narrow environment contain no caller PDF or shell input."""
+        from reporting._pdf_raster_launch_budget import RasterLaunchBudget
+        budget = RasterLaunchBudget()
+        self.addCleanup(budget.close)
         with tempfile.TemporaryFile() as output, patch.object(self.m.subprocess, "Popen") as start:
-            self.m._start(output)
+            self.m._start(output, launch_budget=budget)
             args = start.call_args
             self.assertEqual(args.args[0], [sys.executable, "-I", str(ROOT / "reporting/_pdf_raster_probe.py"), str(os.getpid())])
             self.assertEqual(args.kwargs["env"], {"PATH": os.defpath, "LANG": "C.UTF-8"})
@@ -344,8 +347,11 @@ class RasterVersionProbeTests(unittest.TestCase):
 
     def test_nonzero_probe_does_not_read_partial_output(self):
         """Native failure cannot expose even a well-shaped partial version banner."""
+        from reporting._pdf_raster_launch_budget import RasterLaunchBudget
+        budget = RasterLaunchBudget()
+        self.addCleanup(budget.close)
         with patch.object(self.m, "_start"), patch.object(self.m, "_wait", return_value=1), patch.object(self.m, "_read_output") as read:
-            with self.assertRaises(ValueError): self.m._run_probe()
+            with self.assertRaises(ValueError): self.m._run_probe(launch_budget=budget)
             read.assert_not_called()
 
     def test_output_mutation_during_read_is_rejected(self):

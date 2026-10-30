@@ -22,6 +22,7 @@ if __name__ == "__main__":
 from reporting._pdf_process_sandbox import enforce_pdf_landlock, enforce_pdf_network_filter
 from reporting._pdf_render_worker import _arm_worker_lifetime
 from reporting._pdf_raster_executor import TOOL_PATH, _file_identity, _open_executable
+from reporting._pdf_raster_launch_budget import RasterLaunchBudget, _require_launch_budget
 from reporting._pdf_visual_worker import MEMORY_BYTES, TOOL_SHA256, TOOL_VERSION
 
 WALL_SECONDS = 3
@@ -74,11 +75,13 @@ def _exec_version(fd: int) -> None:
     os.execve(fd, [TOOL_PATH, "-v"], {"PATH": os.defpath, "LANG": "C.UTF-8"})
 
 
-def _start(output) -> subprocess.Popen:
-    """Pass no report descriptors, shell, arbitrary executable or inherited environment."""
+def _start(output, *, launch_budget: RasterLaunchBudget) -> subprocess.Popen:
+    """Consume the probe attempt, passing no report descriptors or arbitrary command input."""
+    command = [sys.executable, "-I", str(Path(__file__).resolve()), str(os.getpid())]
+    cwd = Path(__file__).resolve().parents[1]
+    _require_launch_budget(launch_budget).consume_probe()
     return subprocess.Popen(
-        [sys.executable, "-I", str(Path(__file__).resolve()), str(os.getpid())],
-        cwd=Path(__file__).resolve().parents[1], env={"PATH": os.defpath, "LANG": "C.UTF-8"},
+        command, cwd=cwd, env={"PATH": os.defpath, "LANG": "C.UTF-8"},
         stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
         close_fds=True, shell=False,
     )
@@ -108,11 +111,11 @@ def _read_output(output) -> bytes:
     return data
 
 
-def _run_probe() -> bytes:
-    """Capture both native streams in one bounded anonymous file, never an output pipe."""
+def _run_probe(*, launch_budget: RasterLaunchBudget) -> bytes:
+    """Use the supplied allowance and capture both streams in one bounded anonymous file."""
     with tempfile.TemporaryFile() as output:
         _validate_output(output.fileno(), output.fileno())
-        process = _start(output)
+        process = _start(output, launch_budget=launch_budget)
         if _wait(process) != 0:
             raise ValueError("version probe failed")
         return _read_output(output)
@@ -128,14 +131,23 @@ def _decode_version(data: bytes) -> tuple[str, str, str]:
     return TOOL_VERSION, TOOL_SHA256, TOOL_PATH
 
 
-def _tool_identity() -> tuple[str, str, str]:
-    """Return the verified native identity or a fixed failure with no legacy fallback."""
+def _tool_identity(*, launch_budget: RasterLaunchBudget | None = None) -> tuple[str, str, str]:
+    """Preserve standalone one-probe queries or use the worker's explicit shared allowance."""
     if sys.platform != "linux" or os.environ.get("OMNIGENIS_PDF_RASTER_WINDOWS_DISABLED") == "1":
         raise OSError("pdf_raster_version_probe_unavailable")
+    owned = launch_budget is None
+    budget = RasterLaunchBudget() if owned else launch_budget
     try:
-        return _decode_version(_run_probe())
+        _require_launch_budget(budget)
+        identity = _decode_version(_run_probe(launch_budget=budget))
+        if owned:
+            budget.require_complete()
+        return identity
     except Exception:
         raise OSError("pdf_raster_version_probe_failed") from None
+    finally:
+        if owned:
+            budget.close()
 
 
 def main(argv: list[str] | None = None) -> int:
