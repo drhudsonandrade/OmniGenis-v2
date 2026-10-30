@@ -77,7 +77,8 @@ def lifetime_child(request_fd: int, report_fd: int, mode: str, inherited: str) -
             raise OSError('test timer failure')
         if mode == 'negative_control':
             return real_gettimer(which)
-        return real_timer(which, 0.4 if seconds else 0, interval)
+        shortened = 5.0 if mode == 'complete' else 0.4
+        return real_timer(which, shortened if seconds else 0, interval)
 
     signal.signal = disposition
     signal.pthread_sigmask = mask
