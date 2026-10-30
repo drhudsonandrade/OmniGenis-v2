@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import ast
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import FrozenInstanceError, replace
 from hashlib import sha256
 from io import BytesIO
@@ -15,12 +15,14 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 import zlib
 
 from pypdf import PdfReader
 from reporting import _pdf_tounicode_cmap_frame_worker as cmap_frame
+from reporting import _pdf_native_launch_budget as launch_budget
 from reporting import pdf_structured_source_job as structured
 from reporting import pdf_tounicode_width_coverage as native
 from reporting.page_windows import plan_pdf_page_windows
@@ -302,6 +304,113 @@ class PdfNativeSourceJobTests(unittest.TestCase):
                 self.assertRaises(self.m.PdfNativeSourceJobError):
             self.run_job(page_count=1)
         self.assertEqual(calls[0], 5)
+
+    def terminal_foreign_attempt(self, timing):
+        """Pause owner lifecycle only; keep original completion, cleanup and guards real."""
+        ready = threading.Event()
+        finished = threading.Event()
+        unexpected = []
+        spawned = []
+        foreign_rejected = []
+        owner_result = None
+        owner_rejected = False
+        clock_calls = [0]
+        original_close = launch_budget.NativeLaunchScope.close
+
+        def child(*args, **kwargs):
+            """Observe only the foreign attempt actually crossing the Popen boundary."""
+            spawned.append(args)
+            return object()
+
+        def foreign():
+            """Attempt the real shared launcher from a real thread at the selected barrier."""
+            try:
+                if not ready.wait(timeout=5):
+                    raise AssertionError("owner never reached terminal barrier")
+                plan = self.stage_inputs[NATIVE]["plan"]
+                try:
+                    launch_one(launch_specs(plan)[0], self.pdf, child=child)
+                except ValueError:
+                    foreign_rejected.append(True)
+            except BaseException as error:
+                unexpected.append(error)
+            finally:
+                finished.set()
+
+        def wait_for_foreign():
+            """Let the foreign guard finish before the paused owner transition resumes."""
+            ready.set()
+            if not finished.wait(timeout=5):
+                unexpected.append(AssertionError("foreign guard did not finish at terminal barrier"))
+
+        def coordinated_close(scope):
+            """Wrap timing around, but never replace, the original unconditional cleanup."""
+            if timing == "before_cleanup":
+                try:
+                    wait_for_foreign()
+                finally:
+                    original_close(scope)
+            else:
+                original_close(scope)
+                wait_for_foreign()
+
+        def coordinated_clock():
+            """Pause the last source/result/clock acceptance check before terminal acceptance."""
+            clock_calls[0] += 1
+            if clock_calls[0] == 5:
+                wait_for_foreign()
+            return 0
+
+        with self.mocked():
+            with ExitStack() as stack:
+                if timing == "before_terminal":
+                    stack.enter_context(patch.object(self.m, "monotonic_ns", side_effect=coordinated_clock))
+                else:
+                    stack.enter_context(patch.object(launch_budget.NativeLaunchScope, "close",
+                                                    new=coordinated_close))
+                thread = threading.Thread(target=foreign, daemon=True)
+                thread.start()
+                try:
+                    try:
+                        owner_result = self.run_job(page_count=1)
+                    except self.m.PdfNativeSourceJobError:
+                        owner_rejected = True
+                finally:
+                    ready.set()
+                    thread.join(timeout=5)
+                self.assertFalse(thread.is_alive(), "foreign thread remained blocked")
+        self.assertEqual(unexpected, [])
+        self.assertEqual(len(foreign_rejected), int(not spawned))
+        self.assertLessEqual(len(spawned), 1)
+        launch_budget.require_no_active_scope()
+        with self.mocked():
+            subsequent = self.run_job(page_count=1)
+        self.assertEqual(subsequent.page_count, 1)
+        if owner_result is not None:
+            self.assertEqual(owner_result.page_count, 1)
+        self.assertEqual(owner_result is None, owner_rejected)
+        if timing == "before_terminal":
+            self.assertEqual(clock_calls[0], 5)
+        return owner_rejected, bool(foreign_rejected), len(spawned)
+
+    def test_terminal_foreign_refusal_cannot_coexist_with_owner_success(self):
+        """A refused active-scope attempt after final validation must defeat owner success."""
+        owner_rejected, foreign_rejected, spawned = self.terminal_foreign_attempt("before_cleanup")
+        # This invariant deliberately allows the other legitimate linearization:
+        # atomic acceptance already deactivated the job, so the foreign call is
+        # standalone and both calls succeed. It must never be refused as active
+        # while the owner nevertheless returns success.
+        self.assertEqual(owner_rejected, foreign_rejected,
+                         "foreign guard refused/poisoned an active job but owner returned success")
+        self.assertEqual(spawned, 0 if foreign_rejected else 1)
+
+    def test_foreign_attempt_before_terminal_acceptance_refuses_and_rejects_owner(self):
+        """A real foreign call during the final check poisons before any acceptance point."""
+        self.assertEqual(self.terminal_foreign_attempt("before_terminal"), (True, True, 0))
+
+    def test_foreign_attempt_after_owner_cleanup_is_legitimately_standalone(self):
+        """After real owner deactivation the unchanged standalone launcher may spawn."""
+        self.assertEqual(self.terminal_foreign_attempt("after_cleanup"), (False, False, 1))
 
     def test_unexpected_actual_launcher_is_refused_before_popen(self):
         """An out-of-order shared launcher must not spawn during the native job."""

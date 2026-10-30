@@ -172,21 +172,37 @@ class NativeLaunchScope:
     def close(self) -> None:
         """Close idempotently without letting stale or foreign scopes clear another owner."""
         global _ACTIVE
-        self._owner()
+        if os.getpid() != self._pid:
+            self._invalid = True
+            raise ValueError("native launch foreign process")
         _before_lock()
         with _LOCK:
+            self._owner()
             self._closed = True
             if _ACTIVE is self:
                 _ACTIVE = None
+
+    def _require_complete(self) -> None:
+        """Check live ownership and exact completion while the shared lock is held."""
+        self._active()
+        if self._next != len(self._attempts):
+            self._invalid = True
+            raise ValueError("native launch schedule incomplete")
 
     def require_complete(self) -> None:
         """Reject poisoned state or any missing direct attempt before result acceptance."""
         _before_lock()
         with _LOCK:
-            self._active()
-            if self._next != len(self._attempts):
-                self._invalid = True
-                raise ValueError("native launch schedule incomplete")
+            self._require_complete()
+
+    def complete_and_close(self) -> None:
+        """Atomically accept the complete unpoisoned job and deactivate its identical slot."""
+        global _ACTIVE
+        _before_lock()
+        with _LOCK:
+            self._require_complete()
+            self._closed = True
+            _ACTIVE = None
 
     def _consume(self, kind: str, command: object, fds: object, scratch: object) -> None:
         """Validate and spend the next exact request while the short-held lock is owned."""

@@ -299,7 +299,7 @@ def execute_pdf_native_source_job(
         )
         result.to_bytes()
         check()
-        launches.require_complete()
+        launches.complete_and_close()
         return result
     except Exception:
         raise PdfNativeSourceJobError("pdf_native_source_job_execution_failed") from None
