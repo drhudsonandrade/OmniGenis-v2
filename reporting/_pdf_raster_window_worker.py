@@ -26,6 +26,7 @@ if __name__ == "__main__":
 
 from reporting import _pdf_bounded_scratch as mount_metadata
 from reporting._pdf_process_sandbox import enforce_pdf_landlock, enforce_pdf_network_filter
+from reporting._pdf_raster_launch_budget import RasterLaunchBudget, _require_launch_budget
 from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
 from reporting._pdf_text_window_worker import (
     IDENTITY_FIELDS, MAX_DOCUMENT_PAGES, MAX_PDF_BYTES, _is_digest,
@@ -105,17 +106,20 @@ def _geometry(page) -> tuple[int, int]:
     return _expected_pixels(page)
 
 
-def _raster_page(tool: str, source: Path, prefix: Path, number: int) -> Path:
-    """Launch the pinned native rasterizer through its isolated direct-parent lifetime guard."""
+def _raster_page(tool: str, source: Path, prefix: Path, number: int, *,
+                 launch_budget: RasterLaunchBudget) -> Path:
+    """Consume the selected page attempt before invoking the isolated lifetime guard."""
     metadata_args = []
     metadata_options = {}
     if mount_metadata.bounded_scratch_requested():
         fd = mount_metadata.active_mountinfo_fd()
         metadata_args = [str(fd)]
         metadata_options = {"pass_fds": (fd,)}
+    command = [sys.executable, "-I", str(Path(__file__).resolve().with_name("_pdf_raster_executor.py")),
+               str(os.getpid()), tool, str(source), str(prefix), str(number)] + metadata_args
+    _require_launch_budget(launch_budget).consume_page(number)
     result = subprocess.run(
-        [sys.executable, "-I", str(Path(__file__).resolve().with_name("_pdf_raster_executor.py")),
-         str(os.getpid()), tool, str(source), str(prefix), str(number)] + metadata_args, stdin=subprocess.DEVNULL,
+        command, stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
         timeout=PAGE_WALL_SECONDS, check=False, shell=False, **metadata_options,
     )
@@ -175,30 +179,37 @@ def _inspect(pdf: bytes, identity: dict, scratch: Path) -> dict:
     reader = PdfReader(BytesIO(pdf), strict=True)
     if reader.is_encrypted or len(reader.pages) != identity["page_count"]:
         raise ValueError("raster physical page count")
-    expected = [_geometry(reader.pages[n - 1]) for n in range(identity["first_page"], identity["last_page"] + 1)]
+    pages = tuple(range(identity["first_page"], identity["last_page"] + 1))
+    expected = [_geometry(reader.pages[n - 1]) for n in pages]
     if sum(w * h for w, h in expected) > MAX_TOTAL_PIXELS:
         raise ValueError("raster selected pixel budget")
-    tool_version, tool_hash, tool = _tool_identity()
-    if tool_version != TOOL_VERSION or tool_hash != TOOL_SHA256:
-        raise ValueError("raster executable identity")
-    aggregate = hashlib.sha256()
-    total_pixels = inspected = 0
-    minimum = None
-    with tempfile.TemporaryDirectory(prefix="raster-window-", dir=scratch) as td:
-        root = Path(td); source = root / "candidate.pdf"
-        source.write_bytes(pdf)
-        for number, geometry in zip(range(identity["first_page"], identity["last_page"] + 1), expected, strict=True):
-            image_path = _raster_page(tool, source, root / f"page-{number}", number)
-            width, height, pixels, margin, pixel_hash = _read_raster(image_path, geometry)
-            total_pixels += pixels
-            if total_pixels > MAX_TOTAL_PIXELS:
-                raise ValueError("raster selected pixel budget")
-            aggregate.update(f"{number}:{width}:{height}:{pixel_hash}\n".encode("ascii"))
-            minimum = margin if minimum is None else min(minimum, margin)
-            inspected += 1
-            image_path.unlink()
-    return {"status": "WINDOW_RASTER_INSPECTED", "raster_sha256": aggregate.hexdigest(),
-            "inspected_pages": inspected, "total_pixels": total_pixels, "min_edge_margin_px": minimum}
+    launch_budget = RasterLaunchBudget(pages)
+    try:
+        tool_version, tool_hash, tool = _tool_identity(launch_budget=launch_budget)
+        if tool_version != TOOL_VERSION or tool_hash != TOOL_SHA256:
+            raise ValueError("raster executable identity")
+        aggregate = hashlib.sha256()
+        total_pixels = inspected = 0
+        minimum = None
+        with tempfile.TemporaryDirectory(prefix="raster-window-", dir=scratch) as td:
+            root = Path(td); source = root / "candidate.pdf"
+            source.write_bytes(pdf)
+            for number, geometry in zip(pages, expected, strict=True):
+                image_path = _raster_page(tool, source, root / f"page-{number}", number,
+                                          launch_budget=launch_budget)
+                width, height, pixels, margin, pixel_hash = _read_raster(image_path, geometry)
+                total_pixels += pixels
+                if total_pixels > MAX_TOTAL_PIXELS:
+                    raise ValueError("raster selected pixel budget")
+                aggregate.update(f"{number}:{width}:{height}:{pixel_hash}\n".encode("ascii"))
+                minimum = margin if minimum is None else min(minimum, margin)
+                inspected += 1
+                image_path.unlink()
+        launch_budget.require_complete()
+        return {"status": "WINDOW_RASTER_INSPECTED", "raster_sha256": aggregate.hexdigest(),
+                "inspected_pages": inspected, "total_pixels": total_pixels, "min_edge_margin_px": minimum}
+    finally:
+        launch_budget.close()
 
 
 def main(argv: list[str] | None = None) -> int:

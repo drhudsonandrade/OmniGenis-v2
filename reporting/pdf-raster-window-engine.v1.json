@@ -26,6 +26,7 @@
     "Default 32-page/8-MiB whole-file validation is unchanged; optional 512-page admission does not establish final report qualification.",
     "The direct per-page native renderer registers its own parent-death signal and eight-second interval timer before descriptor-based exec. Interpreter startup before registration, arbitrary descendants, aggregate job resources and scratch cleanup after abrupt supervisor death remain unqualified. The version query uses a separately bounded direct-child launcher; the legacy whole-file version probe is unchanged.",
     "The opt-in bounded route passes one verified read-only procfs mountinfo descriptor to the direct Python raster launcher and closes it before native binary execution. Report descriptors remain excluded. This is not complete OS or same-UID isolation.",
+    "One creator-PID/thread-local allowance limits each optional window to one version-probe attempt and its exact selected raster-page attempts. It is not a cross-window ledger, authenticated execution evidence or aggregate job resource qualification.",
     "Temporary scratch can remain after abrupt supervisor death. External job lifecycle and resource supervision are required.",
     "Only the existing pinned Poppler binary, pypdf and Pillow versions are admitted; source hashes record exact shared helper dependencies."
   ],
@@ -48,6 +49,27 @@
     "startup_before_registration_covered": false,
     "timer": "ITIMER_REAL / SIGALRM default action"
   },
+  "native_launch_accounting": {
+    "aggregate_job_resources_qualified": false,
+    "authenticated_execution_evidence": false,
+    "completion": "Exact admitted attempt sequence required before inspection return; allowance closed on success or failure",
+    "consumption": "Immediately before Popen or subprocess.run; failed launches remain consumed and invalid operations poison the allowance",
+    "cross_window_accounting": false,
+    "helper_path": "reporting/_pdf_raster_launch_budget.py",
+    "helper_sha256": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
+    "hostile_code_boundary": false,
+    "maximum_selected_pages": 4,
+    "probe_path": "reporting/_pdf_raster_probe.py",
+    "probe_sha256": "f20284855e6392dc5b318a150eea479bfe01e9ed716d47b30f5c34b54398eed0",
+    "profile_id": "generated-pdf-window-local-launch-budget-v1",
+    "raster_executor_attempts": "One per exact selected consecutive physical page, in ascending order after the probe attempt",
+    "refunds": false,
+    "retries": 0,
+    "scope": "One synchronous optional raster window in its creator PID and thread",
+    "version_probe_attempts": 1,
+    "worker_path": "reporting/_pdf_raster_window_worker.py",
+    "worker_sha256": "8755dcdb5aedb39ec0dce9f5b619a79b60960541a13254858cd32e6d0c46e8a1"
+  },
   "native_version_probe": {
     "aggregate_job_resources_qualified": false,
     "arbitrary_descendant_cleanup_claimed": false,
@@ -58,7 +80,7 @@
     "guards": "Direct-parent registration, timer, resource limits, read-only Landlock and network filter before executable reads",
     "independent_wall_seconds": 3,
     "launcher_path": "reporting/_pdf_raster_probe.py",
-    "launcher_sha256": "d9ca8b04ad8b950c7f89a10973e59d46b307435d2baf02ae40b67e16857b59dc",
+    "launcher_sha256": "f20284855e6392dc5b318a150eea479bfe01e9ed716d47b30f5c34b54398eed0",
     "legacy_whole_file_probe_changed": false,
     "memory_bytes": 536870912,
     "open_files": 128,
@@ -106,6 +128,7 @@
   "reused_source_sha256": {
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
     "reporting/_pdf_raster_executor.py": "5062b2cc9740a8063e3fcc2f063b5baaa95b0e3a22bf803f17d20701c2df899e",
+    "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
     "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
     "reporting/_pdf_text_window_worker.py": "c5176a6987b46f484ba4989bbbbee9383906094545ada7ed806bd53dad3b81a1",
     "reporting/_pdf_visual_worker.py": "00564cacfb041488cfc88c36be391b280ab4c77b49f0e5e180d66a8ea70f9c91",

@@ -238,8 +238,13 @@ class RasterExecutorLifecycleTests(unittest.TestCase):
 
     def test_worker_command_routes_through_isolated_helper(self):
         """The actual raster call preserves native arguments behind the narrow launcher."""
+        from reporting._pdf_raster_launch_budget import RasterLaunchBudget
+        budget = RasterLaunchBudget((2,))
+        budget.consume_probe()
+        self.addCleanup(budget.close)
         with patch.object(self.w.subprocess, "run", return_value=Mock(returncode=0)) as call:
-            self.w._raster_page(TOOL, Path("/tmp/candidate.pdf"), Path("/tmp/page-2"), 2)
+            self.w._raster_page(TOOL, Path("/tmp/candidate.pdf"), Path("/tmp/page-2"), 2,
+                                launch_budget=budget)
         command = call.call_args.args[0]
         self.assertEqual(command[:2], [sys.executable, "-I"])
         self.assertEqual(Path(command[2]).name, "_pdf_raster_executor.py")
