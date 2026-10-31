@@ -13,9 +13,11 @@
     "Rechecks observe snapshots; selected event-counter continuity does not establish continuous monitoring.",
     "Events after the final pre-write observation are outside the observed interval.",
     "PID-event coverage depends on the running kernel; arbitrary descendant coverage is not qualified.",
-    "Inherited process CPU limits and cgroup bandwidth are not cumulative job CPU budgets.",
+    "The cumulative CPU acceptance allowance observes cpu.stat deltas; inherited process limits and cgroup bandwidth do not continuously enforce it.",
     "Free scratch space may change; the policy observes total capacity and inodes.",
-    "A failed pipe write may leave a prefix; partial output is never acceptance."
+    "A failed pipe write may leave a prefix; partial output is never acceptance.",
+    "CPU usage before the admission baseline or after the final pre-write observation is outside this acceptance interval.",
+    "The observed cgroup is not authenticated as exclusive to one job; unrelated usage may cause conservative refusal."
   ],
   "profile": {
     "aggregate_job_resources_qualified": false,
@@ -29,6 +31,20 @@
     "cgroup_mount_readonly": true,
     "cgroup_path": "/system.slice/omnigenis-pdf-fixed-inspection-v1.service",
     "cgroup_type": "domain",
+    "cumulative_cpu_acceptance": {
+      "allowance_origin": "IMMUTABLE_ADMISSION_BASELINE",
+      "baseline": "FIRST_SUCCESSFUL_ADMISSION_BEFORE_CONTEXT",
+      "continuity": "USAGE_NONDECREASING_FROM_LATEST_ACCEPTED_OBSERVATION",
+      "continuous_enforcement": false,
+      "job_cgroup_exclusivity_verified": false,
+      "max_counter": 18446744073709551615,
+      "max_delta_usec_exclusive": 300000000,
+      "max_record_bytes": 4096,
+      "refusal": "DELTA_AT_OR_ABOVE_ALLOWANCE",
+      "required_counter": "usage_usec",
+      "scope": "OBSERVED_NAMESPACE_LOCAL_CGROUP_CPU_DELTA",
+      "source": "cpu.stat"
+    },
     "default_pipeline_activated": false,
     "descendant_cleanup_qualified": false,
     "forbidden_cgroup_superoptions": [
@@ -92,10 +108,10 @@
         ]
       },
       "scope": "NAMESPACE_LOCAL_CGROUP_COUNTERS",
-      "snapshot_update": "BOTH_RECORDS_AFTER_VALIDATION"
+      "snapshot_update": "EVENT_AND_CPU_RECORDS_AFTER_VALIDATION"
     },
     "retained_descriptors_required": true,
-    "schema_version": "1.0.0",
+    "schema_version": "1.1.0",
     "scratch_bytes": 134217728,
     "scratch_inodes": 4096,
     "scratch_mode": "1777",
@@ -113,13 +129,13 @@
     "unprivileged_process_required": true,
     "zero_capability_sets_required": true
   },
-  "profile_sha256": "2f9ebad864d2b74641489cdca9798fe7fce4ee34b5de2fd0d5002fc6507591f4",
+  "profile_sha256": "4684c54f07c27aedd39113323d3fb9e0e8297d5958025f015d04031080006d01",
   "profile_values_are": "EXPLICIT_OPTIONAL_POLICY_NOT_MEASURED_CAPACITY",
   "release_authorized": false,
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "service_installed": false,
   "source_sha256": {
     "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a",
-    "reporting/_pdf_fixed_inspection_worker.py": "e156f113bb7d9c1ab6e047fcd418f2fd2ea361bf2e50611c8ad03f0965339eed"
+    "reporting/_pdf_fixed_inspection_worker.py": "e291b349df9eb98dc5516b5a197bb81748ccde61d65a1a4dd8eeb2184d6dc6f1"
   }
 }
