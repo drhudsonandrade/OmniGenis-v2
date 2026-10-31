@@ -117,7 +117,7 @@ class PdfNativeWallBudgetTests(unittest.TestCase):
     def test_successful_first_wait_does_not_reset_later_wait_budget(self):
         """Two individually short stages share the original cumulative deadline."""
         with self.scope():
-            self.now = 299_800_000_000
+            self.now = 295_000_000_000
             with self.child(0, seconds=0) as first:
                 self.assertEqual(graph._wait(first), 0)
                 self.assert_reaped(first)
