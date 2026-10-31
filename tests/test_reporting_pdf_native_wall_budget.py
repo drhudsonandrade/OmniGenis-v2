@@ -1,10 +1,16 @@
 """Cumulative native deadlines at real launcher and owned-child wait boundaries."""
 from contextlib import contextmanager
 from hashlib import sha256
+import ctypes
+import json
 import os
+from pathlib import Path
+import select
 import signal
 import subprocess
 import sys
+import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -235,6 +241,56 @@ class PdfNativeWallBudgetTests(unittest.TestCase):
                 self.assertEqual(caught.exception.timeout, 0.03)
                 self.assert_reaped(process)
 
+
+    @unittest.skipUnless(
+        sys.platform == "linux" and hasattr(os, "pidfd_open")
+        and hasattr(os, "P_PIDFD") and hasattr(signal, "pidfd_send_signal")
+        and hasattr(ctypes.CDLL(None), "prctl"),
+        "Linux pidfd and subreaper facilities required")
+    def assert_descendant_wait(self, index, *, signal_group, expected_exit):
+        """Run subreaper state in a disposable probe, outside the suite process."""
+        root = Path(__file__).resolve().parents[1]
+        code = ("import json,sys;sys.path.insert(0," + repr(str(root)) + ");"
+                "from tests.test_reporting_pdf_native_wall_budget import native_descendant_probe;"
+                "print(json.dumps(native_descendant_probe("
+                + repr(index) + ", " + repr(signal_group) + ")))")
+        completed = subprocess.run(
+            [sys.executable, "-I", "-B", "-c", code], cwd=root,
+            capture_output=True, text=True, timeout=30)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual(result["timeout"], 0.05)
+        self.assertEqual(result["direct_exit"], -signal.SIGKILL)
+        self.assertTrue(result["direct_reaped"])
+        self.assertTrue(result["group_identity_held"])
+        self.assertTrue(result["scope_poisoned"])
+        self.assertEqual(result["descendant_exited"], expected_exit)
+        self.assertEqual(result["descendant_signal"], signal.SIGKILL if expected_exit else None)
+
+    def test_object_capped_wait_terminates_original_group_descendant(self):
+        """A shared object wait timeout must retire the controlled descendant."""
+        self.assert_descendant_wait(0, signal_group=True, expected_exit=True)
+
+    def test_text_capped_wait_terminates_original_group_descendant(self):
+        """A shared text wait timeout must retire the controlled descendant."""
+        self.assert_descendant_wait(21, signal_group=True, expected_exit=True)
+
+    def test_raster_capped_wait_terminates_original_group_descendant(self):
+        """A shared raster wait timeout must retire the controlled descendant."""
+        self.assert_descendant_wait(22, signal_group=True, expected_exit=True)
+
+    def test_object_capped_wait_detects_suppressed_group_cleanup(self):
+        """Direct-child cleanup alone cannot satisfy the object descendant oracle."""
+        self.assert_descendant_wait(0, signal_group=False, expected_exit=False)
+
+    def test_text_capped_wait_detects_suppressed_group_cleanup(self):
+        """Direct-child cleanup alone cannot satisfy the text descendant oracle."""
+        self.assert_descendant_wait(21, signal_group=False, expected_exit=False)
+
+    def test_raster_capped_wait_detects_suppressed_group_cleanup(self):
+        """Direct-child cleanup alone cannot satisfy the raster descendant oracle."""
+        self.assert_descendant_wait(22, signal_group=False, expected_exit=False)
+
     def test_invalid_start_never_leaves_an_active_scope(self):
         """Bad initial clocks fail before occupying the process-wide owner slot."""
         for invalid in (True, -1, 1.5, "1"):
@@ -249,6 +305,141 @@ class PdfNativeWallBudgetTests(unittest.TestCase):
             for spec in self.specs:
                 launch_one(spec, self.pdf)
             scope.complete_and_close()
+
+
+def native_descendant_probe(index, signal_group):
+    """Observe original-group cleanup before fallback in a disposable subreaper."""
+    if ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) != 0:
+        raise RuntimeError("test subreaper unavailable")
+    module = {0: graph, 21: text, 22: raster}[index]
+    case = PdfNativeWallBudgetTests()
+    case.setUp()
+    real_killpg = os.killpg
+    process = None
+    direct_fd = descendant_fd = descendant_pid = None
+    descendant_reaped = False
+    ownership = []
+    with tempfile.TemporaryDirectory(prefix="native-wall-descendant-") as directory:
+        marker = Path(directory) / "ready"
+        script = (
+            "import os,time\nfrom pathlib import Path\nchild=os.fork()\n"
+            "if child == 0:\n"
+            " marker=Path(" + repr(str(marker)) + ")\n"
+            " temporary=marker.with_suffix('.tmp')\n"
+            " temporary.write_text(str(os.getpid()),encoding='ascii')\n"
+            " temporary.replace(marker)\n"
+            "time.sleep(60)\nos._exit(0)\n")
+
+        def launch(*args, **kwargs):
+            """Pin both live identities before the artificial short wait starts."""
+            nonlocal process, direct_fd, descendant_fd, descendant_pid
+            process = _REAL_POPEN([sys.executable, "-I", "-B", "-c", script], **kwargs)
+            direct_fd = os.pidfd_open(process.pid)
+            deadline = time.monotonic() + 5
+            while not marker.exists():
+                if time.monotonic() >= deadline:
+                    raise AssertionError("test descendant readiness missing")
+                time.sleep(0.005)
+            descendant_pid = int(marker.read_text(encoding="ascii"))
+            descendant_fd = os.pidfd_open(descendant_pid)
+            case.assertFalse(select.select([direct_fd, descendant_fd], [], [], 0)[0])
+            case.assertEqual(os.getpgid(process.pid), process.pid)
+            case.assertEqual(os.getpgid(descendant_pid), process.pid)
+            case.assertIn("PPid:\t" + str(process.pid) + "\n",
+                          Path(f"/proc/{descendant_pid}/status").read_text())
+            return process
+
+        def signal_owned_group(pid, sig):
+            """Observe unreaped ownership and optionally suppress only group signal."""
+            case.assertEqual((pid, sig), (process.pid, signal.SIGKILL))
+            case.assertIsNone(process.returncode)
+            observed = os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+            if observed is not None:
+                case.assertEqual(observed.si_pid, pid)
+            ownership.append(True)
+            if signal_group:
+                real_killpg(pid, sig)
+
+        try:
+            with case.scope() as scope:
+                for spec in case.specs[:index]:
+                    launch_one(spec, case.pdf)
+                launch_one(case.specs[index], case.pdf, child=launch)
+                case.now = 299_950_000_000
+                with patch.object(os, "killpg", side_effect=signal_owned_group):
+                    with case.assertRaises(subprocess.TimeoutExpired) as caught:
+                        module._wait(process)
+                case.assertEqual(caught.exception.timeout, 0.05)
+                case.assert_reaped(process)
+                case.assertEqual(process.returncode, -signal.SIGKILL)
+                case.assertEqual(ownership, [True])
+
+                # Both outcomes are observed before the fixture terminates survivors.
+                exited = bool(select.select([descendant_fd], [], [], 1)[0])
+                exit_signal = None
+                if exited:
+                    observed = os.waitid(os.P_PIDFD, descendant_fd, os.WEXITED | os.WNOHANG)
+                    case.assertIsNotNone(observed)
+                    descendant_reaped = True
+                    case.assertEqual(observed.si_pid, descendant_pid)
+                    case.assertEqual(observed.si_code, os.CLD_KILLED)
+                    exit_signal = observed.si_status
+
+                # Keep the native clock valid: refusal must come from timeout poison.
+                if index + 1 < len(case.specs):
+                    crossed = []
+                    with case.assertRaises(ValueError):
+                        launch_one(case.specs[index + 1], case.pdf,
+                                   child=lambda *args, **kwargs: crossed.append(args))
+                    case.assertEqual(crossed, [])
+                else:
+                    # Raster consumed the last valid attempt; completion would otherwise pass.
+                    with case.assertRaises(ValueError):
+                        scope.complete_and_close()
+                return {"timeout": caught.exception.timeout, "direct_exit": process.returncode,
+                        "direct_reaped": True, "group_identity_held": ownership == [True],
+                        "scope_poisoned": True, "descendant_exited": exited,
+                        "descendant_signal": exit_signal}
+        finally:
+            try:
+                # If setup failed before pinning the descendant, the unreaped leader
+                # still reserves its original group. Never signal that group after reap.
+                if process is not None and process.returncode is None and descendant_fd is None:
+                    os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                    try:
+                        real_killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                for descriptor in (descendant_fd, direct_fd):
+                    if descriptor is not None:
+                        try:
+                            signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                if process is not None:
+                    process.wait(timeout=3)
+                if descendant_fd is not None and not descendant_reaped:
+                    if not select.select([descendant_fd], [], [], 3)[0]:
+                        raise RuntimeError("test descendant cleanup unresolved")
+                    observed = os.waitid(os.P_PIDFD, descendant_fd, os.WEXITED | os.WNOHANG)
+                    if observed is None or observed.si_pid != descendant_pid:
+                        raise RuntimeError("test descendant reap unresolved")
+                elif descendant_fd is None and process is not None:
+                    # Setup failures may leave an adopted child without a pidfd.
+                    deadline = time.monotonic() + 3
+                    while True:
+                        try:
+                            pid, _ = os.waitpid(-1, os.WNOHANG)
+                        except ChildProcessError:
+                            break
+                        if pid == 0:
+                            if time.monotonic() >= deadline:
+                                raise RuntimeError("test adopted descendant cleanup unresolved")
+                            time.sleep(0.005)
+            finally:
+                for descriptor in (descendant_fd, direct_fd):
+                    if descriptor is not None:
+                        os.close(descriptor)
 
 
 if __name__ == "__main__":
