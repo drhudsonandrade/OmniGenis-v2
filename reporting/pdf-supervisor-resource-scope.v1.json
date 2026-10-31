@@ -1,0 +1,60 @@
+{
+  "aggregate_job_resources_qualified": false,
+  "arbitrary_descendant_cleanup_qualified": false,
+  "content_classification": "SECURITY_RUNTIME_REQUIRED",
+  "default_pipeline_activated": false,
+  "dependencies_changed": false,
+  "hard_job_deadline_enforced": false,
+  "host_authenticated": false,
+  "native_profile_qualified": false,
+  "observation_limitations": [
+    "The parent baseline begins before context parsing and sealed-request capture; rendering and request production before invocation are outside this interval.",
+    "The final observation follows owned request duplicate closure and precedes observation descriptor closure; transient changes and later activity are outside the observed acceptance interval.",
+    "A paused or dead parent cannot run observation checks; uninterruptible system calls, escaped descendants and a complete job need separately qualified outer lifecycle supervision.",
+    "Parent PID1 is permitted for the supervisor role but does not authenticate a service or the global host.",
+    "The observed cgroup is not authenticated as exclusive to one job; unrelated usage can cause conservative refusal.",
+    "Controlled observation tests are not native runtime qualification or continuous cumulative CPU enforcement."
+  ],
+  "profile": {
+    "aggregate_job_resources_qualified": false,
+    "arbitrary_descendant_cleanup_qualified": false,
+    "baseline": "ONE_SUCCESSFUL_SUPERVISOR_ADMISSION_BEFORE_CONTEXT",
+    "borrowed_request_preserved": true,
+    "continuous_enforcement": false,
+    "default_pipeline_activated": false,
+    "hard_job_deadline_qualified": false,
+    "host_authenticated": false,
+    "interval_end": "AFTER_REQUEST_DUPLICATE_CLOSE_BEFORE_OBSERVATION_FD_CLOSE",
+    "job_cgroup_exclusivity_verified": false,
+    "kernel_observation_policy_sha256": "4684c54f07c27aedd39113323d3fb9e0e8297d5958025f015d04031080006d01",
+    "minimum_parent_pid": 1,
+    "native_supervisor_profile_sha256": "aa21846c736fb6786e31e21b0522aa4b09adc11e6a3aa6f66c5084ccd937b9cc",
+    "observation": "SNAPSHOTS_AND_EVENT_COUNTER_CONTINUITY",
+    "profile_id": "fixed-pdf-supervisor-resource-scope-v1",
+    "rechecks": [
+      "BEFORE_LAUNCH",
+      "TRANSPORT_LOOP",
+      "AFTER_READINESS_WAIT",
+      "AFTER_CHILD_REAP",
+      "AFTER_RESULT_DECODE",
+      "AFTER_REQUEST_DUPLICATE_CLOSE"
+    ],
+    "release_authorized": false,
+    "schema_version": "1.0.0",
+    "selector": "OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1",
+    "selector_value": "1",
+    "service_installed": false,
+    "supervisor_profile_sha256": "faaeb3370d9077b635a2bcbc09427bbfcbb925d90e81124d606dfb8cea9f2bb6",
+    "uncertain_cleanup_refuses": true,
+    "worker_minimum_parent_pid_unchanged": 2
+  },
+  "profile_sha256": "c14fe01540677a50f6eb2628edc0da49c9b95918aec90b11cfd8af16477a8b35",
+  "profile_values_are": "EXPLICIT_OPTIONAL_POLICY_NOT_MEASURED_CAPACITY",
+  "release_authorized": false,
+  "schema_version": "1.0.0",
+  "service_installed": false,
+  "source_sha256": {
+    "reporting/_pdf_fixed_inspection_worker.py": "1ed1d9967a34fabcb5a0f50d9654f2e38fd163226ddc4f2420fe3a4fe0e617a6",
+    "reporting/pdf_supervised_inspection.py": "50295862cd7ef81457dc5299b4d15fab09c17605b5c8af30f9a959ab16f81d62"
+  }
+}

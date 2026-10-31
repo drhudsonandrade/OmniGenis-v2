@@ -136,6 +136,6 @@
   "service_installed": false,
   "source_sha256": {
     "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a",
-    "reporting/_pdf_fixed_inspection_worker.py": "e291b349df9eb98dc5516b5a197bb81748ccde61d65a1a4dd8eeb2184d6dc6f1"
+    "reporting/_pdf_fixed_inspection_worker.py": "1ed1d9967a34fabcb5a0f50d9654f2e38fd163226ddc4f2420fe3a4fe0e617a6"
   }
 }
