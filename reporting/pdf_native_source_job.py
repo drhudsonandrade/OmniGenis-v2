@@ -212,8 +212,9 @@ def execute_pdf_native_source_job(
     The caller supplies trusted source/job expectations, never receipts or an
     executor. Bounded native-JSON capture and comparisons detect persistent
     changes; concurrent mutate-and-restore behavior remains unsupported. The
-    elapsed acceptance check does not preempt synchronous children or qualify
-    aggregate CPU, RSS, scratch, descriptors or descendant-process budgets.
+    post-admission deadline also caps direct-child waits and launch admission.
+    Parent work, spawning and syscalls are not preempted, cleanup is separate,
+    and aggregate CPU, RSS, scratch, descriptors and descendants stay unqualified.
     """
     try:
         require_no_active_scope()
@@ -262,7 +263,7 @@ def execute_pdf_native_source_job(
 
     launches = None
     try:
-        launches = NativeLaunchScope(plan, len(pdf_bytes))
+        launches = NativeLaunchScope(plan, len(pdf_bytes), started_ns=started)
         launches.__enter__()
         check()
         first = inspect_pdf_tounicode_width_coverage(

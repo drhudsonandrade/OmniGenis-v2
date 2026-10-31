@@ -41,9 +41,9 @@
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
     "reporting/pdf_mcid_coverage.py": "7f7af447d9ba8154a589012522af8c076564de8c54a211990c6a3d0bcab326ae",
-    "reporting/pdf_object_graph.py": "a5a67d0a9991e717b801590ab35199181479dab1dd4b20fbba61662af8d0cce5",
+    "reporting/pdf_object_graph.py": "8643519be9dc3e4237899be87da24c36ebaf5e951b541197cd688e9c75f89eaa",
     "reporting/pdf_source_inspection_job.py": "87523da1ca7eeacccede2a9c188575c831ea7c290d2d5492dfc3f1f0e9976520",
-    "reporting/pdf_text_windows.py": "9976f59ed721684693e9c5788cbab8ac91ab886cbd8466ed58d7921a4d365eef",
+    "reporting/pdf_text_windows.py": "fdb1ff1e7947e3a7176bee54fec3cd019eb5bf6e7a86ec5605ef57ace28b7ab8",
     "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
   },
   "schema_version": "1.0.0",

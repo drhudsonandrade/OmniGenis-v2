@@ -18,8 +18,7 @@ import subprocess
 import sys
 import tempfile
 
-from reporting._pdf_process_lifecycle import wait_owned_process_group
-from reporting._pdf_native_launch_budget import admit_launch
+from reporting._pdf_native_launch_budget import admit_launch, wait_native_process_group
 
 from reporting._pdf_bounded_scratch import (
     _open_verified_bounded_child, _require_same_bounded_mount,
@@ -158,7 +157,7 @@ def _start(command: list[str], fds: tuple[int, int, int], scratch: str) -> subpr
 
 def _wait(process: subprocess.Popen) -> int:
     """Keep child identity reserved until original-group cleanup and final reap."""
-    return wait_owned_process_group(process, wall_seconds=WALL_SECONDS)
+    return wait_native_process_group(process, wall_seconds=WALL_SECONDS)
 
 
 def _run_worker(pdf: bytes, identity: dict) -> bytes:

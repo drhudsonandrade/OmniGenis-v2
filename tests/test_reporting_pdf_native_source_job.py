@@ -301,6 +301,7 @@ class PdfNativeSourceJobTests(unittest.TestCase):
             return 0
 
         with self.mocked(), patch.object(self.m, "monotonic_ns", side_effect=final_clock), \
+                patch.object(launch_budget, "monotonic_ns", return_value=0), \
                 self.assertRaises(self.m.PdfNativeSourceJobError):
             self.run_job(page_count=1)
         self.assertEqual(calls[0], 5)
@@ -365,6 +366,7 @@ class PdfNativeSourceJobTests(unittest.TestCase):
             with ExitStack() as stack:
                 if timing == "before_terminal":
                     stack.enter_context(patch.object(self.m, "monotonic_ns", side_effect=coordinated_clock))
+                    stack.enter_context(patch.object(launch_budget, "monotonic_ns", return_value=0))
                 else:
                     stack.enter_context(patch.object(launch_budget.NativeLaunchScope, "close",
                                                     new=coordinated_close))
@@ -729,16 +731,26 @@ class PdfNativeSourceJobTests(unittest.TestCase):
                     clock[0] = self.m.ACCEPTANCE_NS
                 return receipt
             with self.subTest(stage=late_stage), self.mocked(expire) as calls, \
-                 patch.object(self.m, "monotonic_ns", side_effect=lambda: clock[0]):
+                 patch.object(self.m, "monotonic_ns", side_effect=lambda: clock[0]), \
+                 patch.object(launch_budget, "monotonic_ns", return_value=0):
                 with self.assertRaises(self.m.PdfNativeSourceJobError):
                     self.run_job()
                 self.assertEqual(calls, [NATIVE] if late_stage == NATIVE else [NATIVE, STRUCTURED])
+
+    def test_launch_scope_uses_original_coordinator_start(self):
+        """Scope construction cannot restart time already spent after job admission."""
+        with self.mocked() as calls, patch.object(self.m, "monotonic_ns", return_value=0), \
+                patch.object(launch_budget, "monotonic_ns", return_value=300_000_000_000):
+            with self.assertRaises(self.m.PdfNativeSourceJobError):
+                self.run_job(page_count=1)
+        self.assertEqual(calls, [])
 
     def test_invalid_or_regressing_clock_prevents_work(self):
         """Boolean, negative and regressing admission clocks fail before the first stage."""
         for sequence in ([True], [-1], [10, 9]):
             with self.subTest(sequence=sequence), self.mocked() as calls, \
-                 patch.object(self.m, "monotonic_ns", side_effect=sequence):
+                 patch.object(self.m, "monotonic_ns", side_effect=sequence), \
+                 patch.object(launch_budget, "monotonic_ns", return_value=10):
                 with self.assertRaises(self.m.PdfNativeSourceJobError):
                     self.run_job()
                 self.assertEqual(calls, [])
