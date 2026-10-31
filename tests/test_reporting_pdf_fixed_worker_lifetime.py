@@ -1,10 +1,11 @@
-"""Real direct-worker timer regressions; every signal mutation stays in a child."""
+"""Real direct-worker lifetime regressions; signal mutations stay in children."""
 from __future__ import annotations
 
 import ctypes
 import json
 import os
 from pathlib import Path
+import select
 import signal
 import subprocess
 import sys
@@ -140,13 +141,218 @@ def lifetime_child(request_fd: int, report_fd: int, mode: str, inherited: str) -
     return status
 
 
+
+def parent_death_worker(request_fd: int, report_fd: int,
+                        expected_parent: int, guarded: bool) -> int:
+    """Enter the real worker; observe its registered lifetime before the real read."""
+    original_read = worker._read_pipe
+
+    def read():
+        """Remove only PDEATHSIG for the control, leaving the 300-second timer intact."""
+        library = ctypes.CDLL(None, use_errno=True)
+        if not guarded and library.prctl(1, 0, 0, 0, 0) != 0:
+            raise RuntimeError('test parent-death removal failed')
+        parent_signal = ctypes.c_int()
+        if library.prctl(2, ctypes.byref(parent_signal), 0, 0, 0) != 0:
+            raise RuntimeError('test parent-death observation failed')
+        remaining, interval = signal.getitimer(signal.ITIMER_REAL)
+        report = {'pid': os.getpid(), 'parent': os.getppid(),
+                  'parent_signal': parent_signal.value, 'remaining': remaining,
+                  'interval': interval, 'observed_at': time.monotonic()}
+        os.write(report_fd, _json_bytes(report))
+        return original_read()
+
+    worker._read_pipe = read
+    sys.argv = ['worker', str(request_fd), str(expected_parent)]
+    return worker._entrypoint()
+
+
+def parent_death_parent(request_fd: int, context_read: int, output_write: int,
+                        ready_write: int, error_fd: int, guarded: bool) -> None:
+    """Own setup cleanup until the observer pins the child and kills this parent."""
+    args = (request_fd, ready_write, os.getpid(), guarded)
+    code = ('import sys;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+            'from tests.test_reporting_pdf_fixed_worker_lifetime import parent_death_worker;'
+            'raise SystemExit(parent_death_worker(*' + repr(args) + '))')
+    child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code],
+        stdin=context_read, stdout=output_write, stderr=error_fd,
+        pass_fds=(request_fd, ready_write), close_fds=True)
+    try:
+        print(child.pid, flush=True)
+        sys.stdin.buffer.read(1)
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.wait(timeout=3)
+
+
+def parent_death_probe(request_fd: int, guarded: bool) -> dict:
+    """Observe an adopted worker before rescue, inside a disposable subreaper."""
+    if ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) != 0:
+        raise RuntimeError('test subreaper unavailable')
+    context_read, context_write = os.pipe()
+    output_read, output_write = os.pipe()
+    ready_read, ready_write = os.pipe()
+    parent = None
+    worker_fd = None
+    worker_pid = None
+    reaped = False
+    descriptors = [context_read, context_write, output_read, output_write,
+                   ready_read, ready_write]
+    with tempfile.TemporaryFile() as errors:
+        args = (request_fd, context_read, output_write, ready_write,
+                errors.fileno(), guarded)
+        parent_code = ('import sys;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+                       'from tests.test_reporting_pdf_fixed_worker_lifetime '
+                       'import parent_death_parent;parent_death_parent(*' + repr(args) + ')')
+        try:
+            parent = subprocess.Popen([sys.executable, '-I', '-B', '-c', parent_code],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
+                pass_fds=(request_fd, context_read, output_write, ready_write,
+                          errors.fileno()), cwd=ROOT,
+                env={'PATH': os.defpath, 'LANG': 'C.UTF-8'})
+            # Only this observer retains a writer; killing the parent cannot supply EOF.
+            for fd in (context_read, output_write, ready_write):
+                os.close(fd)
+                descriptors.remove(fd)
+            if not select.select([parent.stdout], [], [], 5)[0]:
+                raise RuntimeError('test worker identity missing')
+            worker_pid = int(parent.stdout.readline(128))
+            worker_fd = os.pidfd_open(worker_pid)
+            if not select.select([ready_read], [], [], 5)[0]:
+                raise RuntimeError('test worker readiness missing')
+            ready = json.loads(os.read(ready_read, 4096))
+            if (ready['pid'] != worker_pid or ready['parent'] != parent.pid
+                    or parent.poll() is not None
+                    or select.select([worker_fd], [], [], 0)[0]):
+                raise RuntimeError('test ready worker or immediate parent is not live')
+            if (not 0 < ready['remaining'] <= 300 or ready['interval'] != 0
+                    or ready['remaining'] - (time.monotonic() - ready['observed_at']) <= 10):
+                raise RuntimeError('test independent timer margin missing')
+            # Do not signal the group: only this abrupt direct-parent death is the event.
+            parent.kill()
+            parent.wait(timeout=3)
+            if parent.returncode != -signal.SIGKILL:
+                raise RuntimeError('test immediate parent was not killed')
+            exited = bool(select.select([worker_fd], [], [], 2)[0])
+            elapsed = time.monotonic() - ready['observed_at']
+            if elapsed >= ready['remaining']:
+                raise RuntimeError('test observation crossed the independent timer')
+            status = None
+            if exited:
+                status = os.waitid(os.P_PIDFD, worker_fd, os.WEXITED | os.WNOHANG)
+                if status is None or status.si_pid != worker_pid:
+                    raise RuntimeError('test adopted worker was not reaped')
+                reaped = True
+            # The result is fixed before the finally block can kill a surviving control.
+            result = {'ready': ready, 'parent_killed': True, 'exited': exited,
+                      'exit_code': status.si_code if status else None,
+                      'exit_signal': status.si_status if status else None,
+                      'observation_seconds': elapsed}
+        finally:
+            if parent is not None:
+                if worker_fd is None:
+                    # Before pinned identity, let the still-owning parent clean up its child.
+                    parent.stdin.close()
+                    parent.wait(timeout=3)
+                else:
+                    if parent.poll() is None:
+                        parent.kill()
+                    parent.wait(timeout=3)
+                if not parent.stdin.closed:
+                    parent.stdin.close()
+                parent.stdout.close()
+            if worker_fd is not None:
+                try:
+                    if not reaped:
+                        try:
+                            signal.pidfd_send_signal(worker_fd, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        if not select.select([worker_fd], [], [], 3)[0]:
+                            raise RuntimeError('test worker rescue timed out')
+                        status = os.waitid(os.P_PIDFD, worker_fd, os.WEXITED | os.WNOHANG)
+                        if status is None or status.si_pid != worker_pid:
+                            raise RuntimeError('test worker rescue did not reap its child')
+                finally:
+                    os.close(worker_fd)
+            for fd in descriptors:
+                os.close(fd)
+        errors.seek(0)
+        diagnostic = errors.read(16384)
+        if diagnostic:
+            raise RuntimeError(diagnostic.decode('utf-8', 'replace'))
+        return result
+
+
 class FixedWorkerLifetimeTests(unittest.TestCase):
-    """Observe termination before fixture rescue, with a live parent and real pipes."""
+    """Observe direct-worker lifecycle before fixture rescue, with real pipes."""
 
     def setUp(self):
         """Reuse the existing independently bound sealed request fixture."""
         self.fixture = prior.FixedInspectionWorkerTests()
         self.fixture.setUp()
+
+
+    @unittest.skipUnless(
+        sys.platform == 'linux' and hasattr(os, 'pidfd_open')
+        and hasattr(os, 'P_PIDFD') and hasattr(os, 'waitid')
+        and hasattr(signal, 'pidfd_send_signal')
+        and hasattr(ctypes.CDLL(None), 'prctl'),
+        'Linux pidfd and subreaper facilities required')
+    def parent_death(self, guarded=True):
+        """Keep the probe group owned until success or bounded fallback cleanup."""
+        with self.fixture.h.request() as (fd, _, _, _), \
+                tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
+            code = ('import json,sys;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+                    'from tests.test_reporting_pdf_fixed_worker_lifetime import parent_death_probe;'
+                    'print(json.dumps(parent_death_probe(' + repr(fd) + ','
+                    + repr(guarded) + ')))')
+            process = subprocess.Popen([sys.executable, '-I', '-B', '-c', code],
+                stdin=subprocess.DEVNULL, stdout=output, stderr=errors, pass_fds=(fd,),
+                cwd=ROOT, start_new_session=True,
+                env={'PATH': os.defpath, 'LANG': 'C.UTF-8'})
+            probe_fd = None
+            try:
+                probe_fd = os.pidfd_open(process.pid)
+                finished = bool(select.select([probe_fd], [], [], 20)[0])
+                status = (os.waitid(os.P_PIDFD, probe_fd,
+                                   os.WEXITED | os.WNOWAIT | os.WNOHANG)
+                          if finished else None)
+                if (status is None or status.si_code != os.CLD_EXITED
+                        or status.si_status != 0):
+                    # The unreaped group leader keeps this fallback bound to the fixture.
+                    os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=3)
+                diagnostic = os.pread(errors.fileno(), 16384, 0).decode('utf-8', 'replace')
+                self.assertTrue(finished, 'parent-death probe timed out: ' + diagnostic)
+                self.assertEqual(process.returncode, 0, diagnostic)
+                return json.loads(os.pread(output.fileno(), 16384, 0))
+            finally:
+                if process.returncode is None:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait(timeout=3)
+                if probe_fd is not None:
+                    os.close(probe_fd)
+
+    def test_registered_worker_terminates_after_immediate_parent_death(self):
+        """The real ready worker dies by SIGKILL before rescue or its independent timer."""
+        result = self.parent_death()
+        self.assertTrue(result['parent_killed'])
+        self.assertTrue(result['exited'], 'worker survived until fixture rescue')
+        self.assertEqual(result['ready']['parent_signal'], signal.SIGKILL)
+        self.assertEqual(result['exit_code'], os.CLD_KILLED)
+        self.assertEqual(result['exit_signal'], signal.SIGKILL)
+
+    def test_disabling_only_parent_death_signal_keeps_worker_alive(self):
+        """A retained external writer and real timer cannot hide a missing parent guard."""
+        result = self.parent_death(guarded=False)
+        self.assertTrue(result['parent_killed'])
+        self.assertEqual(result['ready']['parent_signal'], 0)
+        self.assertFalse(result['exited'], 'control exited before fixture rescue')
+        self.assertIsNone(result['exit_code'])
+        self.assertIsNone(result['exit_signal'])
+
 
     def probe(self, mode='read', inherited='default'):
         """Run the real worker entrypoint, keeping context or output blocked as selected."""
