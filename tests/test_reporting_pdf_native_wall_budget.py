@@ -242,6 +242,11 @@ class PdfNativeWallBudgetTests(unittest.TestCase):
                 self.assert_reaped(process)
 
 
+    @unittest.skipUnless(
+        sys.platform == "linux" and hasattr(os, "pidfd_open")
+        and hasattr(os, "P_PIDFD") and hasattr(signal, "pidfd_send_signal")
+        and hasattr(ctypes.CDLL(None), "prctl"),
+        "Linux pidfd and subreaper facilities required")
     def assert_descendant_wait(self, index, *, signal_group, expected_exit):
         """Run subreaper state in a disposable probe, outside the suite process."""
         root = Path(__file__).resolve().parents[1]
