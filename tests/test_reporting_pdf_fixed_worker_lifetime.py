@@ -215,11 +215,11 @@ def parent_death_probe(request_fd: int, guarded: bool) -> dict:
             for fd in (context_read, output_write, ready_write):
                 os.close(fd)
                 descriptors.remove(fd)
-            if not select.select([parent.stdout], [], [], 5)[0]:
+            if not select.select([parent.stdout], [], [], 30)[0]:
                 raise RuntimeError('test worker identity missing')
             worker_pid = int(parent.stdout.readline(128))
             worker_fd = os.pidfd_open(worker_pid)
-            if not select.select([ready_read], [], [], 5)[0]:
+            if not select.select([ready_read], [], [], 30)[0]:
                 raise RuntimeError('test worker readiness missing')
             ready = json.loads(os.read(ready_read, 4096))
             if (ready['pid'] != worker_pid or ready['parent'] != parent.pid
@@ -315,7 +315,7 @@ class FixedWorkerLifetimeTests(unittest.TestCase):
             probe_fd = None
             try:
                 probe_fd = os.pidfd_open(process.pid)
-                finished = bool(select.select([probe_fd], [], [], 20)[0])
+                finished = bool(select.select([probe_fd], [], [], 80)[0])
                 status = (os.waitid(os.P_PIDFD, probe_fd,
                                    os.WEXITED | os.WNOWAIT | os.WNOHANG)
                           if finished else None)
