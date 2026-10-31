@@ -298,9 +298,11 @@ def registration_race_worker(request_fd: int, observations_fd: int,
     original_write = worker._write_frame
 
     def report(event, **values):
+        """Record lifecycle observations separately from the worker's output."""
         os.write(observations_fd, _json_bytes({'event': event, **values}) + b'\n')
 
     def parent_signal():
+        """Read the real parent-death signal through a fresh libc function object."""
         # A fresh function object avoids production's c_ulong argument declaration.
         library = real_cdll(None, use_errno=True)
         value = ctypes.c_int()
@@ -309,6 +311,7 @@ def registration_race_worker(request_fd: int, observations_fd: int,
         return value.value
 
     def getppid():
+        """Observe real parents and falsify only the control's second return."""
         actual = real_getppid()
         sequence = len(parent_checks) + 1
         returned = expected_parent if sequence == 2 and not recheck_parent else actual
@@ -319,6 +322,7 @@ def registration_race_worker(request_fd: int, observations_fd: int,
         return returned
 
     def library(name, *args, **kwargs):
+        """Return real libc after the observer releases the parent-loss handshake."""
         value = real_cdll(name, *args, **kwargs)
         ctypes.CDLL = real_cdll
         if (name is not None or args or kwargs != {'use_errno': True}
@@ -337,18 +341,22 @@ def registration_race_worker(request_fd: int, observations_fd: int,
         return value
 
     def admission(*args, **kwargs):
+        """Record admission and delegate to the unchanged production function."""
         report('admission')
         return original_admission(*args, **kwargs)
 
     def read():
+        """Record context access and delegate to the real pipe reader."""
         report('context')
         return original_read()
 
     def inspect(*args, **kwargs):
+        """Record sealed work and delegate to the unchanged production function."""
         report('work')
         return original_work(*args, **kwargs)
 
     def write(*args, **kwargs):
+        """Record frame output and delegate to the real frame writer."""
         report('write')
         return original_write(*args, **kwargs)
 
