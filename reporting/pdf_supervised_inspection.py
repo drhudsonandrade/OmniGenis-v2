@@ -4,6 +4,8 @@ Only a sealed request descriptor and independently expected canonical context
 are accepted. The worker command, resource profile, environment and output cap
 are fixed. Successful transport requires complete context delivery, stdout EOF,
 zero exit, direct-child reap and validation of the original complete frame.
+When kernel admission is explicitly selected, one parent observation baseline
+also spans request capture, transport, decoding and owned request cleanup.
 
 This component does not install a service, grant privileges, activate the default
 pipeline, authenticate the caller or qualify aggregate CPU/RSS, all descendants
@@ -96,6 +98,66 @@ def native_supervisor_profile() -> dict:
 
 
 NATIVE_PROFILE_SHA256 = sha256(_json_bytes(native_supervisor_profile())).hexdigest()
+
+
+RESOURCE_SCOPE_KERNEL_PROFILE_SHA256 = worker.KERNEL_ADMISSION_PROFILE_SHA256
+
+
+def supervisor_resource_scope_profile() -> dict:
+    """Bind the optional parent interval without changing either wire contract."""
+    return {'schema_version': '1.0.0', 'profile_id': 'fixed-pdf-supervisor-resource-scope-v1',
+            'selector': 'OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1', 'selector_value': '1',
+            'kernel_observation_policy_sha256': RESOURCE_SCOPE_KERNEL_PROFILE_SHA256,
+            'supervisor_profile_sha256': PROFILE_SHA256,
+            'native_supervisor_profile_sha256': NATIVE_PROFILE_SHA256,
+            'minimum_parent_pid': 1, 'worker_minimum_parent_pid_unchanged': 2,
+            'baseline': 'ONE_SUCCESSFUL_SUPERVISOR_ADMISSION_BEFORE_CONTEXT',
+            'interval_end': 'AFTER_REQUEST_DUPLICATE_CLOSE_BEFORE_OBSERVATION_FD_CLOSE',
+            'rechecks': ['BEFORE_LAUNCH', 'TRANSPORT_LOOP', 'AFTER_READINESS_WAIT',
+                         'AFTER_CHILD_REAP', 'AFTER_RESULT_DECODE', 'AFTER_REQUEST_DUPLICATE_CLOSE'],
+            'borrowed_request_preserved': True, 'uncertain_cleanup_refuses': True,
+            'observation': 'SNAPSHOTS_AND_EVENT_COUNTER_CONTINUITY',
+            'continuous_enforcement': False, 'job_cgroup_exclusivity_verified': False,
+            'aggregate_job_resources_qualified': False, 'hard_job_deadline_qualified': False,
+            'arbitrary_descendant_cleanup_qualified': False, 'host_authenticated': False,
+            'default_pipeline_activated': False, 'service_installed': False,
+            'release_authorized': False}
+
+
+RESOURCE_SCOPE_PROFILE_SHA256 = sha256(_json_bytes(supervisor_resource_scope_profile())).hexdigest()
+
+
+class _SupervisorResourceScope(worker._KernelAdmission):
+    """Retain the reused kernel observations for one complete supervisor invocation."""
+
+    def _credentials(self) -> None:
+        """Permit an init-parented unprivileged supervisor without relaxing the worker."""
+        self._credential_policy(minimum_parent=1)
+
+    def recheck(self) -> None:
+        """Validate the parent-specific policy before the reused bounded observations."""
+        if (sha256(_json_bytes(supervisor_resource_scope_profile())).hexdigest()
+                != RESOURCE_SCOPE_PROFILE_SHA256
+                or worker.KERNEL_ADMISSION_PROFILE_SHA256 != RESOURCE_SCOPE_KERNEL_PROFILE_SHA256):
+            raise _Refusal('resource_scope_profile_invalid')
+        super().recheck()
+
+
+def _open_resource_scope(request_fd: int) -> _SupervisorResourceScope | None:
+    """Acquire parent observations only for the existing exact opt-in selector."""
+    selected = os.environ.get('OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1')
+    if selected is None:
+        return None
+    if selected != '1':
+        raise _Refusal('resource_scope_selection_invalid')
+    scope = _SupervisorResourceScope(request_fd)
+    try:
+        scope.admit()
+        return scope
+    except BaseException:
+        if not scope.close():
+            raise _Refusal('resource_scope_cleanup_unresolved') from None
+        raise
 
 
 def _profile(expected: str) -> bool:
@@ -231,8 +293,11 @@ def _finish_child(process: subprocess.Popen) -> int:
 
 
 def _exchange(request_fd: int, context: bytes, environment: dict[str, str], clock: _Clock,
-              *, selected_native: bool = False) -> bytes:
+              *, selected_native: bool = False,
+              resource_scope: _SupervisorResourceScope | None = None) -> bytes:
     """Exchange bounded pipes with only the fixed child and preserve its unreaped identity."""
+    if resource_scope is not None:
+        resource_scope.recheck()
     clock.remaining()
     maximum = NATIVE_MAX_FRAME_BYTES if selected_native else MAX_FRAME_BYTES
     # Prepare fallible transport state before creating the owned child.
@@ -253,12 +318,17 @@ def _exchange(request_fd: int, context: bytes, environment: dict[str, str], cloc
             ready.register(process.stdout, selectors.EVENT_READ, 'output')
             while True:
                 remaining = clock.remaining()
+                if resource_scope is not None:
+                    resource_scope.recheck()
                 exit_code = _unreaped_exit(process)
                 if exit_code is not None and (exit_code != 0 or sent != len(context)):
                     raise _Refusal('worker_failed')
                 if exit_code == 0 and sent == len(context) and eof:
                     break
-                for event, _ in ready.select(min(remaining, 0.05)):
+                events = ready.select(min(remaining, 0.05))
+                if resource_scope is not None:
+                    resource_scope.recheck()
+                for event, _ in events:
                     clock.remaining()
                     if event.data == 'input':
                         try:
@@ -287,6 +357,8 @@ def _exchange(request_fd: int, context: bytes, environment: dict[str, str], cloc
             clock.remaining()
     finally:
         reaped = _finish_child(process)
+    if resource_scope is not None:
+        resource_scope.recheck()
     if exit_code != 0 or reaped != 0 or sent != len(context) or not eof:
         raise _Refusal('worker_failed')
     return bytes(output)
@@ -306,9 +378,14 @@ def execute_supervised_pdf_inspection(
     """
     owned = None
     identity = None
+    resource_scope = None
+    accepted = False
     try:
         selected_native = _profile(expected_supervisor_profile_sha256)
         clock = _Clock()
+        if type(request_fd) is not int or not 3 <= request_fd <= 2**31 - 1:
+            raise _Refusal('input_invalid')
+        resource_scope = _open_resource_scope(request_fd)
         context = worker._parse_context(expected_context)
         if (context['expected_worker_profile_sha256'] !=
                 (NATIVE_WORKER_PROFILE_SHA256 if selected_native else WORKER_PROFILE_SHA256)
@@ -316,8 +393,6 @@ def execute_supervised_pdf_inspection(
                 (NATIVE_FRAME_PROFILE_SHA256 if selected_native else FRAME_PROFILE_SHA256)):
             raise _Refusal('profile_invalid')
         environment = _environment()
-        if type(request_fd) is not int or not 3 <= request_fd <= 2**31 - 1:
-            raise _Refusal('input_invalid')
         before = descriptor._identity(descriptor._descriptor(request_fd))
         owned = fcntl.fcntl(request_fd, fcntl.F_DUPFD_CLOEXEC, 3)
         info = os.fstat(owned)
@@ -335,12 +410,14 @@ def execute_supervised_pdf_inspection(
                 raise _Refusal('input_invalid')
         del arguments
         clock.remaining()
+        options = {'resource_scope': resource_scope} if resource_scope is not None else {}
         if selected_native:
-            output = _exchange(owned, expected_context, environment, clock, selected_native=True)
-        else:
-            output = _exchange(owned, expected_context, environment, clock)
+            options['selected_native'] = True
+        output = _exchange(owned, expected_context, environment, clock, **options)
         result = frame.decode_pdf_inspection_result_frame(output,
             **{key: context[key] for key in RESULT_KEYS})
+        if resource_scope is not None:
+            resource_scope.recheck()
         _profile(expected_supervisor_profile_sha256)
         if _environment() != environment:
             raise _Refusal('policy_changed')
@@ -348,14 +425,21 @@ def execute_supervised_pdf_inspection(
                 or descriptor._identity(descriptor._descriptor(request_fd)) != before):
             raise _Refusal('input_changed')
         clock.remaining()
+        accepted = True
         return result
     except _Refusal as error:
         raise PdfSupervisedInspectionError('pdf_supervised_inspection_' + str(error)) from None
     except Exception:
         raise PdfSupervisedInspectionError('pdf_supervised_inspection_failed') from None
     finally:
-        if owned is not None:
-            try:
+        try:
+            if owned is not None:
                 descriptor._close_owned(owned, identity)
-            except Exception:
+            if accepted and resource_scope is not None:
+                resource_scope.recheck()
+                clock.remaining()
+        except Exception:
+            raise PdfSupervisedInspectionError('pdf_supervised_inspection_cleanup_unresolved') from None
+        finally:
+            if resource_scope is not None and not resource_scope.close():
                 raise PdfSupervisedInspectionError('pdf_supervised_inspection_cleanup_unresolved') from None

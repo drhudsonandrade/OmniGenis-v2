@@ -393,8 +393,12 @@ class _KernelAdmission:
                              mount=self.mount_ids[self.process])
 
     def _credentials(self) -> None:
-        """Require stable unprivileged IDs and kernel-reported process protections."""
-        if (self.uid <= 0 or self.gid <= 0 or self.parent <= 1
+        """Keep the worker's original requirement for a parent outside init."""
+        self._credential_policy(minimum_parent=2)
+
+    def _credential_policy(self, *, minimum_parent: int) -> None:
+        """Validate stable unprivileged IDs and protections for a fixed process role."""
+        if (self.uid <= 0 or self.gid <= 0 or self.parent < minimum_parent
                 or os.getresuid() != (self.uid,) * 3
                 or os.getresgid() != (self.gid,) * 3
                 or os.getpid() != self.pid or os.getppid() != self.parent):
