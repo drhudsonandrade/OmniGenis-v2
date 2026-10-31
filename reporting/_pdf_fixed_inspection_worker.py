@@ -134,6 +134,7 @@ _CGROUP_POLICY = {
 }
 _EVENT_RECORD_BYTES = 4096
 _EVENT_COUNTER_MAX = 2**64 - 1
+_CPU_ACCEPTANCE_USEC = 300000000
 _EVENT_REQUIRED = {
     'memory.events': ('max', 'oom', 'oom_kill'), 'pids.events': ('max',),
 }
@@ -155,7 +156,7 @@ _READ_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK
 def kernel_admission_profile() -> dict:
     """Describe a separate opt-in observation policy, without changing the wire."""
     return {
-        'schema_version': '1.0.0', 'profile_id': 'fixed-pdf-kernel-admission-v1',
+        'schema_version': '1.1.0', 'profile_id': 'fixed-pdf-kernel-admission-v1',
         'selector': _ADMISSION_SWITCH, 'selector_value': '1',
         'supported_abi': 'linux-x86_64-lp64',
         'cgroup_path': _CGROUP_PATH, 'cgroup_mount': _CGROUP_ROOT,
@@ -170,8 +171,19 @@ def kernel_admission_profile() -> dict:
             'baseline': 'BEFORE_CONTEXT',
             'continuity': 'SAME_KEYS_NONDECREASING_COUNTERS',
             'refusal': 'SELECTED_COUNTER_INCREASE',
-            'snapshot_update': 'BOTH_RECORDS_AFTER_VALIDATION',
+            'snapshot_update': 'EVENT_AND_CPU_RECORDS_AFTER_VALIDATION',
             'scope': 'NAMESPACE_LOCAL_CGROUP_COUNTERS',
+        },
+        'cumulative_cpu_acceptance': {
+            'source': 'cpu.stat', 'required_counter': 'usage_usec',
+            'max_record_bytes': _EVENT_RECORD_BYTES, 'max_counter': _EVENT_COUNTER_MAX,
+            'baseline': 'FIRST_SUCCESSFUL_ADMISSION_BEFORE_CONTEXT',
+            'continuity': 'USAGE_NONDECREASING_FROM_LATEST_ACCEPTED_OBSERVATION',
+            'allowance_origin': 'IMMUTABLE_ADMISSION_BASELINE',
+            'max_delta_usec_exclusive': _CPU_ACCEPTANCE_USEC,
+            'refusal': 'DELTA_AT_OR_ABOVE_ALLOWANCE',
+            'scope': 'OBSERVED_NAMESPACE_LOCAL_CGROUP_CPU_DELTA',
+            'continuous_enforcement': False, 'job_cgroup_exclusivity_verified': False,
         },
         'process_limits': {key: list(value) for key, value in _PROCESS_LIMITS.items()},
         'scratch_path': '/run/omnigenis-pdf-bounded-scratch',
@@ -273,6 +285,8 @@ class _KernelAdmission:
         self.mount_ids = {}
         self.namespaces = {}
         self.event_counters = None
+        self.cpu_baseline_usec = None
+        self.cpu_usage_usec = None
         self.pid = os.getpid()
         self.parent = os.getppid()
         self.uid = os.getuid()
@@ -449,13 +463,20 @@ class _KernelAdmission:
                 raise ValueError('kernel admission filesystem policy invalid')
 
     def _resource_events(self) -> None:
-        """Refuse observed exhaustion or counter drift before advancing both snapshots."""
+        """Refuse event or cumulative CPU excess before committing all resource snapshots."""
         observed = {
             name: _kernel_events(self._read_at(
                 self.cgroup, name, _EVENT_RECORD_BYTES, _CGROUP_MAGIC,
                 mount=self.mount_ids[self.cgroup]), required)
             for name, required in _EVENT_REQUIRED.items()
         }
+        cpu_usage = _kernel_events(self._read_at(
+            self.cgroup, 'cpu.stat', _EVENT_RECORD_BYTES, _CGROUP_MAGIC,
+            mount=self.mount_ids[self.cgroup]), ('usage_usec',))['usage_usec']
+        baseline = cpu_usage if self.cpu_baseline_usec is None else self.cpu_baseline_usec
+        if ((self.cpu_usage_usec is not None and cpu_usage < self.cpu_usage_usec)
+                or cpu_usage - baseline >= _CPU_ACCEPTANCE_USEC):
+            raise ValueError('kernel admission cumulative CPU allowance exhausted or regressed')
         if self.event_counters is not None:
             for name, current in observed.items():
                 previous = self.event_counters[name]
@@ -465,7 +486,7 @@ class _KernelAdmission:
                 selected = _EVENT_REQUIRED[name] + _EVENT_OPTIONAL[name]
                 if any(current[key] != previous[key] for key in selected if key in current):
                     raise ValueError('kernel admission resource exhaustion observed')
-        self.event_counters = observed
+        self.event_counters, self.cpu_baseline_usec, self.cpu_usage_usec = observed, baseline, cpu_usage
 
     def _policy(self) -> None:
         """Observe finite limits and current occupancy without configuring the host."""

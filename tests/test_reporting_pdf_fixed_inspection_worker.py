@@ -295,6 +295,8 @@ class KernelObservationFixture:
     )
     MEMORY_EVENTS = b'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n'
     PIDS_EVENTS = b'max 0\n'
+    CPU_STAT = (b'usage_usec 17\nuser_usec 10\nsystem_usec 7\n'
+                b'nr_periods 0\nnr_throttled 0\nthrottled_usec 0\n')
 
     def __init__(self, worker):
         """Create backing files before redirecting the process-wide OS module."""
@@ -328,6 +330,7 @@ class KernelObservationFixture:
             'memory.swap.max': b'0\n', 'pids.max': b'32\n', 'cpu.max': b'200000 100000\n',
             'memory.current': b'1048576\n', 'memory.swap.current': b'0\n', 'pids.current': b'3\n',
             'memory.events': self.MEMORY_EVENTS, 'pids.events': self.PIDS_EVENTS,
+            'cpu.stat': self.CPU_STAT,
         }.items():
             self.edit(self.CGROUP + '/' + name, data)
         self.edit(self.PROC + '/status', self.STATUS)
@@ -889,7 +892,7 @@ class FixedKernelObservationTests(unittest.TestCase):
             ('metadata', {'st_dev': os.makedev(0, 99)}),
             ('filesystems', (0x01021994, 15)), ('mount_ids', 99),
         )
-        for name in ('memory.events', 'pids.events'):
+        for name in ('memory.events', 'pids.events', 'cpu.stat'):
             for phase in ('initial', 'recheck'):
                 for kind, value in cases:
                     with self.subTest(record=name, phase=phase, kind=kind, value=value), KernelObservationFixture(self.worker) as f:
@@ -906,7 +909,7 @@ class FixedKernelObservationTests(unittest.TestCase):
 
     def test_resource_event_unavailable_files_and_interrupted_reads_release_descriptors(self):
         """Unavailable records and interruptions during event reads retain no owned descriptor."""
-        for name in ('memory.events', 'pids.events'):
+        for name in ('memory.events', 'pids.events', 'cpu.stat'):
             for failure in ('missing', KeyboardInterrupt, SystemExit, MemoryError, 'cleanup'):
                 with self.subTest(record=name, failure=failure), KernelObservationFixture(self.worker) as f:
                     path = f.CGROUP + '/' + name
@@ -951,6 +954,107 @@ class FixedKernelObservationTests(unittest.TestCase):
             guard.recheck()
             self.assertTrue(guard.close())
             self.assert_released(f)
+
+
+    def test_cpu_budget_rejects_exact_allowance_from_nonzero_history(self):
+        """Ignore historical usage but refuse the exact cumulative allowance and any excess."""
+        for exhausted in (300000017, 300000018):
+            with self.subTest(exhausted=exhausted), KernelObservationFixture(self.worker) as f:
+                guard = self.worker._open_kernel_admission(f.request_fd)
+                path = f.CGROUP + '/cpu.stat'
+                f.edit(path, f.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 300000016\n'))
+                guard.recheck()
+                f.edit(path, f.CPU_STAT.replace(b'usage_usec 17\n',
+                    f'usage_usec {exhausted}\n'.encode('ascii')))
+                with self.assertRaises(ValueError):
+                    guard.recheck()
+                self.assertTrue(guard.close())
+                self.assert_released(f)
+
+    def test_cpu_regression_compares_with_latest_accepted_observation(self):
+        """Reject a regressed usage counter even when it remains above the original baseline."""
+        with KernelObservationFixture(self.worker) as f:
+            guard = self.worker._open_kernel_admission(f.request_fd)
+            path = f.CGROUP + '/cpu.stat'
+            f.edit(path, f.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 1000\n'))
+            guard.recheck()
+            f.edit(path, f.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 999\n'))
+            with self.assertRaises(ValueError):
+                guard.recheck()
+            self.assertTrue(guard.close())
+            self.assert_released(f)
+
+    def test_cpu_stat_refuses_ambiguous_missing_or_noncanonical_counters(self):
+        """Malformed CPU evidence cannot establish or advance an admitted observation."""
+        cases = (
+            b'', b'user_usec 1\nsystem_usec 1\n', b'usage_usec 0\nusage_usec 1\n',
+            b'usage_usec 01\n', b'usage_usec -1\n', b'usage_usec +1\n',
+            b'usage_usec 1.0\n', b'usage_usec 18446744073709551616\n',
+            b'usage_usec ' + b'9' * 100 + b'\n', b'usage_usec 0',
+            b'usage_usec  0\n', b'usage_usec\t0\n', b'usage_usec 0\r\n',
+            b'usage_usec 0\nfuture_\xff 1\n', b'usage_usec 0\nfuture 1\nfuture 2\n',
+            b'usage_usec 0\nfuture -1\n', b'usage_usec 0\n9counter 1\n',
+        )
+        for phase in ('initial', 'recheck'):
+            for payload in cases:
+                with self.subTest(phase=phase, payload=payload[:60]), KernelObservationFixture(self.worker) as f:
+                    guard = self.worker._open_kernel_admission(f.request_fd) if phase == 'recheck' else None
+                    f.edit(f.CGROUP + '/cpu.stat', payload)
+                    with self.assertRaises(ValueError):
+                        if guard is None:
+                            self.worker._open_kernel_admission(f.request_fd)
+                        else:
+                            guard.recheck()
+                    if guard is not None:
+                        self.assertTrue(guard.close())
+                    self.assert_released(f)
+
+    def test_cpu_stat_short_reads_respect_the_complete_record_limit(self):
+        """Admit a complete 4096-byte CPU record and reject a 4097-byte replacement."""
+        with KernelObservationFixture(self.worker) as f:
+            seed = f.CPU_STAT
+            exact = seed + b'x' * (4096 - len(seed) - 3) + b' 0\n'
+            path = f.CGROUP + '/cpu.stat'
+            f.read_chunk = 7
+            f.edit(path, exact)
+            guard = self.worker._open_kernel_admission(f.request_fd)
+            guard.recheck()
+            f.edit(path, exact[:-3] + b'x 0\n')
+            with self.assertRaises(ValueError):
+                guard.recheck()
+            reads = [(requested, returned) for name, requested, returned in f.reads if name == path]
+            self.assertTrue(reads)
+            self.assertTrue(all(requested <= 4097 and returned <= 7 for requested, returned in reads))
+            self.assertTrue(guard.close())
+            self.assert_released(f)
+
+    def test_cpu_memory_and_pid_observations_commit_only_as_a_valid_set(self):
+        """Rejected evidence cannot advance another resource's remembered observation."""
+        for invalid in ('cpu.stat', 'memory.events', 'pids.events'):
+            with self.subTest(invalid=invalid), KernelObservationFixture(self.worker) as f:
+                f.edit(f.CGROUP + '/pids.events', b'max 0\nfuture 0\n')
+                guard = self.worker._open_kernel_admission(f.request_fd)
+                f.edit(f.CGROUP + '/memory.events', f.MEMORY_EVENTS.replace(b'low 0\n', b'low 9\n'))
+                f.edit(f.CGROUP + '/pids.events', b'max 0\nfuture 9\n')
+                f.edit(f.CGROUP + '/cpu.stat', f.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 1000\n'))
+                f.edit(f.CGROUP + '/' + invalid, b'invalid\n')
+                with self.assertRaises(ValueError):
+                    guard.recheck()
+                f.edit(f.CGROUP + '/memory.events', f.MEMORY_EVENTS.replace(b'low 0\n', b'low 7\n'))
+                f.edit(f.CGROUP + '/pids.events', b'max 0\nfuture 7\n')
+                f.edit(f.CGROUP + '/cpu.stat', f.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 999\n'))
+                guard.recheck()
+                self.assertTrue(guard.close())
+                self.assert_released(f)
+
+    def test_changed_cpu_policy_or_admission_digest_prevents_admission(self):
+        """A changed allowance or stale policy identity fails before a guard can be admitted."""
+        for name, value in (('_CPU_ACCEPTANCE_USEC', 300000001),
+                            ('KERNEL_ADMISSION_PROFILE_SHA256', 'f' * 64)):
+            with self.subTest(field=name), KernelObservationFixture(self.worker) as f:
+                with patch.object(self.worker, name, value), self.assertRaises(ValueError):
+                    self.worker._open_kernel_admission(f.request_fd)
+                self.assert_released(f)
 
 
 class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
@@ -1066,6 +1170,54 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
                 self.assertEqual(events, ['context', 'sealed', 'encode'])
                 self.assertFalse(fixture.active)
 
+
+    def test_cpu_exhaustion_withholds_frames_at_every_recheck_in_both_families(self):
+        """Reaching the CPU allowance after context, inspection or encoding emits no frame byte."""
+        for native in (False, True):
+            for stage in ('after_context', 'during_work', 'during_encode'):
+                with self.subTest(native=native, stage=stage), KernelObservationFixture(self.worker) as fixture:
+                    path = fixture.CGROUP + '/cpu.stat'
+                    exhausted = fixture.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 300000017\n')
+                    code, output, events = self.exercise(fixture, native=native,
+                        **{stage: lambda: fixture.edit(path, exhausted)})
+                    self.assertEqual((code, output), (70, b''))
+                    self.assertEqual(events, ['context'] if stage == 'after_context'
+                        else ['context', 'sealed', 'encode'])
+                    self.assertFalse(fixture.active)
+                    for fd in (0, 1, 2, fixture.request_fd):
+                        fixture.real_fstat(fd)
+
+    def test_cpu_allowance_does_not_reset_between_entrypoint_stages(self):
+        """Two individually smaller increments cannot reset the original cumulative allowance."""
+        for native in (False, True):
+            with self.subTest(native=native), KernelObservationFixture(self.worker) as fixture:
+                path = fixture.CGROUP + '/cpu.stat'
+                code, output, events = self.exercise(fixture, native=native,
+                    after_context=lambda: fixture.edit(path,
+                        fixture.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 100000017\n')),
+                    during_work=lambda: fixture.edit(path,
+                        fixture.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 300000017\n')))
+                self.assertEqual((code, output, events), (70, b'', ['context', 'sealed', 'encode']))
+                self.assertFalse(fixture.active)
+                fixture.real_fstat(fixture.request_fd)
+
+    def test_below_budget_cpu_delta_preserves_frames_despite_historical_usage(self):
+        """A nonzero history and valid sub-limit cumulative delta preserve complete output in both families."""
+        for native in (False, True):
+            with self.subTest(native=native), KernelObservationFixture(self.worker) as fixture:
+                path = fixture.CGROUP + '/cpu.stat'
+                fixture.edit(path, fixture.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 900000000\n'))
+                code, output, events = self.exercise(fixture, native=native,
+                    after_context=lambda: fixture.edit(path,
+                        fixture.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 1000000000\n')),
+                    during_encode=lambda: fixture.edit(path,
+                        fixture.CPU_STAT.replace(b'usage_usec 17\n', b'usage_usec 1199999999\n')))
+                self.assertEqual((code, output, events),
+                    (0, b'frame', ['context', 'sealed', 'encode', 'write']))
+                self.assertFalse(fixture.active)
+                for fd in (0, 1, 2, fixture.request_fd):
+                    fixture.real_fstat(fd)
+
     def test_resource_event_increases_withhold_frames_in_both_context_families(self):
         """Recovered occupancy cannot conceal any selected exhaustion event before publication."""
         cases = tuple(('memory.events', name) for name in ('max', 'oom', 'oom_kill', 'oom_group_kill'))
@@ -1134,7 +1286,8 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
     def test_resource_event_unavailable_or_malformed_record_prevents_context(self):
         """Both wire families refuse missing or malformed event evidence before consuming context."""
         for native in (False, True):
-            for name, payload in (('memory.events', None), ('pids.events', b'max invalid\n')):
+            for name, payload in (('memory.events', None), ('pids.events', b'max invalid\n'),
+                                  ('cpu.stat', None), ('cpu.stat', b'usage_usec invalid\n')):
                 with self.subTest(native=native, record=name), KernelObservationFixture(self.worker) as fixture:
                     path = fixture.CGROUP + '/' + name
                     if payload is None:
