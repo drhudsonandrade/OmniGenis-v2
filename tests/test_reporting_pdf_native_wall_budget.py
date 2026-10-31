@@ -251,7 +251,8 @@ class PdfNativeWallBudgetTests(unittest.TestCase):
                 + repr(index) + ", " + repr(signal_group) + ")))")
         completed = subprocess.run(
             [sys.executable, "-I", "-B", "-c", code], cwd=root,
-            capture_output=True, text=True, timeout=30, check=True)
+            capture_output=True, text=True, timeout=30)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
         result = json.loads(completed.stdout)
         self.assertEqual(result["timeout"], 0.05)
         self.assertEqual(result["direct_exit"], -signal.SIGKILL)
