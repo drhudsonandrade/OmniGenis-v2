@@ -28,6 +28,14 @@
       "composed_attempt_ceiling": 121,
       "with_optional_fixed_supervisor": 122
     },
+    "cumulative_wall_wait": {
+      "budget_ns": 300000000000,
+      "start": "native_coordinator_post_admission",
+      "direct_wait_limit": "min(stage_wall_seconds,remaining_job_seconds)",
+      "cleanup_seconds": 2,
+      "cleanup_within_execution_budget": false,
+      "hard_job_deadline_enforced": false
+    },
     "aggregate_job_resources_qualified": false,
     "default_pipeline_activated": false,
     "release_authorized": false,
@@ -36,16 +44,17 @@
     "persistent_checkpoints": false
   },
   "source_sha256": {
-    "reporting/_pdf_native_launch_budget.py": "bc1388caccf77e239a1deb6e081499eca2d14de9063845ec6cdff71f8930249a",
-    "reporting/pdf_native_source_job.py": "5d9c34f50ddee4c0392ea9c895575997c6008e5d2126292461c25bed48d518d0",
-    "reporting/pdf_object_graph.py": "a5a67d0a9991e717b801590ab35199181479dab1dd4b20fbba61662af8d0cce5",
-    "reporting/pdf_text_windows.py": "9976f59ed721684693e9c5788cbab8ac91ab886cbd8466ed58d7921a4d365eef",
-    "reporting/pdf_raster_windows.py": "bac1d7055d85ed0d89400167f9b7298cf5de15d3748a00e6237037f6345d148e",
+    "reporting/_pdf_native_launch_budget.py": "3b4584b4b4bcf3ca2111494bb1bf4202d7de908ca85c7ec6d7e279f5d2c6e77f",
+    "reporting/pdf_native_source_job.py": "dc83d5e48285bc13c61e318ece736a172adf850f693fadc250ef13f9fb0b1c7b",
+    "reporting/pdf_object_graph.py": "8643519be9dc3e4237899be87da24c36ebaf5e951b541197cd688e9c75f89eaa",
+    "reporting/pdf_text_windows.py": "fdb1ff1e7947e3a7176bee54fec3cd019eb5bf6e7a86ec5605ef57ace28b7ab8",
+    "reporting/pdf_raster_windows.py": "665128e5eb25e8c140cbf965cba0c8d9709ce200c34222e0c525da0984a91b25",
     "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
     "reporting/_pdf_raster_probe.py": "f20284855e6392dc5b318a150eea479bfe01e9ed716d47b30f5c34b54398eed0",
     "reporting/_pdf_raster_window_worker.py": "8755dcdb5aedb39ec0dce9f5b619a79b60960541a13254858cd32e6d0c46e8a1"
   },
   "known_issues": [
+    "The existing 300-second post-admission acceptance budget is shared by launch admission, direct-worker waits and terminal acceptance. Each wait uses the shorter stage limit or remaining job time; the existing 2-second cleanup budget is separate. Parent work, process creation and syscalls are not preempted, so this is not a hard whole-job deadline.",
     "Counts are spent launch attempts and reserved child ceilings, never observed process counts or successful execution attestations.",
     "For P admitted pages, T=ceil(P/16) and R=ceil(P/4): direct=21+T+R, reserved=R+P, composed=21+T+2R+P. At 64 pages these are 41+80=121 below the coordinator; an optional fixed supervisor adds one, giving 122.",
     "Each raster parent reserves one probe plus its exact selected pages. The unchanged PR133 raster worker budget enforces those downstream attempts; arbitrary descendants and replacement Python forging receipts are not authenticated.",

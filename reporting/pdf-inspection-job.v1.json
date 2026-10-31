@@ -54,10 +54,10 @@
     "reporting/pdf_inspection_bundle.py": "03d636617653e940cfdcad4951b867d1cadd258bd0bd00cd8c56f4d4a22c0c51",
     "reporting/pdf_inspection_set.py": "1f5c86e09cf2b492e80a96676f602682c896b309ca8a7996c706c09c7c8a703d",
     "reporting/pdf_mcid_coverage.py": "7f7af447d9ba8154a589012522af8c076564de8c54a211990c6a3d0bcab326ae",
-    "reporting/pdf_object_graph.py": "a5a67d0a9991e717b801590ab35199181479dab1dd4b20fbba61662af8d0cce5",
+    "reporting/pdf_object_graph.py": "8643519be9dc3e4237899be87da24c36ebaf5e951b541197cd688e9c75f89eaa",
     "reporting/pdf_page_tags.py": "84b9edf1fe4aefed28029b87943c53dc8ba2b7a77ee78ebf72c158f15f2f0697",
-    "reporting/pdf_raster_windows.py": "bac1d7055d85ed0d89400167f9b7298cf5de15d3748a00e6237037f6345d148e",
-    "reporting/pdf_text_windows.py": "9976f59ed721684693e9c5788cbab8ac91ab886cbd8466ed58d7921a4d365eef",
+    "reporting/pdf_raster_windows.py": "665128e5eb25e8c140cbf965cba0c8d9709ce200c34222e0c525da0984a91b25",
+    "reporting/pdf_text_windows.py": "fdb1ff1e7947e3a7176bee54fec3cd019eb5bf6e7a86ec5605ef57ace28b7ab8",
     "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
   },
   "schema_version": "1.0.0",

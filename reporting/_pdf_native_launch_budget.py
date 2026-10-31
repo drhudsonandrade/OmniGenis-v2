@@ -2,7 +2,9 @@
 
 This private ledger binds declared request headers, not adversarial concurrent
 writers or authenticated successful execution. Reservations are ceilings, not
-observed processes. CPU, RSS, arbitrary descendants and release remain unqualified.
+observed processes. Direct waits share the post-admission acceptance deadline;
+parent work and syscalls are not preempted. CPU, RSS, arbitrary descendants and
+release remain unqualified.
 """
 from __future__ import annotations
 
@@ -13,12 +15,16 @@ from pathlib import Path
 import stat
 import sys
 import threading
+from time import monotonic_ns
+
+from reporting._pdf_process_lifecycle import wait_owned_process_group
 
 from reporting.page_windows import PageWindowPlan, plan_pdf_page_windows
 
 POLICY_ID = "native-pdf-cumulative-launch-attempt-budget-v1"
 MAX_PAGES = 64
 MAX_PDF_BYTES = 8 * 1024 * 1024
+ACCEPTANCE_NS = 300 * 1000 * 1000 * 1000
 TEXT_WIDTH = 16
 RASTER_WIDTH = 4
 TEXT_PROFILE = "generated-pdf-text-window-v1"
@@ -50,6 +56,13 @@ def launch_budget_policy() -> dict:
         "at_64_pages": {"direct_attempts": 41, "reserved_raster_child_attempts": 80,
                         "composed_attempt_ceiling": 121,
                         "with_optional_fixed_supervisor": 122},
+        "cumulative_wall_wait": {
+            "budget_ns": ACCEPTANCE_NS,
+            "start": "native_coordinator_post_admission",
+            "direct_wait_limit": "min(stage_wall_seconds,remaining_job_seconds)",
+            "cleanup_seconds": 2, "cleanup_within_execution_budget": False,
+            "hard_job_deadline_enforced": False,
+        },
         "aggregate_job_resources_qualified": False,
         "default_pipeline_activated": False, "release_authorized": False,
         "retries": 0, "refunds": False, "persistent_checkpoints": False,
@@ -122,9 +135,10 @@ def _descriptor_identity(info: os.stat_result) -> tuple:
 class NativeLaunchScope:
     """Own one immutable attempt sequence through final coordinator acceptance."""
 
-    __slots__ = ("_pid", "_thread", "_attempts", "_pdf_size", "_next", "_invalid", "_closed")
+    __slots__ = ("_pid", "_thread", "_attempts", "_pdf_size", "_next", "_invalid", "_closed",
+                 "_started", "_previous")
 
-    def __init__(self, plan: PageWindowPlan, pdf_size: int) -> None:
+    def __init__(self, plan: PageWindowPlan, pdf_size: int, *, started_ns: int | None = None) -> None:
         """Derive internal attempts; callers never provide roles or reusable allowances."""
         if type(pdf_size) is not int or not 1 <= pdf_size <= MAX_PDF_BYTES:
             raise ValueError("native launch source size")
@@ -135,6 +149,10 @@ class NativeLaunchScope:
         self._next = 0
         self._invalid = False
         self._closed = False
+        self._started = monotonic_ns() if started_ns is None else started_ns
+        if type(self._started) is not int or self._started < 0:
+            raise ValueError("native launch clock invalid")
+        self._previous = self._started
 
     def _owner(self) -> None:
         """Require both exact creator PID and thread object, poisoning any misuse."""
@@ -149,6 +167,19 @@ class NativeLaunchScope:
             self._invalid = True
             raise ValueError("native launch inactive")
 
+    def _remaining_seconds(self) -> float:
+        """Observe the original deadline while the short-held owner lock is held."""
+        try:
+            current = monotonic_ns()
+            if (type(current) is not int or current < self._previous
+                    or current - self._started >= ACCEPTANCE_NS):
+                raise ValueError("native launch acceptance deadline")
+            self._previous = current
+            return (ACCEPTANCE_NS - (current - self._started)) / 1_000_000_000
+        except BaseException:
+            self._invalid = True
+            raise
+
     def __enter__(self) -> NativeLaunchScope:
         """Activate once after source admission and refuse any existing active scope."""
         global _ACTIVE
@@ -162,6 +193,7 @@ class NativeLaunchScope:
             if self._closed or self._invalid or self._next:
                 self._invalid = True
                 raise ValueError("native launch reused scope")
+            self._remaining_seconds()
             _ACTIVE = self
         return self
 
@@ -185,6 +217,7 @@ class NativeLaunchScope:
     def _require_complete(self) -> None:
         """Check live ownership and exact completion while the shared lock is held."""
         self._active()
+        self._remaining_seconds()
         if self._next != len(self._attempts):
             self._invalid = True
             raise ValueError("native launch schedule incomplete")
@@ -208,6 +241,7 @@ class NativeLaunchScope:
         """Validate and spend the next exact request while the short-held lock is owned."""
         self._active()
         try:
+            self._remaining_seconds()
             if self._next >= len(self._attempts):
                 raise ValueError("native launch exhausted")
             attempt = self._attempts[self._next]
@@ -241,6 +275,7 @@ class NativeLaunchScope:
             if (header != attempt.header or tuple(map(_descriptor_identity, before))
                     != tuple(map(_descriptor_identity, after))):
                 raise ValueError("native launch declared header mismatch")
+            self._remaining_seconds()
             self._next += 1
         except BaseException:
             self._invalid = True
@@ -261,6 +296,46 @@ def admit_launch(kind: str, command: object, fds: object, scratch: object = None
             scope._consume(kind, command, fds, scratch)
     try:
         yield
+    except BaseException:
+        if scope is not None:
+            _before_lock()
+            with _LOCK:
+                scope._invalid = True
+        raise
+
+
+def wait_native_process_group(process, *, wall_seconds: float) -> int:
+    """Cap a direct wait by the active job while preserving owned-child cleanup.
+
+    The existing independent two-second cleanup budget is unchanged. A deadline
+    fault after spawn must still clean/reap; parent work and syscalls are not
+    preempted. Standalone adapters retain their original stage deadline.
+    """
+    scope = None
+    try:
+        _before_lock()
+        with _LOCK:
+            scope = _ACTIVE
+            if scope is not None:
+                scope._active()
+                wall_seconds = min(wall_seconds, scope._remaining_seconds())
+    except BaseException as failure:
+        if scope is not None:
+            with _LOCK:
+                scope._invalid = True
+        try:
+            wait_owned_process_group(process, wall_seconds=0)
+        except BaseException as cleanup:
+            raise failure from cleanup
+        raise
+    try:
+        result = wait_owned_process_group(process, wall_seconds=wall_seconds)
+        if scope is not None:
+            _before_lock()
+            with _LOCK:
+                scope._active()
+                scope._remaining_seconds()
+        return result
     except BaseException:
         if scope is not None:
             _before_lock()

@@ -18,8 +18,7 @@ import subprocess
 import sys
 import tempfile
 
-from reporting._pdf_process_lifecycle import wait_owned_process_group
-from reporting._pdf_native_launch_budget import admit_launch
+from reporting._pdf_native_launch_budget import admit_launch, wait_native_process_group
 
 from reporting._pdf_object_graph_worker import (
     CPU_SECONDS, IDENTITY_FIELDS, MAX_DOCUMENT_PAGES, MAX_PDF_BYTES, MAX_VISITS,
@@ -138,7 +137,7 @@ def _start(command: list[str], fds: tuple[int, int]) -> subprocess.Popen:
 
 def _wait(process: subprocess.Popen) -> int:
     """Keep child identity reserved until original-group cleanup and final reap."""
-    return wait_owned_process_group(process, wall_seconds=WALL_SECONDS)
+    return wait_native_process_group(process, wall_seconds=WALL_SECONDS)
 
 
 def _run_worker(pdf: bytes, identity: dict) -> bytes:
