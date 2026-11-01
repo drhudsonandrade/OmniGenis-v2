@@ -6,29 +6,30 @@
   "disable_environment": "OMNIGENIS_PDF_STRUCTURED_SOURCE_JOB_DISABLED=1",
   "execution_order": [
     "forward_structure_tree",
-    "unchanged_source_aware_inspection_job"
+    "pinned_source_aware_inspection_job"
   ],
-  "existing_profiles_changed": false,
+  "existing_profiles_changed": true,
   "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
   "known_issues": [
     "The eight inspection dimensions retain their original narrow qualifications; normalized text equality and forward/reverse linkage are not scientific interpretation, role semantics, visible glyph verification, reading order or full PDF/UA accessibility.",
-    "The source-aware job and structure adapter retain distinct unchanged profiles and guards. Matching PDF, source, page-plan, job and parsed-MCID counts is unsigned metadata agreement, not authenticated execution.",
+    "The source-aware job and structure adapter retain distinct pinned profiles and existing inner guards. Matching PDF, source, page-plan, job and parsed-MCID counts is unsigned metadata agreement, not authenticated execution.",
     "The 300-second post-admission limit checks acceptance between synchronous outer stages and before return. It does not preempt an in-flight child or enforce aggregate CPU, memory, scratch, descriptor or descendant budgets.",
     "The 26-call bound counts existing adapters, not every native descendant. Each underlying guarded process keeps its original finite limits.",
     "Existing bounded native-JSON source capture and subsequent comparisons detect persistent changes. They do not provide an atomic snapshot against concurrent mutate-and-restore behavior.",
     "No retry, caller-provided receipt, custom executor, durable checkpoint or resume input is accepted.",
-    "The optional profile admits at most 64 physical pages and 8 MiB, conditional on all unchanged parser/graph/depth budgets. A 64-heading automatic bookmark chain exceeding depth 64 is still rejected; admitted synthetic 64-page fixtures omit those bookmarks during generation only.",
+    "The optional profile admits at most 64 physical pages and 16 MiB, conditional on all unchanged parser/graph/depth budgets. A 64-heading automatic bookmark chain exceeding depth 64 is still rejected; admitted synthetic 64-page fixtures omit those bookmarks during generation only.",
     "The default 32-page/8-MiB rendering and delivery route remains unchanged. This composition does not activate long-report delivery or report release."
   ],
   "parent_pdf_parsing": false,
   "profile": {
     "acceptance_deadline_ns": 300000000000,
     "aggregate_job_resources_qualified": false,
+    "document_byte_budget_sha256": "eb1eb1b5f0908520567f6c8084b27abc02bd94de7f966881e1bb098cdbd5a36d",
     "hard_job_deadline_enforced": false,
     "language": "en-US",
     "max_inspector_invocations": 26,
     "max_pages": 64,
-    "max_pdf_bytes": 8388608,
+    "max_pdf_bytes": 16777216,
     "max_result_bytes": 294912,
     "pdf_version": "1.7",
     "persistent_checkpoints": false,
@@ -37,13 +38,13 @@
     "retries": 0,
     "schema_version": "1.0.0",
     "source_capture": "EXISTING_BOUNDED_NATIVE_JSON_SNAPSHOT",
-    "source_job_profile_sha256": "4b29dc1c97227678b88b2d3d225e7e460c8d3523eabc764aa65c52e2a2a03d17",
+    "source_job_profile_sha256": "010200dbc8b89874b16dad3f21d0fa81c84027694523c0978666d431737f0415",
     "structure_limits": {
       "cpu_seconds": 5,
       "memory_bytes": 268435456,
       "open_files": 128,
       "pages": 64,
-      "pdf_bytes": 8388608,
+      "pdf_bytes": 16777216,
       "result_bytes": 4096,
       "tree_depth": 64,
       "tree_visits": 20000
@@ -52,7 +53,7 @@
     "structure_policy_id": "forward-k-parent-and-mcid-linkage-v1",
     "structure_profile_id": "generated-pdf-forward-structure-tree-v1"
   },
-  "profile_sha256": "ef527ca30db7a034f6b11f896b11a09a9afedf4b91b899b9bceacfd4245828a5",
+  "profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499",
   "release_authorized": false,
   "reused_source_sha256": {
     "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
@@ -60,13 +61,13 @@
     "reporting/_pdf_structure_tree_worker.py": "e666121e46925a40e372595d1c7e6e462a373fccffc685d5e5c1f8507e2005cc",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-source-inspection-job.v1.json": "2a71a867872e181f913e2e555665ba5d651b2cac78a756acc809f97654eac5d1",
-    "reporting/pdf-structure-tree-engine.v1.json": "3545583523eda4d02c75d3f559c1e977ada74204affae319a13d48c1e796fd3e",
+    "reporting/pdf-source-inspection-job.v1.json": "9787c5fb7a2e2e00707ebcc2880676b457c8ac3610ee8c05f1dc197a5ce18c82",
+    "reporting/pdf-structure-tree-engine.v1.json": "3d9dc8a0f6e1397f45deb5f5819a1780ec2acba0d110fd5867faf390841db47e",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
-    "reporting/pdf_inspection_job.py": "4ed9ec1205b12574fa6a65b25e4577928375723d1ddabae9ede7cd5661a80fe8",
+    "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
     "reporting/pdf_inspection_set.py": "1f5c86e09cf2b492e80a96676f602682c896b309ca8a7996c706c09c7c8a703d",
-    "reporting/pdf_source_inspection_job.py": "87523da1ca7eeacccede2a9c188575c831ea7c290d2d5492dfc3f1f0e9976520",
+    "reporting/pdf_source_inspection_job.py": "835c904d151b9e6f6973b00a01fb2fd0ecd4bb6ee11bf656134d91814afc06a1",
     "reporting/pdf_structure_tree.py": "606cf6f16cf9031fd23c08adf8277fe489f5158c64f870d447dd88c2119b67d7",
     "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
   },

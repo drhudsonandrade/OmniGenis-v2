@@ -9,7 +9,7 @@
   "full_accessibility_qualified": false,
   "language": "en-US",
   "max_pages": 64,
-  "max_pdf_bytes": 8388608,
+  "max_pdf_bytes": 16777216,
   "max_tree_depth": 64,
   "max_tree_visits": 20000,
   "parent_structure_policy_id": "forward-k-parent-and-mcid-linkage-v1",

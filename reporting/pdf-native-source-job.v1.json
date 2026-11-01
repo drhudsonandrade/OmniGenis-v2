@@ -6,17 +6,12 @@
   "disable_environment": "OMNIGENIS_PDF_NATIVE_SOURCE_JOB_DISABLED=1",
   "execution_order": [
     "pinned_native_tounicode_width_coverage_chain",
-    "unchanged_structured_source_job"
+    "pinned_structured_source_job"
   ],
-  "existing_profiles_changed": false,
+  "existing_profiles_changed": true,
   "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
-  "launch_attempt_budget_policy": {
-    "path": "reporting/pdf-native-launch-budget.v1.json",
-    "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
-    "sha256": "3f6d24375ca07f6d61a01e4f256b037597f6034eff9bf5da1870443a8aea804e"
-  },
   "known_issues": [
-    "The two outer stages reuse the full pinned native ancestry and the unchanged structured-source job. Two stages do not mean two native processes; no aggregate native CPU, RSS, scratch, descriptor or descendant budget is qualified.",
+    "The two outer stages reuse the full pinned native ancestry and the selected structured-source job. Two stages do not mean two native processes; no aggregate native CPU, RSS, scratch, descriptor or descendant budget is qualified.",
     "The existing 300-second post-admission budget also caps each direct-worker wait by the remaining time and refuses expired launch/terminal acceptance. The existing 2-second child cleanup budget is separate. Parent work, process creation and syscalls are not preempted; no hard aggregate job deadline is established.",
     "Identical PDF, IR, text-plan, page, language, profile and job bindings are unsigned metadata agreement, not authenticated worker execution or clinical release authority.",
     "The native receipt establishes same-font explicit width coverage only. It does not audit Unicode meanings, visible glyphs, font programs, metric correctness, reading order or full PDF/UA accessibility.",
@@ -24,21 +19,27 @@
     "The width receipt does not expose ancestor role inventories; this composition does not invent cross-validator agreement for unexposed counts.",
     "Bounded native-JSON capture and subsequent source comparisons detect persistent mutation. Concurrent mutate-and-restore behavior remains unsupported.",
     "No retry, caller-supplied receipt, custom executor, durable checkpoint or resume input is accepted.",
-    "The optional profile admits at most 64 pages and 8 MiB, conditional on all unchanged native/parser/graph/depth limits. The admitted 64-page synthetic renderer fixture omits its excessive automatic bookmark chain during fixture generation only.",
+    "The optional profile admits at most 64 pages and 16 MiB, conditional on all existing inner-stream, parser, graph and depth limits. The admitted 64-page synthetic renderer fixture omits its excessive automatic bookmark chain during fixture generation only.",
     "The existing default 32-page/8-MiB rendering and delivery route and fixed-worker wire remain unchanged. This optional job does not activate long-report delivery or authorize release."
   ],
+  "launch_attempt_budget_policy": {
+    "path": "reporting/pdf-native-launch-budget.v1.json",
+    "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
+    "sha256": "a6f26bf5ebe6387c7420e69b3e711cf81ffce9ba0f831ea5963050eaac393920"
+  },
   "parent_pdf_parsing": false,
   "profile": {
     "acceptance_deadline_ns": 300000000000,
     "aggregate_job_resources_qualified": false,
     "default_pipeline_activated": false,
+    "document_byte_budget_sha256": "eb1eb1b5f0908520567f6c8084b27abc02bd94de7f966881e1bb098cdbd5a36d",
     "hard_job_deadline_enforced": false,
     "language": "en-US",
     "max_outer_stages": 2,
     "max_pages": 64,
-    "max_pdf_bytes": 8388608,
+    "max_pdf_bytes": 16777216,
     "max_result_bytes": 311296,
-    "native_width_profile_sha256": "0e9cd91a89366753dd85e3dd7adbd8b592928c459ff59cd91622a5bece4b5b0d",
+    "native_width_profile_sha256": "c0bef5f8c23b4c40d2ddcf23e485cbfda0653d8ca1c740cc2925b3f0b1434797",
     "pdf_version": "1.7",
     "persistent_checkpoints": false,
     "profile_id": "native-source-pdf-inspection-job-v1",
@@ -46,26 +47,26 @@
     "retries": 0,
     "schema_version": "1.0.0",
     "source_capture": "EXISTING_BOUNDED_NATIVE_JSON_SNAPSHOT",
-    "structured_source_job_profile_sha256": "ef527ca30db7a034f6b11f896b11a09a9afedf4b91b899b9bceacfd4245828a5"
+    "structured_source_job_profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
   },
-  "profile_sha256": "e184a018dc547f5749f3f28c88f8003b142de1bf4709a63e345e850109c2f2e1",
+  "profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
   "release_authorized": false,
   "reused_source_sha256": {
-    "reporting/pdf-native-launch-budget.v1.json": "3f6d24375ca07f6d61a01e4f256b037597f6034eff9bf5da1870443a8aea804e",
     "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
     "THIRD-PARTY-NOTICES.txt": "d08cd95ba4f026b427deb502a284aee6ba2159c0e372674bf5e1e384afa80788",
     "reporting/_pdf_tounicode_width_coverage_worker.py": "4d0a8efb3506b27cb66bd1da90a928464de480f41ead43b8585b7c1f9166bbb5",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-structured-source-job.v1.json": "73b574d563fbfab6af0fae61226a6872121630f5fd051fa3867eb7bc9c145d43",
-    "reporting/pdf-tounicode-width-coverage.v1.json": "bf7a9a44f7db35ff4376e9a9c79280c24d670051ce1fdeed61b6db51ee350e3d",
+    "reporting/pdf-native-launch-budget.v1.json": "49ab4627fb9f34f4a2efcef26582b3f3b35cde20188cc5ecf432ca7456d4c3ab",
+    "reporting/pdf-structured-source-job.v1.json": "f4930c57b2bb9d55d3d84a41b57df815ce01628a11bd58e9a858979f6e256f5e",
+    "reporting/pdf-tounicode-width-coverage.v1.json": "109a2246c4c582ef98462493792fac10a89a13a0acfdd1bdc510af9a89d59930",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
     "reporting/pdf_inspection_bundle.py": "03d636617653e940cfdcad4951b867d1cadd258bd0bd00cd8c56f4d4a22c0c51",
-    "reporting/pdf_inspection_job.py": "4ed9ec1205b12574fa6a65b25e4577928375723d1ddabae9ede7cd5661a80fe8",
-    "reporting/pdf_source_inspection_job.py": "87523da1ca7eeacccede2a9c188575c831ea7c290d2d5492dfc3f1f0e9976520",
-    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
-    "reporting/pdf_tounicode_width_coverage.py": "a161b31fca3fc7cc457289e6fa9558e3814d5d222f86c6b42ff794faf0cd8e43",
+    "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
+    "reporting/pdf_source_inspection_job.py": "835c904d151b9e6f6973b00a01fb2fd0ecd4bb6ee11bf656134d91814afc06a1",
+    "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
+    "reporting/pdf_tounicode_width_coverage.py": "fd1b2fd693f3da6381e54ef0adf9f30576bb0eb27796b233fbdcbff99d66956a",
     "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
   },
   "schema_version": "1.0.0",

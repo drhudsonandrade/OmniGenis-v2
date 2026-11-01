@@ -31,9 +31,9 @@ from reporting._pdf_tounicode_bfchar_sources_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_BFCHAR_SOURCES_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "b20db009e9453d1b60b067dbc17688970be8e27d0ff4aa23eb0f2ee494098495"
+_FIXED_PARENT_PROFILE_SHA256 = "becaba64879ed60662de3c4c952c1262720fee0bd09f89241da0a3938511c6f2"
 _FIXED_ENVELOPE = (
-    64, 8 * 1024 * 1024, 256 * 1024, 512 * 1024,
+    64, 16 * 1024 * 1024, 256 * 1024, 512 * 1024,
     256, 16384, 100, 262144,
 )
 _LIMITS = {
@@ -84,7 +84,7 @@ def tounicode_bfchar_sources_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_bfchar_sources_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "fa8077e10ecf6b2e8f7e9d11d41652d44059ddfa3f6f10126b14f4e35828b8da"
+_FIXED_PROFILE_SHA256 = "7b0ec9977c118352bbe1d5db7bfdee0de15d18babc4fbf640a0171cdc9a82cf5"
 
 
 def _profile() -> None:

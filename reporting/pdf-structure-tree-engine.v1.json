@@ -2,6 +2,24 @@
   "default_pipeline_activated": false,
   "disable_behavior": "fail_closed_at_admission_and_acceptance",
   "disable_environment": "OMNIGENIS_PDF_STRUCTURE_TREE_DISABLED=1",
+  "document_byte_budget": {
+    "aggregate_job_resources_qualified": false,
+    "default_pipeline_activated": false,
+    "expanded": {
+      "max_pages": 64,
+      "max_pdf_bytes": 16777216
+    },
+    "inner_stream_limits_expanded": false,
+    "legacy": {
+      "max_pages": 512,
+      "max_pdf_bytes": 8388608
+    },
+    "profile_id": "generated-pdf-document-byte-budget-v1",
+    "release_authorized": false,
+    "schema_version": "1.0.0",
+    "selection": "PDF_BYTES_AND_COMPLETE_DOCUMENT_PAGE_COUNT"
+  },
+  "document_byte_budget_sha256": "eb1eb1b5f0908520567f6c8084b27abc02bd94de7f966881e1bb098cdbd5a36d",
   "inspection_scope": "Complete supported StructTreeRoot K hierarchy, unique indirect child ownership, immediate P links and exact bidirectional physical-page MCID membership",
   "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
   "known_issues": [
@@ -10,7 +28,7 @@
     "Role names are required to be native PDF names, but role maps, attributes, alternate text quality, reading order and semantic accessibility are not qualified.",
     "No full PDF/UA claim, visual/source-text equivalence, findings assessment, scientific validation, worker authentication or release authorization follows from linkage counts.",
     "Unsupported but otherwise valid PDF structure forms fail closed; input is never rewritten or sanitized.",
-    "The existing 32-page default renderer, optional source-aware 64-page job and other inspectors are unchanged. This adapter is not automatically inserted into them."
+    "The 32-page default renderer is unchanged. The optional source-aware job and other inspectors use the selected finite file class; this adapter still requires explicit composition."
   ],
   "language": "en-US",
   "license": "BSD-3-Clause",
@@ -26,7 +44,7 @@
     "memory_bytes": 268435456,
     "open_files": 128,
     "pages": 64,
-    "pdf_bytes": 8388608,
+    "pdf_bytes": 16777216,
     "result_bytes": 4096,
     "tree_depth": 64,
     "tree_visits": 20000,
@@ -34,20 +52,23 @@
   },
   "reused_source_sha256": {
     "reporting/_pdf_mcid_coverage_worker.py": "a51e90ac2e36c004f68fc972250507b75e09723f6ec1d99334c4309f4fd5475e",
-    "reporting/_pdf_object_graph_worker.py": "c250b4e5afda399695108920ca1cdd03311d76eec3ae3343c49c42142bf504f4",
+    "reporting/_pdf_object_graph_worker.py": "484184af8da15084d05e6e66e275aa8b781962a1b1c1c0fe5e3edc4bee263838",
     "reporting/_pdf_page_tags_worker.py": "6d54979b76702a42820b608587dd59d57d628d7def14846d1bb45ded59a0f6ef",
+    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd",
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
     "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
-    "reporting/pdf_mcid_coverage.py": "7f7af447d9ba8154a589012522af8c076564de8c54a211990c6a3d0bcab326ae",
-    "reporting/pdf_object_graph.py": "8643519be9dc3e4237899be87da24c36ebaf5e951b541197cd688e9c75f89eaa",
-    "reporting/pdf_source_inspection_job.py": "87523da1ca7eeacccede2a9c188575c831ea7c290d2d5492dfc3f1f0e9976520",
-    "reporting/pdf_text_windows.py": "fdb1ff1e7947e3a7176bee54fec3cd019eb5bf6e7a86ec5605ef57ace28b7ab8",
-    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
+    "reporting/pdf_mcid_coverage.py": "f34df042f6d904c0183b0ce4cc70eb89004e862ac49fe18d0253478ba732e107",
+    "reporting/pdf_object_graph.py": "939a4e03c3f5cb30ceab4141e589e583edc6dfb740e5ff69b9ad90773bbfb727",
+    "reporting/pdf_source_inspection_job.py": "835c904d151b9e6f6973b00a01fb2fd0ecd4bb6ee11bf656134d91814afc06a1",
+    "reporting/pdf_text_windows.py": "42b915c3cd58c5e2cc261a0f5e407561092b5e3a21862ce853149e07458433f7"
   },
   "schema_version": "1.0.0",
   "source_code_copied": false,
   "source_job_changed": false,
+  "source_sha256": {
+    "reporting/_pdf_document_byte_budget.py": "522858e03e4f6a7b90dedcae6f479e9acee3f92dd39266325020f48fd5131004"
+  },
   "supported_structure": "Existing flat ParentTree profile; root K array; structure elements with nonempty K arrays, single indirect child or single integer MCID; numeric content requires an explicit physical Pg; dictionaries such as MCR/OBJR child records and nested arrays are unsupported"
 }

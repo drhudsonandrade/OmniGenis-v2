@@ -31,9 +31,9 @@ from reporting._pdf_tounicode_cmap_frame_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_CMAP_FRAME_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "794bde8126e3af1fc1b56dc2404dc6290a3d838b893b9d1c1db70b6f1c05c726"
+_FIXED_PARENT_PROFILE_SHA256 = "97c958f48138ac34d327a0b5210fa59e49ee91e075ca9d12d0a039133ff2b878"
 _FIXED_ENVELOPE = (
-    64, 8 * 1024 * 1024, 256 * 1024, 512 * 1024, 256, 16384, 100,
+    64, 16 * 1024 * 1024, 256 * 1024, 512 * 1024, 256, 16384, 100,
 )
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -81,7 +81,7 @@ def tounicode_cmap_frame_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_cmap_frame_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "a0b7ad9f42efb03c0ef58c85d4339572f8d2f3fafc451247cf3d8eb21ed4735a"
+_FIXED_PROFILE_SHA256 = "c67ffb6ec7452bb5036a364825191da96769d8171993fbbf9352d3a614840d79"
 
 
 def _profile() -> None:

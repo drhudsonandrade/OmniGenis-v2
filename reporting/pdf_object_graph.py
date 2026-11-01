@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 
+from reporting._pdf_document_byte_budget import require_pdf_document_budget
 from reporting._pdf_native_launch_budget import admit_launch, wait_native_process_group
 
 from reporting._pdf_object_graph_worker import (
@@ -181,6 +182,7 @@ def inspect_pdf_object_graph(
         if type(plan) is not PageWindowPlan or not _is_digest(expected_plan_sha256):
             raise ValueError("sealed plan required")
         plan.__post_init__()
+        require_pdf_document_budget(len(pdf_bytes), plan.page_count)
         if (plan.plan_sha256 != expected_plan_sha256 or plan.page_count > MAX_DOCUMENT_PAGES
                 or hashlib.sha256(pdf_bytes).hexdigest() != plan.pdf_sha256):
             raise ValueError("plan admission mismatch")

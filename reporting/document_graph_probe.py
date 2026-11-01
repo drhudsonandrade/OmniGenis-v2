@@ -1,7 +1,7 @@
 """Optional exact-PDF graph probe for an already sealed document preflight.
 
-The current, unchanged 8-MiB native graph worker checks physical page count
-and the reachable effective-object graph for a subset of staged documents.
+The native graph worker checks physical page count and the reachable effective
+object graph within the paired 8-MiB/512-page or 16-MiB/64-page file class.
 This narrow bridge does not expand the 32-page default QA or 64-page job, does
 not admit a 32-MiB native class, and does not certify an aggregate supervisor,
 historical PDF revisions, worker provenance or final-report release.
@@ -13,6 +13,9 @@ from hashlib import sha256
 import json
 import os
 
+from reporting._pdf_document_byte_budget import (
+    document_byte_budget_profile, require_pdf_document_budget,
+)
 from reporting.bindings import _digest
 from reporting.page_checkpoints import _json_bytes
 from reporting import document_plan as preflight
@@ -30,6 +33,7 @@ def document_graph_probe_profile() -> dict:
     """Pin native execution to the existing smaller graph-worker resource class."""
     return {
         "schema_version": "1.0.0", "profile_id": PROFILE_ID,
+        "document_byte_budget": document_byte_budget_profile(),
         "preflight_profile_sha256": preflight.PROFILE_SHA256,
         "graph_profile_id": graph.PROFILE_ID,
         "graph_policy_id": graph.POLICY_ID,
@@ -75,12 +79,14 @@ class PdfDocumentGraphProbe:
     _sealed_sha256: str = field(init=False, repr=False, compare=False)
 
     def _record(self) -> dict:
+        """Validate exact document identity and paired admission before exposing a receipt."""
         _profile(self.probe_profile_sha256)
         _digest(self.expected_preflight_sha256)
         if (type(self.document) is not preflight.PdfDocumentPreflight
                 or type(self.inspection) is not graph.PdfObjectGraphInspection):
             raise ValueError("graph probe receipt types invalid")
         planned = self.document.to_dict()
+        require_pdf_document_budget(planned["pdf_byte_count"], planned["declared_page_count"])
         inspected = self.inspection.to_dict()
         if (planned["preflight_sha256"] != self.expected_preflight_sha256
                 or planned["pdf_byte_count"] > graph.MAX_PDF_BYTES
@@ -152,8 +158,8 @@ def inspect_pdf_document_preflight_graph(
 ) -> PdfDocumentGraphProbe:
     """Run only the existing graph worker against the complete pinned candidate.
 
-    An over-8-MiB candidate remains a valid *preflight* but is deferred at this
-    native step. A parser mismatch, action violation, malformed PDF or changed
+    A candidate outside the paired byte/page class remains an inert preflight
+    and is refused here. A parser mismatch, action violation, malformed PDF or changed
     job/window digest refuses the entire observation with no partial receipt.
     """
     try:
@@ -162,6 +168,7 @@ def inspect_pdf_document_preflight_graph(
         if type(document) is not preflight.PdfDocumentPreflight or type(pdf_bytes) is not bytes:
             raise ValueError("graph probe input types invalid")
         plan = document.to_dict()
+        require_pdf_document_budget(len(pdf_bytes), plan["declared_page_count"])
         if (plan["preflight_sha256"] != expected_preflight_sha256
                 or plan["pdf_byte_count"] != len(pdf_bytes)
                 or not 0 < len(pdf_bytes) <= graph.MAX_PDF_BYTES

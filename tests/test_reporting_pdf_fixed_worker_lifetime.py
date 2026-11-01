@@ -818,9 +818,9 @@ class FixedWorkerLifetimeTests(unittest.TestCase):
         self.assertEqual(worker.WORKER_LIFETIME_PROFILE_SHA256,
                          record['lifetime_policy']['profile_sha256'])
         self.assertEqual(worker.PROFILE_SHA256,
-                         '48701b4b85dc7f56d5ac1b5032bb71069c9d44189de3da265b59e94d3b3fead3')
+                         '52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b')
         self.assertEqual(worker.NATIVE_PROFILE_SHA256,
-                         '835e4c927283609888a2a1741ed26d93db2a324521239e8f51470fe1f8d87d6f')
+                         '8d43f3c8b91475462ffe26efce4fb5e920d148ea5ce436f730f7206e8cfb7aea')
         self.assertFalse(worker.worker_profile()['hard_job_deadline_enforced'])
         self.assertFalse(worker.worker_profile()['aggregate_job_resources_qualified'])
 

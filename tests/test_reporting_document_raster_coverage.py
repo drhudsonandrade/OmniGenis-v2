@@ -375,7 +375,7 @@ class DocumentRasterCoverageTests(unittest.TestCase):
         self.assertEqual(manifest["profile"], profile)
         self.assertEqual(manifest["profile_sha256"], subject.PROFILE_SHA256)
         self.assertEqual(profile["max_bound_pages"], 64)
-        self.assertEqual(profile["max_bound_pdf_bytes"], 8388608)
+        self.assertEqual(profile["max_bound_pdf_bytes"], 16777216)
         self.assertEqual(profile["raster_window_pages"], 4)
         self.assertFalse(profile["release_authorized"])
         self.assertFalse(manifest["default_pipeline_activated"])

@@ -387,12 +387,13 @@ class PdfResourceLeavesTests(unittest.TestCase):
             self.assertEqual(self.inspect().font_binding_count, 3)
 
     def test_profile_manifest_and_nonclaims_are_pinned(self):
+        """Pin the selected finite profile, dependency identities and unqualified claims."""
         manifest = json.loads((ROOT / "reporting/pdf-resource-leaves.v1.json").read_text())
         profile = self.m.resource_leaves_profile()
         self.assertEqual(manifest, profile)
         self.assertEqual(profile["parser_version"], "6.19.0")
         self.assertEqual(profile["max_pages"], 64)
-        self.assertEqual(profile["max_pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
         for flag in (
             "font_programs_audited", "glyph_widths_audited",
             "tounicode_decoded", "pdf_ua_qualified", "release_authorized",

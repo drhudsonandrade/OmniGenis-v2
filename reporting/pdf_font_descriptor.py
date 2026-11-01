@@ -14,6 +14,7 @@ import stat
 import sys
 import tempfile
 
+from reporting._pdf_document_byte_budget import LEGACY_MAX_PDF_BYTES as MAX_RAW_STREAM_BYTES
 from reporting.page_windows import PageWindowPlan
 from reporting.pdf_text_windows import PROFILE_ID as TEXT_PROFILE
 from reporting import pdf_resource_leaves as previous
@@ -28,8 +29,8 @@ from reporting._pdf_font_descriptor_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_FONT_DESCRIPTOR_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "cecea0ee9e3b0c9603d72ee06fa612b0929357fc8a6a0026513d9eaa5e8f5597"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE_SHA256 = "83db5ebf1c930a23b61e00e426e77d1689b896094bccfbf6617fe0769727bb2c"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -51,6 +52,7 @@ def font_descriptor_profile() -> dict:
         "language": LANGUAGE,
         "max_pages": MAX_DOCUMENT_PAGES,
         "max_pdf_bytes": MAX_PDF_BYTES,
+        "max_raw_stream_bytes": MAX_RAW_STREAM_BYTES,
         "descriptor_policy": "NATIVE_BOUNDED_TYPE0_LINKED_GENERATION_ZERO_ENVELOPE",
         "font_file2_policy": "DISTINCT_INDEXED_FLATE_RAW_BYTES_ONLY",
         "font_descriptor_count_matches_type0": True,
@@ -72,7 +74,7 @@ def font_descriptor_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(font_descriptor_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "d5a6bd2642b56e47f09437e442c0d66e4defc35e575199e84822a43a5e0e88db"
+_FIXED_PROFILE_SHA256 = "d2037e921601d15ef10ddd130487ac8cd37e8326cee5f18bc2e7284269491519"
 
 
 def _profile() -> None:

@@ -10,12 +10,12 @@
     "inspection_set_profile_id": "bound-pdf-inspection-set-v1",
     "language": "en-US",
     "max_bound_pages": 64,
-    "max_bound_pdf_bytes": 8388608,
+    "max_bound_pdf_bytes": 16777216,
     "mcid_coverage_policy_id": "page-mcid-parenttree-consistency-v1",
     "mcid_coverage_profile_id": "generated-pdf-mcid-parenttree-v1",
     "page_tags_policy_id": "page-tag-parenttree-references-v1",
     "page_tags_profile_id": "generated-pdf-page-tag-parenttree-v1",
-    "parent_raster_profile_sha256": "a29953ed3560e058866b5f5c5190beb9085e7ab365b66d3237ce26eb5a533aba",
+    "parent_raster_profile_sha256": "f154c47bb80a9af1b5c8f97fecca16a4a4e8cb463bcf57b6c1b3f25b6afc2017",
     "pdf_ua_qualified": false,
     "profile_id": "generated-pdf-document-structure-coverage-v1",
     "reading_order_verified": false,
@@ -31,6 +31,6 @@
     "whole_pdf_safety_qualified": false,
     "worker_results_authenticated": false
   },
-  "profile_sha256": "f4972188d8d0c6160b09e81b7f48931364aec3a92ae942577088d212d24df8ec",
+  "profile_sha256": "51d8d61dae7595d9433ccc3dc500a59325751a62554083e1b9ee152f5189c642",
   "release_authorized": false
 }

@@ -1,0 +1,29 @@
+{
+  "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
+  "known_issues": [
+    "The byte/page pair is an admission ceiling, not a guarantee for every file inside it. Parser, graph, decoded-content, time, memory, descriptor, scratch and pixel limits still apply.",
+    "The default rendering and candidate-QA route retains its existing limits. Aggregate job resources and final report release remain unqualified."
+  ],
+  "profile": {
+    "aggregate_job_resources_qualified": false,
+    "default_pipeline_activated": false,
+    "expanded": {
+      "max_pages": 64,
+      "max_pdf_bytes": 16777216
+    },
+    "inner_stream_limits_expanded": false,
+    "legacy": {
+      "max_pages": 512,
+      "max_pdf_bytes": 8388608
+    },
+    "profile_id": "generated-pdf-document-byte-budget-v1",
+    "release_authorized": false,
+    "schema_version": "1.0.0",
+    "selection": "PDF_BYTES_AND_COMPLETE_DOCUMENT_PAGE_COUNT"
+  },
+  "profile_sha256": "eb1eb1b5f0908520567f6c8084b27abc02bd94de7f966881e1bb098cdbd5a36d",
+  "schema_version": "1.0.0",
+  "source_sha256": {
+    "reporting/_pdf_document_byte_budget.py": "522858e03e4f6a7b90dedcae6f479e9acee3f92dd39266325020f48fd5131004"
+  }
+}

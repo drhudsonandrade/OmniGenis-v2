@@ -18,6 +18,7 @@ import sys
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from reporting._pdf_document_byte_budget import LEGACY_MAX_PDF_BYTES
 from reporting import _pdf_single_revision_worker as previous
 from reporting._pdf_object_graph_worker import (
     MAX_PDF_BYTES, PARSER_VERSION, PROTOCOL_VERSION, RESULT_BYTES,
@@ -36,7 +37,7 @@ LANGUAGE = previous.LANGUAGE
 MAX_DOCUMENT_PAGES = previous.MAX_DOCUMENT_PAGES
 MAX_ENTRIES = 20000
 MAX_ENTRY_WIDTH = 17
-MAX_DECODED_OBJECT_STREAM = MAX_PDF_BYTES
+MAX_DECODED_OBJECT_STREAM = LEGACY_MAX_PDF_BYTES
 
 
 def _identity(value: dict) -> None:

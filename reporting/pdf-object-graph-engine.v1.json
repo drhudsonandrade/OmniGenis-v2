@@ -7,6 +7,24 @@
   "default_pipeline_activated": false,
   "disable_behavior": "fail_closed",
   "disable_environment": "OMNIGENIS_PDF_OBJECT_GRAPH_DISABLED=1",
+  "document_byte_budget": {
+    "aggregate_job_resources_qualified": false,
+    "default_pipeline_activated": false,
+    "expanded": {
+      "max_pages": 64,
+      "max_pdf_bytes": 16777216
+    },
+    "inner_stream_limits_expanded": false,
+    "legacy": {
+      "max_pages": 512,
+      "max_pdf_bytes": 8388608
+    },
+    "profile_id": "generated-pdf-document-byte-budget-v1",
+    "release_authorized": false,
+    "schema_version": "1.0.0",
+    "selection": "PDF_BYTES_AND_COMPLETE_DOCUMENT_PAGE_COUNT"
+  },
+  "document_byte_budget_sha256": "eb1eb1b5f0908520567f6c8084b27abc02bd94de7f966881e1bb098cdbd5a36d",
   "input_domain": "Sealed generated PDF 1.7 with independently pinned PDF/IR/plan digests and physical page count",
   "integration_mode": "USE_VIA_ADAPTER",
   "known_issues": [
@@ -50,12 +68,15 @@
     "object_visits": 20000,
     "open_files": 128,
     "pages": 512,
-    "pdf_bytes": 8388608,
+    "pdf_bytes": 16777216,
     "result_bytes": 4096,
     "wall_seconds": 10
   },
   "schema_version": "1.0.0",
   "source_code_copied": false,
   "source_repository": "py-pdf/pypdf",
+  "source_sha256": {
+    "reporting/_pdf_document_byte_budget.py": "522858e03e4f6a7b90dedcae6f479e9acee3f92dd39266325020f48fd5131004"
+  },
   "whole_report_qualified": false
 }

@@ -31,9 +31,9 @@ from reporting._pdf_tounicode_width_coverage_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_WIDTH_COVERAGE_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "fa8077e10ecf6b2e8f7e9d11d41652d44059ddfa3f6f10126b14f4e35828b8da"
+_FIXED_PARENT_PROFILE_SHA256 = "7b0ec9977c118352bbe1d5db7bfdee0de15d18babc4fbf640a0171cdc9a82cf5"
 _FIXED_ENVELOPE = (
-    64, 8 * 1024 * 1024, 256 * 1024, 512 * 1024,
+    64, 16 * 1024 * 1024, 256 * 1024, 512 * 1024,
     256, 16384, 100, 262144, 4096,
 )
 _LIMITS = {
@@ -92,7 +92,7 @@ def tounicode_width_coverage_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_width_coverage_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "0e9cd91a89366753dd85e3dd7adbd8b592928c459ff59cd91622a5bece4b5b0d"
+_FIXED_PROFILE_SHA256 = "c0bef5f8c23b4c40d2ddcf23e485cbfda0653d8ca1c740cc2925b3f0b1434797"
 
 
 def _profile() -> None:

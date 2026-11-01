@@ -536,7 +536,7 @@ class RasterWorkerBudgetTests(BudgetAssertions):
                              hashlib.sha256((ROOT / value[role + "_path"]).read_bytes()).hexdigest())
         self.assertFalse(manifest["guards"]["aggregate_job_resources_qualified"])
         self.assertFalse(manifest["default_pipeline_activated"])
-        self.assertEqual(manifest["resource_budget"]["pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(manifest["resource_budget"]["pdf_bytes"], 16 * 1024 * 1024)
         self.assertEqual(manifest["resource_budget"]["document_pages"], 512)
 
     def test_new_accounting_functions_and_classes_have_docstrings(self):

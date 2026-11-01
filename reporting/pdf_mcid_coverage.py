@@ -15,6 +15,7 @@ import stat
 import sys
 import tempfile
 
+from reporting._pdf_document_byte_budget import require_pdf_document_budget
 from reporting._pdf_mcid_coverage_worker import (
     CPU_SECONDS, IDENTITY_FIELDS, LANGUAGE, MAX_DECODED_BYTES,
     MAX_DOCUMENT_PAGES, MAX_PDF_BYTES, MAX_VISITS,
@@ -167,6 +168,7 @@ def inspect_pdf_mcid_coverage(
         if type(plan) is not PageWindowPlan or not _is_digest(expected_plan_sha256):
             raise ValueError("MCID plan type or digest")
         plan.__post_init__()
+        require_pdf_document_budget(len(pdf_bytes), plan.page_count)
         if (plan.plan_sha256!=expected_plan_sha256
                 or plan.page_count>MAX_DOCUMENT_PAGES
                 or plan.pdf_sha256!=hashlib.sha256(pdf_bytes).hexdigest()):

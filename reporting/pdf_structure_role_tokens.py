@@ -30,7 +30,7 @@ from reporting._pdf_structure_role_tokens_worker import (
 
 _LIMITS = {"memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
            "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES}
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024, 64, 20000)
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024, 64, 20000)
 _DISABLE = "OMNIGENIS_PDF_STRUCTURE_ROLE_TOKENS_DISABLED"
 
 

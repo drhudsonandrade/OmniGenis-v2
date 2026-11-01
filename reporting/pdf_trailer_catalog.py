@@ -28,8 +28,8 @@ from reporting._pdf_trailer_catalog_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TRAILER_CATALOG_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "211feff2c3c875bd868206b8c5db15db386fa74ae59276c53f8b48cc9455f8e5"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE_SHA256 = "5f2e1d595ddffa7a04e2feaf5563eae7df07b8b36db45d918dd5e3fa02b1f0e7"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -70,7 +70,7 @@ def trailer_catalog_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(trailer_catalog_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "0bf16bc9a672b2fddfcf8ada89cd599260255b6c2252957cdc969d3135a5c49c"
+_FIXED_PROFILE_SHA256 = "3d3502d1f2ff01f63a4d05195e219b5ae63e21e2c75667df4f2492b3395058ae"
 
 
 def _profile() -> None:

@@ -231,11 +231,12 @@ class PdfXrefResolutionTests(unittest.TestCase):
             receipt.to_dict()
 
     def test_manifest_matches_exact_bounded_profile(self):
+        """Pin the selected finite profile, dependency identities and unqualified claims."""
         saved = json.loads((ROOT / "reporting/pdf-xref-resolution.v1.json").read_text())
         profile = self.m.xref_resolution_profile()
         self.assertEqual(saved, profile)
         self.assertEqual(profile["max_pages"], 64)
-        self.assertEqual(profile["max_pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
         self.assertFalse(profile["opaque_payloads_audited"])
         self.assertFalse(profile["default_pipeline_activated"])
         self.assertFalse(profile["release_authorized"])

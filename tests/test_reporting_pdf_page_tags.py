@@ -293,16 +293,18 @@ class PdfPageTagParentTests(unittest.TestCase):
             with self.assertRaises(self.m.PdfPageTagError):
                 self.inspect(**change)
 
-    def test_page_and_byte_caps_are_not_expanded(self):
+    def test_page_and_byte_caps_remain_finite(self):
         """513-page declarations and an oversized PDF are rejected before worker creation."""
         plan = self.make_plan(self.two,513)
         with patch.object(self.m, "_run_worker") as run:
             with self.assertRaises(self.m.PdfPageTagError):
                 self.inspect(plan=plan, expected_plan_sha256=plan.plan_sha256)
             run.assert_not_called()
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        plan = self.make_plan(overflow, 2)
         with patch.object(self.m, "_run_worker") as run:
             with self.assertRaises(self.m.PdfPageTagError):
-                self.inspect(pdf_bytes=b"%PDF-1.7" + b"x" * (8*1024*1024))
+                self.inspect(pdf_bytes=overflow, plan=plan, expected_plan_sha256=plan.plan_sha256)
             run.assert_not_called()
 
     def test_only_current_locale_accepted(self):
@@ -436,7 +438,7 @@ class PdfPageTagParentTests(unittest.TestCase):
         self.assertEqual(manifest["parser_version"],"6.19.0")
         self.assertFalse(manifest["default_pipeline_activated"])
         self.assertEqual(manifest["resource_budget"]["pages"],512)
-        self.assertEqual(manifest["resource_budget"]["pdf_bytes"],8388608)
+        self.assertEqual(manifest["resource_budget"]["pdf_bytes"],16777216)
         for name,hash_value in manifest["reused_source_sha256"].items():
             self.assertEqual(digest((ROOT/name).read_bytes()),hash_value)
 

@@ -310,12 +310,13 @@ class PdfSealedInspectionTests(unittest.TestCase):
                 self.assertEqual(_json_bytes(ir),raw)
 
     def test_manifest_exact_reuse_and_unchanged_default_scope(self):
-        """All original source/profile/legal bytes stay pinned, with no new executor or release."""
+        """Updated source/profile pins retain the existing default, executor and release boundaries."""
         manifest=json.loads((ROOT/'reporting/pdf-sealed-inspection.v1.json').read_text())
         self.assertEqual(manifest['profile'],self.m.sealed_inspection_profile())
         self.assertEqual(manifest['profile_sha256'],self.m.PROFILE_SHA256)
-        for key in ('default_pipeline_activated','new_executor_activated','release_authorized','dependencies_changed','existing_profiles_changed'):
+        for key in ('default_pipeline_activated','new_executor_activated','release_authorized','dependencies_changed'):
             self.assertIs(manifest[key],False)
+        self.assertIs(manifest['existing_profiles_changed'],True)
         for name,digest in manifest['reused_source_sha256'].items():
             self.assertEqual(sha256((ROOT/name).read_bytes()).hexdigest(),digest)
         for name in ('reporting/pdf_sealed_inspection.py','tests/test_reporting_pdf_sealed_inspection.py'):

@@ -7,22 +7,39 @@
   "existing_default_qa_unchanged": true,
   "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
   "larger_preflight_byte_class": "DEFER_NATIVE_INSPECTION",
-  "max_native_pdf_bytes": 8388608,
+  "max_native_pdf_bytes": 16777216,
   "profile": {
     "aggregate_job_resources_qualified": false,
     "default_pipeline_activated": false,
+    "document_byte_budget": {
+      "aggregate_job_resources_qualified": false,
+      "default_pipeline_activated": false,
+      "expanded": {
+        "max_pages": 64,
+        "max_pdf_bytes": 16777216
+      },
+      "inner_stream_limits_expanded": false,
+      "legacy": {
+        "max_pages": 512,
+        "max_pdf_bytes": 8388608
+      },
+      "profile_id": "generated-pdf-document-byte-budget-v1",
+      "release_authorized": false,
+      "schema_version": "1.0.0",
+      "selection": "PDF_BYTES_AND_COMPLETE_DOCUMENT_PAGE_COUNT"
+    },
     "graph_inspection_scope": "EFFECTIVE_TRAILER_REACHABLE_OBJECTS_ONLY",
     "graph_policy_id": "passive-report-pdf-v1",
     "graph_profile_id": "generated-pdf-effective-object-graph-v1",
     "max_object_visits": 20000,
     "max_pages": 512,
-    "max_pdf_bytes": 8388608,
+    "max_pdf_bytes": 16777216,
     "parser_version": "6.19.0",
     "per_worker_cpu_seconds": 5,
     "per_worker_memory_bytes": 268435456,
     "per_worker_open_files": 128,
     "per_worker_wall_seconds": 10,
-    "preflight_profile_sha256": "09d124ddb69da0cceedb55099404a0c36c12c4ed0d86e23aefce4e6e9f9ab6a8",
+    "preflight_profile_sha256": "59a3610892f5ab9a0c17194d99988dfb19f44ffed59ff9401796c88310f1c479",
     "profile_id": "generated-pdf-preflight-graph-probe-v1",
     "release_authorized": false,
     "schema_version": "1.0.0",
@@ -30,7 +47,7 @@
     "worker_results_authenticated": false
   },
   "profile_id": "generated-pdf-preflight-graph-probe-v1",
-  "profile_sha256": "cde96682e2f8ddc75b16d8e63511a19f26839204913abc592f94f6c15fa5ae35",
+  "profile_sha256": "f0bf9b1ddaf7b69317278c9c6c114299831e72e39bfd43605a6491dd1020225b",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "service_installed": false,

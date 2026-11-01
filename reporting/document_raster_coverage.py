@@ -12,6 +12,7 @@ from hashlib import sha256
 import json
 import os
 
+from reporting._pdf_document_byte_budget import MAX_PDF_BYTES as _MAX_BYTES
 from reporting.bindings import _digest
 from reporting.page_checkpoints import _json_bytes
 from reporting import document_content_reconciliation as content_api
@@ -23,7 +24,6 @@ from reporting import pdf_raster_windows as raster
 PROFILE_ID = "generated-pdf-document-raster-coverage-v1"
 _PARENT_PROFILE_SHA256 = content_api.PROFILE_SHA256
 _MAX_PAGES = 64
-_MAX_BYTES = 8 * 1024 * 1024
 _WINDOW_PAGES = 4
 _RASTER_MAX_DOCUMENT_PAGES = 512
 _RASTER_MAX_PIXELS_PER_PAGE = 4_000_000

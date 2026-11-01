@@ -131,12 +131,14 @@ class PdfStructureRoleTokensTests(unittest.TestCase):
         with self.assertRaises(self.m.PdfStructureRoleTokensError):
             self.inspect(plan=foreign, expected_plan_sha256=foreign.plan_sha256)
 
-    def test_sixty_five_page_and_over_eight_mib_not_silently_admitted(self):
-        """The old bounded parser class must not inherit a broader planning ceiling."""
+    def test_sixty_five_page_and_over_sixteen_mib_not_silently_admitted(self):
+        """The parser refuses declarations above either finite execution ceiling."""
         foreign = self.plan_for(self.pdf, 65)
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        overflow_plan = self.plan_for(overflow, 1)
         with patch.object(self.m, "_run_worker") as native:
             for change in (dict(plan=foreign, expected_plan_sha256=foreign.plan_sha256),
-                           dict(pdf_bytes=b"%PDF-1.7" + b"x" * 8_388_608)):
+                           dict(pdf_bytes=overflow, plan=overflow_plan, expected_plan_sha256=overflow_plan.plan_sha256)):
                 with self.assertRaises(self.m.PdfStructureRoleTokensError):
                     self.inspect(**change)
             native.assert_not_called()
@@ -238,7 +240,7 @@ class PdfStructureRoleTokensTests(unittest.TestCase):
         self.assertEqual(tuple(profile["supported_role_tokens"]), ALLOWED)
         self.assertTrue(profile["document_role_must_be_unique_root_child"])
         self.assertEqual(profile["max_pages"], 64)
-        self.assertEqual(profile["max_pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
         self.assertFalse(profile["pdf_ua_qualified"])
         self.assertFalse(profile["reading_order_verified"])
         self.assertFalse(profile["default_pipeline_activated"])

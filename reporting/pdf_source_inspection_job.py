@@ -1,8 +1,8 @@
 """Optional source-text comparison followed by the six existing PDF inspections.
 
 Only one captured current semantic-section source and one immutable PDF are
-used. No worker, renderer, original profile or release route is changed. All
-results remain unsigned; this wrapper is not an execution authenticator.
+used. The selected byte class applies to each worker; no renderer or release
+route is activated. All results remain unsigned; this wrapper is not an execution authenticator.
 The post-admission deadline checks acceptance between synchronous stages and
 before return, not hard preemption or aggregate process resource accounting.
 """
@@ -15,6 +15,9 @@ import os
 import sys
 from time import monotonic_ns
 
+from reporting._pdf_document_byte_budget import (
+    MAX_PDF_BYTES, PROFILE_SHA256 as DOCUMENT_BYTE_BUDGET_SHA256,
+)
 from reporting import pdf_inspection_job as legacy
 from reporting.pdf_inspection_job import execute_pdf_inspection_job
 from reporting.pdf_document_content import (
@@ -31,7 +34,6 @@ from reporting.pdf_inspection_set import PdfInspectionSet
 PROFILE_ID = 'source-aware-pdf-inspection-job-v1'
 INNER_PROFILE_SHA256 = legacy.PROFILE_SHA256
 MAX_PAGES = 64
-MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_RESULT_BYTES = 280 * 1024
 MAX_INVOCATIONS = 25
 ACCEPTANCE_NS = 300 * 1000 * 1000 * 1000
@@ -47,7 +49,8 @@ def source_inspection_job_profile() -> dict:
     """Detach the exact outer profile while retaining a separate pinned inner profile."""
     return {'schema_version': '1.0.0', 'profile_id': PROFILE_ID,
             'language': LANGUAGE, 'pdf_version': '1.7', 'max_pages': MAX_PAGES,
-            'max_pdf_bytes': MAX_PDF_BYTES, 'max_result_bytes': MAX_RESULT_BYTES,
+            'max_pdf_bytes': MAX_PDF_BYTES,
+            'document_byte_budget_sha256': DOCUMENT_BYTE_BUDGET_SHA256, 'max_result_bytes': MAX_RESULT_BYTES,
             'max_inspector_invocations': MAX_INVOCATIONS,
             'acceptance_deadline_ns': ACCEPTANCE_NS,
             'inspection_job_profile_sha256': INNER_PROFILE_SHA256,

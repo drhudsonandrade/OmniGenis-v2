@@ -28,8 +28,8 @@ from reporting._pdf_single_revision_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_SINGLE_REVISION_DISABLED"
-_FIXED_PARENT_PROFILE = "9ea057bf8c80f4f21cb308d74e7fb80c6e4115ca637cbecd5398fb61bf0d9b95"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE = "c1a94f20313eb3bbfc0744ae14b4d7029f6f753e151e1b6f28fbbb73f711bff9"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -69,7 +69,7 @@ def single_revision_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(single_revision_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "d66b42e0ddfa874dc504933348cf415bc30877de7bb9d4f7de9f9c1d2c7f48c3"
+_FIXED_PROFILE_SHA256 = "564a7e609902c3ad8abbe9e7b17b0e5f612931521d6af7017d94bee53873c9f9"
 
 
 def _profile() -> None:

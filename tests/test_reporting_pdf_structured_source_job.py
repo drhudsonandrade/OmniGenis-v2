@@ -177,7 +177,8 @@ class PdfStructuredSourceJobTests(unittest.TestCase):
         cycle = {}; cycle['cycle'] = cycle
         variants = [dict(presentation_ir=value) for value in
                     (cycle, None, {'components': [object()]}, {'large': 'x' * 8388609})]
-        variants.append(dict(pdf_bytes=b'%PDF-1.7' + b'x' * 8388608))
+        overflow = b'%PDF-1.7' + b'x' * 16777209
+        variants.append(dict(pdf_bytes=overflow, expected_pdf_sha256=sha256(overflow).hexdigest()))
         for change in variants:
             with self.mocked() as calls:
                 with self.assertRaises(self.m.PdfStructuredSourceJobError): self.run_job(**change)

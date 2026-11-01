@@ -17,7 +17,7 @@
     "cleanup_seconds": 2,
     "completion": "CONTEXT_SENT_EOF_ZERO_EXIT_REAP_VALID_FRAME",
     "default_pipeline_activated": false,
-    "frame_profile_sha256": "c994251417266d15ac74cca19b0fb145f868b83ce7f6ee0934218c4fa05dc9b5",
+    "frame_profile_sha256": "b59ded160140ce1547b9eeff1af000b43007b23f63beaccc2533238cad5bff07",
     "hard_job_deadline_qualified": false,
     "host_authenticated": false,
     "max_context_bytes": 4096,
@@ -30,16 +30,16 @@
     "service_installed": false,
     "stdout_storage": "BOUNDED_PIPE_FRAME_PLUS_ONE_OVERFLOW_BYTE",
     "unprivileged_caller_required": true,
-    "worker_profile_sha256": "48701b4b85dc7f56d5ac1b5032bb71069c9d44189de3da265b59e94d3b3fead3"
+    "worker_profile_sha256": "52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b"
   },
-  "profile_sha256": "faaeb3370d9077b635a2bcbc09427bbfcbb925d90e81124d606dfb8cea9f2bb6",
+  "profile_sha256": "d020c676e11207bdfd007dcd90488888bcebd6b1ee1285faa514b116d7c41095",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "source_sha256": {
     "reporting/_pdf_fixed_inspection_worker.py": "75d34914b92c188e8ad2ad1e6e5a378b2019d8da7b8b74d67d82c4e4c338bb38",
     "reporting/pdf_inspection_result_frame.py": "105d904ef1fa904342fb733a2a64bcdb8028d1a575c0299bd8cf935abf64f95d",
     "reporting/pdf_request_descriptor.py": "3bc2dcbd6d2b28a3d9a92fefb84568fa45bc1b220f5bbdced4da707eb98e2d5f",
-    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
+    "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
     "reporting/pdf_supervised_inspection.py": "50295862cd7ef81457dc5299b4d15fab09c17605b5c8af30f9a959ab16f81d62"
   }
 }

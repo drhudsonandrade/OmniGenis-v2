@@ -15,6 +15,7 @@ import stat
 import sys
 import tempfile
 
+from reporting._pdf_document_byte_budget import require_pdf_document_budget
 from reporting._pdf_page_tags_worker import (
     CPU_SECONDS, IDENTITY_FIELDS, LANGUAGE, MAX_DOCUMENT_PAGES, MAX_PDF_BYTES,
     MEMORY_BYTES, OPEN_FILES, PARSER_VERSION, POLICY_ID, PROFILE_ID,
@@ -168,6 +169,7 @@ def inspect_pdf_page_tag_parents(
         if type(plan) is not PageWindowPlan or not _is_digest(expected_plan_sha256):
             raise ValueError("page tag plan expected")
         plan.__post_init__()
+        require_pdf_document_budget(len(pdf_bytes), plan.page_count)
         if (plan.plan_sha256 != expected_plan_sha256
                 or plan.page_count > MAX_DOCUMENT_PAGES
                 or hashlib.sha256(pdf_bytes).hexdigest() != plan.pdf_sha256):

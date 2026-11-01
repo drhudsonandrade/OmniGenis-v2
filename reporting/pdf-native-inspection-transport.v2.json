@@ -1,19 +1,19 @@
 {
   "legacy_profile_sha256": {
-    "descriptor": "b20fbf3f0325cd678aad69319c49f04bf8b96f4c6d07be81cab8c25537c3938a",
-    "execution": "25ab5fac415b6f9571b15535644ade1fa04b836e3a17473274c62ceb30afeb43",
-    "frame": "c994251417266d15ac74cca19b0fb145f868b83ce7f6ee0934218c4fa05dc9b5",
+    "descriptor": "2fa39db5bc10127fde65920f14eac86fb3abf4777d075ffae58b61d15cfdc9d8",
+    "execution": "173877055fd11abba7740f582ec3c348a51e0dfb76de52c0545f76b85a438ad4",
+    "frame": "b59ded160140ce1547b9eeff1af000b43007b23f63beaccc2533238cad5bff07",
     "kernel_admission": "4684c54f07c27aedd39113323d3fb9e0e8297d5958025f015d04031080006d01",
-    "request": "24f7e7f65a95e0c071ffae4dcf51c38fc4c6a1aff8eff5a490e67e8f23cf5484",
-    "snapshot": "d9c1963782511051a1952df6f5f1a15f92966bd924b635b5023f5a7d88a32d7c",
-    "supervisor": "faaeb3370d9077b635a2bcbc09427bbfcbb925d90e81124d606dfb8cea9f2bb6",
-    "worker": "48701b4b85dc7f56d5ac1b5032bb71069c9d44189de3da265b59e94d3b3fead3"
+    "request": "9c87fd0083aa1d45a0d81a83d68421a0fbf46640b0f9b8ae3cc8f9a8a7f2a625",
+    "snapshot": "d1a7925d842c644e3fb165dfac538d4baa12c7bf9ddaca10697f237e5def9a87",
+    "supervisor": "d020c676e11207bdfd007dcd90488888bcebd6b1ee1285faa514b116d7c41095",
+    "worker": "52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b"
   },
   "limitations": [
     "Independent expected profile pins select exactly one complete transport family; mixed profiles fail closed.",
     "The complete native and structured result is carried as original canonical bytes; unsigned hashes do not authenticate execution.",
-    "The optional envelope admits at most 64 pages and 8 MiB per source/PDF; these are finite execution bounds, not an editorial page limit.",
-    "The native result body/frame ceilings are 311296/311340 bytes. All existing v1 profiles, bytes and limits remain unchanged.",
+    "The optional envelope admits at most 64 pages, 8 MiB of source and 16 MiB of PDF; these are finite execution bounds, not an editorial page limit.",
+    "The native result body/frame ceilings are 311296/311340 bytes. Transport framing is unchanged; profile pins reflect the revised finite PDF class. Source and result ceilings are retained.",
     "The fixed native job contains both inspection chains; outer stages do not count native processes.",
     "No aggregate resource, hard real-time deadline, semantic, scientific, full accessibility, finding completeness or release qualification is established.",
     "No default pipeline, host service or optional kernel admission policy is activated."
@@ -23,14 +23,14 @@
     "descriptor": {
       "profile": {
         "aggregate_job_resources_qualified": false,
-        "codec_profile_sha256": "2a41ae9d21064e79e69b4d1beb072ed3a74fd6d4463eab475c09fee7cce862e9",
+        "codec_profile_sha256": "7ec8c2d0adfb291c6ce548c787badcf367f0e412afaa00f1916ad5837313d4ef",
         "duplicate_revocation_qualified": false,
         "executor_activated": false,
         "file_mode": 384,
         "file_type": "ANONYMOUS_REGULAR",
         "hard_job_deadline_enforced": false,
         "io_chunk_bytes": 65536,
-        "max_packet_bytes": 16781332,
+        "max_packet_bytes": 25169940,
         "named_file_fallback": false,
         "platform": "linux",
         "producer_noninheritable": true,
@@ -49,37 +49,37 @@
         "source_and_pdf_semantics_validated": false,
         "transport_authenticated": false
       },
-      "profile_sha256": "ec37cc2d504738699c55df79f85082c125877e4cde22f88f804888bb9ef5f389"
+      "profile_sha256": "d88d0dc6aded83dd6afee52afec1228c89c3dc8a8ec70dd3f7b134516f97e61b"
     },
     "execution": {
       "profile": {
         "aggregate_job_resources_qualified": false,
         "capture": "ONCE_TO_IMMUTABLE_BYTES_THROUGH_EXISTING_SEALED_DESCRIPTOR_READER",
         "default_pipeline_activated": false,
-        "descriptor_profile_sha256": "ec37cc2d504738699c55df79f85082c125877e4cde22f88f804888bb9ef5f389",
+        "descriptor_profile_sha256": "d88d0dc6aded83dd6afee52afec1228c89c3dc8a8ec70dd3f7b134516f97e61b",
         "duplicate_revocation_qualified": false,
         "hard_job_deadline_enforced": false,
         "language": "en-US",
         "max_outer_stages": 2,
-        "max_packet_bytes": 16781332,
+        "max_packet_bytes": 25169940,
         "max_pages": 64,
-        "max_pdf_bytes": 8388608,
+        "max_pdf_bytes": 16777216,
         "max_result_bytes": 311296,
         "max_source_bytes": 8388608,
         "native_source_job_calls": 1,
         "new_executor_activated": false,
         "profile_id": "sealed-request-pdf-inspection-v2",
-        "protocol_profile_sha256": "2a41ae9d21064e79e69b4d1beb072ed3a74fd6d4463eab475c09fee7cce862e9",
+        "protocol_profile_sha256": "7ec8c2d0adfb291c6ce548c787badcf367f0e412afaa00f1916ad5837313d4ef",
         "release_authorized": false,
-        "resource_profile_sha256": "e184a018dc547f5749f3f28c88f8003b142de1bf4709a63e345e850109c2f2e1",
+        "resource_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
         "result_wrapper_added": false,
         "returned_result_type": "PdfNativeSourceResult",
         "schema_version": "2.0.0",
         "snapshot_job_calls": 1,
-        "source_profile_sha256": "d6eeba64af0933eb3770d909cef394a90192c4d9c44347cfc886552ecb5732ef",
+        "source_profile_sha256": "91b9fe74427b003bc4d22ecb1504fcc3de2c1b21f1aa26dbe3f6d3095db948a7",
         "transport_authenticated": false
       },
-      "profile_sha256": "16ac657720c94f7a7decbccee9fb42ca10369573960dbce8a6aad808c6747248"
+      "profile_sha256": "e30409c65fe1acf5c569630d32f3bf035a72e11db45ac3efad0bf3b9286d5ec8"
     },
     "frame": {
       "profile": {
@@ -92,19 +92,19 @@
         "magic": "OGPDFRS2",
         "max_frame_bytes": 311340,
         "max_result_bytes": 311296,
-        "native_width_profile_sha256": "0e9cd91a89366753dd85e3dd7adbd8b592928c459ff59cd91622a5bece4b5b0d",
+        "native_width_profile_sha256": "c0bef5f8c23b4c40d2ddcf23e485cbfda0653d8ca1c740cc2925b3f0b1434797",
         "new_executor_activated": false,
         "original_result_type": "PdfNativeSourceResult",
         "profile_id": "complete-pdf-inspection-result-frame-v2",
         "reconstructed_typed_result": false,
         "release_authorized": false,
         "result_encoding": "EXACT_ORIGINAL_CANONICAL_JSON_BYTES",
-        "result_profile_sha256": "e184a018dc547f5749f3f28c88f8003b142de1bf4709a63e345e850109c2f2e1",
+        "result_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
         "schema_version": "2.0.0",
         "sender_authenticated": false,
-        "structured_source_job_profile_sha256": "ef527ca30db7a034f6b11f896b11a09a9afedf4b91b899b9bceacfd4245828a5"
+        "structured_source_job_profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
       },
-      "profile_sha256": "1a90be60c685a4973c5f11b7a279a77d4fe129a7119661f6d0f83b109b377de2"
+      "profile_sha256": "d605502daff161d134831c0a769c8b1cfdfa41fae40e12374394e61e98165de0"
     },
     "request": {
       "profile": {
@@ -116,9 +116,9 @@
         "language": "en-US",
         "magic": "OGPDFRQ2",
         "max_metadata_bytes": 4096,
-        "max_packet_bytes": 16781332,
+        "max_packet_bytes": 25169940,
         "max_pages": 64,
-        "max_pdf_bytes": 8388608,
+        "max_pdf_bytes": 16777216,
         "max_source_bytes": 8388608,
         "metadata_encoding": "EXISTING_CANONICAL_COMPACT_UTF8_JSON",
         "metadata_keys": [
@@ -134,7 +134,7 @@
         ],
         "profile_id": "immutable-pdf-inspection-request-v2",
         "release_authorized": false,
-        "resource_profile_sha256": "e184a018dc547f5749f3f28c88f8003b142de1bf4709a63e345e850109c2f2e1",
+        "resource_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
         "schema_version": "2.0.0",
         "segment_order": [
           "metadata",
@@ -142,10 +142,10 @@
           "pdf"
         ],
         "source_and_pdf_semantics_validated": false,
-        "source_profile_sha256": "d6eeba64af0933eb3770d909cef394a90192c4d9c44347cfc886552ecb5732ef",
+        "source_profile_sha256": "91b9fe74427b003bc4d22ecb1504fcc3de2c1b21f1aa26dbe3f6d3095db948a7",
         "transport_authenticated": false
       },
-      "profile_sha256": "2a41ae9d21064e79e69b4d1beb072ed3a74fd6d4463eab475c09fee7cce862e9"
+      "profile_sha256": "7ec8c2d0adfb291c6ce548c787badcf367f0e412afaa00f1916ad5837313d4ef"
     },
     "snapshot": {
       "profile": {
@@ -156,7 +156,7 @@
         "max_json_depth": 64,
         "max_json_nodes": 100000,
         "max_source_bytes": 8388608,
-        "native_source_job_profile_sha256": "e184a018dc547f5749f3f28c88f8003b142de1bf4709a63e345e850109c2f2e1",
+        "native_source_job_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
         "profile_id": "immutable-presentation-source-v2",
         "release_authorized": false,
         "returned_result_type": "PdfNativeSourceResult",
@@ -165,7 +165,7 @@
         "source_storage_authenticated": false,
         "source_type": "EXACT_IMMUTABLE_BYTES"
       },
-      "profile_sha256": "d6eeba64af0933eb3770d909cef394a90192c4d9c44347cfc886552ecb5732ef"
+      "profile_sha256": "91b9fe74427b003bc4d22ecb1504fcc3de2c1b21f1aa26dbe3f6d3095db948a7"
     },
     "supervisor": {
       "profile": {
@@ -177,7 +177,7 @@
         "cleanup_seconds": 2,
         "completion": "CONTEXT_SENT_EOF_ZERO_EXIT_REAP_VALID_FRAME",
         "default_pipeline_activated": false,
-        "frame_profile_sha256": "1a90be60c685a4973c5f11b7a279a77d4fe129a7119661f6d0f83b109b377de2",
+        "frame_profile_sha256": "d605502daff161d134831c0a769c8b1cfdfa41fae40e12374394e61e98165de0",
         "hard_job_deadline_qualified": false,
         "host_authenticated": false,
         "max_context_bytes": 4096,
@@ -190,9 +190,9 @@
         "service_installed": false,
         "stdout_storage": "BOUNDED_PIPE_FRAME_PLUS_ONE_OVERFLOW_BYTE",
         "unprivileged_caller_required": true,
-        "worker_profile_sha256": "835e4c927283609888a2a1741ed26d93db2a324521239e8f51470fe1f8d87d6f"
+        "worker_profile_sha256": "8d43f3c8b91475462ffe26efce4fb5e920d148ea5ce436f730f7206e8cfb7aea"
       },
-      "profile_sha256": "aa21846c736fb6786e31e21b0522aa4b09adc11e6a3aa6f66c5084ccd937b9cc"
+      "profile_sha256": "7ac5ff687f95dc3f4b286b8d7b1209bcfc2296f1a7fc0df0cd0d82aef6d82a46"
     },
     "worker": {
       "profile": {
@@ -217,54 +217,54 @@
         ],
         "default_pipeline_activated": false,
         "descendant_cleanup_qualified": false,
-        "descriptor_profile_sha256": "ec37cc2d504738699c55df79f85082c125877e4cde22f88f804888bb9ef5f389",
+        "descriptor_profile_sha256": "d88d0dc6aded83dd6afee52afec1228c89c3dc8a8ec70dd3f7b134516f97e61b",
         "hard_job_deadline_enforced": false,
         "independent_expectations_required": true,
-        "inspection_profile_sha256": "16ac657720c94f7a7decbccee9fb42ca10369573960dbce8a6aad808c6747248",
+        "inspection_profile_sha256": "e30409c65fe1acf5c569630d32f3bf035a72e11db45ac3efad0bf3b9286d5ec8",
         "max_context_bytes": 4096,
         "max_result_frame_bytes": 311340,
         "origin_authenticated": false,
         "parent_death_signal_for_this_worker": true,
         "profile_id": "fixed-sealed-request-result-worker-v2",
         "release_authorized": false,
-        "request_profile_sha256": "2a41ae9d21064e79e69b4d1beb072ed3a74fd6d4463eab475c09fee7cce862e9",
-        "resource_profile_sha256": "e184a018dc547f5749f3f28c88f8003b142de1bf4709a63e345e850109c2f2e1",
-        "result_frame_profile_sha256": "1a90be60c685a4973c5f11b7a279a77d4fe129a7119661f6d0f83b109b377de2",
+        "request_profile_sha256": "7ec8c2d0adfb291c6ce548c787badcf367f0e412afaa00f1916ad5837313d4ef",
+        "resource_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
+        "result_frame_profile_sha256": "d605502daff161d134831c0a769c8b1cfdfa41fae40e12374394e61e98165de0",
         "schema_version": "2.0.0",
         "service_installed": false,
         "stdin_pipe_required": true,
         "stdout_pipe_required": true
       },
-      "profile_sha256": "835e4c927283609888a2a1741ed26d93db2a324521239e8f51470fe1f8d87d6f"
+      "profile_sha256": "8d43f3c8b91475462ffe26efce4fb5e920d148ea5ce436f730f7206e8cfb7aea"
     }
   },
   "reused_source_sha256": {
     "reporting/_pdf_fixed_inspection_worker.py": "75d34914b92c188e8ad2ad1e6e5a378b2019d8da7b8b74d67d82c4e4c338bb38",
     "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-bounded-scratch.v1.json": "8756fe15b93c2622dca9930564f528a9ae8f54b007aecf235d25194335ef0936",
-    "reporting/pdf-fixed-inspection-worker.v1.json": "978aab984301c29a15fca692cae4b23d47ea181d23f579a2ab676de80ed26024",
-    "reporting/pdf-fixed-worker-admission.v1.json": "68e386a31a8cf5e2e1faed9553d0308f9bc080f65f4133c540ee5b0c707db4b5",
-    "reporting/pdf-inspection-request.v1.json": "5ed3b62de892adbd4a2ff32f638eecad9343543983adb7debec628d91045a4fb",
-    "reporting/pdf-inspection-result-frame.v1.json": "bc094df6fbfc4af2c40f4c261633a469f89d35ecedc64090fdea04a293953ea9",
-    "reporting/pdf-native-source-job.v1.json": "f33ae84033ae034dce3b83fa582500cce18e7e4def7cbdf54124526525f4acc5",
-    "reporting/pdf-request-descriptor.v1.json": "f25621abe5a1674fa38854d7867a45ad93ddd631f5b842043cd210a21441647f",
-    "reporting/pdf-sealed-inspection.v1.json": "6525ddf6d06ebac9863311f725986d96b1169f2208122893dc005851e0fe589f",
-    "reporting/pdf-snapshot-inspection.v1.json": "e2f5c7987fa2f014399a7c94e33cd6d24d193678fa56abe07df6f9872a455ae4",
-    "reporting/pdf-structured-source-job.v1.json": "73b574d563fbfab6af0fae61226a6872121630f5fd051fa3867eb7bc9c145d43",
-    "reporting/pdf-supervised-inspection.v1.json": "4492d8cbb486d4eecd4727cee0acd736e2142b481ca3467a5eb0122cffa90b21",
-    "reporting/pdf-supervisor-resource-scope.v1.json": "9e25debf1d654a668bc3ed17c353f6f7426e43078202d1f9aae7ae55bb41e454",
-    "reporting/pdf-tounicode-width-coverage.v1.json": "bf7a9a44f7db35ff4376e9a9c79280c24d670051ce1fdeed61b6db51ee350e3d",
+    "reporting/pdf-bounded-scratch.v1.json": "9629127208e2bb12a643898fcd778a3a7eb45bbc137ee69fd924a5c11ddd8ccc",
+    "reporting/pdf-fixed-inspection-worker.v1.json": "0acb941c1c349595bb0aac0041a82eebc7a2e71032b15eb713551760cc29cbf0",
+    "reporting/pdf-fixed-worker-admission.v1.json": "99cb5043c6ca2e67ca44c4fc1fce69c54663e922f34e9de791d843cc60739089",
+    "reporting/pdf-inspection-request.v1.json": "d7813c54d292ef82f1a51caaa6f7dc19c743717ed7797786a19e0c8052b11199",
+    "reporting/pdf-inspection-result-frame.v1.json": "935fa722c72d183b4f3b6bc95b1c9c036116aa1589b1638397e6ebdccdb65c0a",
+    "reporting/pdf-native-source-job.v1.json": "297677addb017a1144b0e76e470d79200b7cf751643007e369cb639c0d13ca7a",
+    "reporting/pdf-request-descriptor.v1.json": "82aa3da742e136796899244039281a80465a2d054c139ed4b0143a846888e59d",
+    "reporting/pdf-sealed-inspection.v1.json": "b71f7a5a691c9d8297d76efe1d94aeed190fb52441cbf42b582c814c9fbb6dbc",
+    "reporting/pdf-snapshot-inspection.v1.json": "59e97f2b796348427ee77d1477b6ee37deccd57e5143c121a9e11cc1a73e75f4",
+    "reporting/pdf-structured-source-job.v1.json": "f4930c57b2bb9d55d3d84a41b57df815ce01628a11bd58e9a858979f6e256f5e",
+    "reporting/pdf-supervised-inspection.v1.json": "e73385275223c0ad41b0101501a44c050e4f11c672f2a69b1822cebe18a3852e",
+    "reporting/pdf-supervisor-resource-scope.v1.json": "713768528e7f59096781db37d2dc7ee776adce054cea4b5587fba03ebfe1a820",
+    "reporting/pdf-tounicode-width-coverage.v1.json": "109a2246c4c582ef98462493792fac10a89a13a0acfdd1bdc510af9a89d59930",
     "reporting/pdf_inspection_request.py": "f9e72d162992debe09f081dc945edd1bc6740730682e4de4a5f1c80d43113dd3",
     "reporting/pdf_inspection_result_frame.py": "105d904ef1fa904342fb733a2a64bcdb8028d1a575c0299bd8cf935abf64f95d",
-    "reporting/pdf_native_source_job.py": "dc83d5e48285bc13c61e318ece736a172adf850f693fadc250ef13f9fb0b1c7b",
+    "reporting/pdf_native_source_job.py": "237dd80dca1a8722a36d8e383af5d779c42e53b182d9fefc82ac610290e1b62d",
     "reporting/pdf_request_descriptor.py": "3bc2dcbd6d2b28a3d9a92fefb84568fa45bc1b220f5bbdced4da707eb98e2d5f",
     "reporting/pdf_sealed_inspection.py": "8193ba835f3036104cdcadbf4d16f8b21803e46852935bb20f3af0b4e45ecd2f",
     "reporting/pdf_snapshot_inspection.py": "833069a527d554ce09c1dba165de47cdfda4178b07ce674724c80d5c5e7856b5",
-    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
+    "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
     "reporting/pdf_supervised_inspection.py": "50295862cd7ef81457dc5299b4d15fab09c17605b5c8af30f9a959ab16f81d62",
-    "reporting/pdf_text_windows.py": "fdb1ff1e7947e3a7176bee54fec3cd019eb5bf6e7a86ec5605ef57ace28b7ab8",
-    "reporting/pdf_tounicode_width_coverage.py": "a161b31fca3fc7cc457289e6fa9558e3814d5d222f86c6b42ff794faf0cd8e43"
+    "reporting/pdf_text_windows.py": "42b915c3cd58c5e2cc261a0f5e407561092b5e3a21862ce853149e07458433f7",
+    "reporting/pdf_tounicode_width_coverage.py": "fd1b2fd693f3da6381e54ef0adf9f30576bb0eb27796b233fbdcbff99d66956a"
   },
   "schema_version": "2.0.0"
 }

@@ -153,11 +153,12 @@ class PdfSourceInspectionJobTests(unittest.TestCase):
                 with self.assertRaises(self.m.PdfSourceInspectionJobError): self.run_job(presentation_ir=source)
                 self.assertEqual(calls, [])
 
-    def test_pdf_size_does_not_expand(self):
+    def test_pdf_size_has_explicit_finite_ceiling(self):
         """An over-budget PDF is rejected before any existing adapter is invoked."""
+        overflow = b'%PDF-1.7' + b'x' * 16777209
         with self.mocked() as calls:
             with self.assertRaises(self.m.PdfSourceInspectionJobError):
-                self.run_job(pdf_bytes=b'%PDF-1.7' + b'x' * 8388608)
+                self.run_job(pdf_bytes=overflow, expected_pdf_sha256=sha256(overflow).hexdigest())
             self.assertEqual(calls, [])
 
     def test_real_source_mismatch_stops_before_six_inspector_job(self):

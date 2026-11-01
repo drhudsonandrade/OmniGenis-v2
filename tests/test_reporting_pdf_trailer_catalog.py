@@ -262,11 +262,12 @@ class PdfTrailerCatalogTests(unittest.TestCase):
             receipt.to_dict()
 
     def test_manifest_matches_strict_profile_and_limits(self):
+        """Pin the selected finite profile, dependency identities and unqualified claims."""
         saved = json.loads((ROOT / "reporting/pdf-trailer-catalog.v1.json").read_text())
         profile = self.m.trailer_catalog_profile()
         self.assertEqual(saved, profile)
         self.assertEqual(profile["max_pages"], 64)
-        self.assertEqual(profile["max_pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
         self.assertFalse(profile["pdf_ua_qualified"])
         self.assertFalse(profile["release_authorized"])
         self.assertFalse(profile["default_pipeline_activated"])

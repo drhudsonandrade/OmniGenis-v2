@@ -21,6 +21,9 @@ if __name__ == "__main__":
     # Isolated startup trusts only the resolved deployment source root.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from reporting._pdf_document_byte_budget import (
+    MAX_PDF_BYTES, LEGACY_MAX_PDF_BYTES, require_pdf_document_budget,
+)
 from reporting import _pdf_safety_worker as safety
 from reporting._pdf_process_sandbox import enforce_pdf_landlock, enforce_pdf_network_filter
 from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
@@ -29,7 +32,6 @@ PROFILE_ID = "generated-pdf-effective-object-graph-v1"
 POLICY_ID = "passive-report-pdf-v1"
 PARSER_VERSION = "6.19.0"
 PROTOCOL_VERSION = 1
-MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_DOCUMENT_PAGES = 512
 MAX_VISITS = 20000
 MAX_DEPTH = 64
@@ -107,6 +109,7 @@ def _read_request(fd: int) -> tuple[dict, bytes]:
     if str(identity["page_count"]) != raw:
         raise ValueError("object graph request noncanonical count")
     _validate_identity(identity)
+    require_pdf_document_budget(len(pdf), identity["page_count"])
     if hashlib.sha256(pdf).hexdigest() != identity["pdf_sha256"]:
         raise ValueError("object graph request digest")
     return identity, pdf
@@ -115,9 +118,10 @@ def _read_request(fd: int) -> tuple[dict, bytes]:
 def _inspect(pdf: bytes, identity: dict) -> dict:
     """Reuse the unchanged deny policy on every effective trailer-reachable reference."""
     _validate_identity(identity)
+    require_pdf_document_budget(len(pdf), identity["page_count"])
     if (version("pypdf") != PARSER_VERSION or safety.PARSER_VERSION != PARSER_VERSION
             or safety.POLICY_ID != POLICY_ID or safety.MAX_VISITS != MAX_VISITS
-            or safety.MAX_DEPTH != MAX_DEPTH or safety.MAX_PDF_BYTES != MAX_PDF_BYTES):
+            or safety.MAX_DEPTH != MAX_DEPTH or safety.MAX_PDF_BYTES != LEGACY_MAX_PDF_BYTES):
         raise ValueError("object graph parser or policy mismatch")
     from pypdf import PdfReader
     from pypdf.generic import DictionaryObject, NameObject

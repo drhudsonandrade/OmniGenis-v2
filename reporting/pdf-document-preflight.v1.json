@@ -1,17 +1,39 @@
 {
-  "schema_version": "1.0.0",
-  "profile_id": "generated-pdf-document-preflight-v1",
-  "status": "STAGED_UNQUALIFIED",
+  "capabilities_not_established": [
+    "authenticated job identity",
+    "actual measured PDF page count",
+    "whole-file object/tag safety",
+    "aggregate CPU, RSS, descendants or deadline",
+    "scientific completeness or equivalence",
+    "report release"
+  ],
   "conformance_scope": "EXACT_PDF_DIGEST_AND_COMPLETE_DECLARED_WINDOWS_ONLY",
-  "profile_sha256": "09d124ddb69da0cceedb55099404a0c36c12c4ed0d86e23aefce4e6e9f9ab6a8",
+  "default_pipeline_activated": false,
   "profile": {
     "actual_pdf_page_count_verified": false,
     "aggregate_job_resources_qualified": false,
     "current_job_max_invocations": 24,
     "current_job_max_pages": 64,
-    "current_job_max_pdf_bytes": 8388608,
-    "current_job_profile_sha256": "2534d67533aa6f764dd0ea75ee4441b1f7edd5dfdce544a4b054b8c2025efdb5",
+    "current_job_max_pdf_bytes": 16777216,
+    "current_job_profile_sha256": "96c2771435d1e2d22be56a423d7e74fde4bb0412e8828a2bd11c2d3ef952e896",
     "default_pipeline_activated": false,
+    "document_byte_budget": {
+      "aggregate_job_resources_qualified": false,
+      "default_pipeline_activated": false,
+      "expanded": {
+        "max_pages": 64,
+        "max_pdf_bytes": 16777216
+      },
+      "inner_stream_limits_expanded": false,
+      "legacy": {
+        "max_pages": 512,
+        "max_pdf_bytes": 8388608
+      },
+      "profile_id": "generated-pdf-document-byte-budget-v1",
+      "release_authorized": false,
+      "schema_version": "1.0.0",
+      "selection": "PDF_BYTES_AND_COMPLETE_DOCUMENT_PAGE_COUNT"
+    },
     "existing_qa_max_pages": 32,
     "existing_qa_max_pdf_bytes": 8388608,
     "existing_qa_profile_id": "omnigenis-generated-pdf-candidate-qa-v1",
@@ -22,7 +44,7 @@
         "cpu_seconds": 5,
         "language": "en-US",
         "max_document_pages": 512,
-        "max_pdf_bytes": 8388608,
+        "max_pdf_bytes": 16777216,
         "memory_bytes": 268435456,
         "metadata_profile_id": "omnigenis-generated-pdf-metadata-v1",
         "open_files": 128,
@@ -37,7 +59,7 @@
         "max_decoded_bytes": 8388608,
         "max_depth": 64,
         "max_document_pages": 512,
-        "max_pdf_bytes": 8388608,
+        "max_pdf_bytes": 16777216,
         "max_visits": 20000,
         "memory_bytes": 268435456,
         "open_files": 128,
@@ -51,7 +73,7 @@
         "cpu_seconds": 5,
         "max_depth": 64,
         "max_document_pages": 512,
-        "max_pdf_bytes": 8388608,
+        "max_pdf_bytes": 16777216,
         "max_visits": 20000,
         "memory_bytes": 268435456,
         "open_files": 128,
@@ -66,7 +88,7 @@
         "language": "en-US",
         "max_depth": 64,
         "max_document_pages": 512,
-        "max_pdf_bytes": 8388608,
+        "max_pdf_bytes": 16777216,
         "max_visits": 20000,
         "memory_bytes": 268435456,
         "open_files": 128,
@@ -100,7 +122,7 @@
           "last_page"
         ],
         "max_document_pages": 512,
-        "max_pdf_bytes": 8388608,
+        "max_pdf_bytes": 16777216,
         "max_pixels_per_page": 4000000,
         "max_png_bytes": 16777216,
         "max_total_pixels": 16000000,
@@ -154,7 +176,7 @@
         ],
         "max_decoded_bytes": 8388608,
         "max_document_pages": 512,
-        "max_pdf_bytes": 8388608,
+        "max_pdf_bytes": 16777216,
         "max_text_bytes": 1048576,
         "max_window_pages": 16,
         "memory_bytes": 268435456,
@@ -176,19 +198,14 @@
     "text_window_width": 16,
     "whole_pdf_safety_qualified": false
   },
+  "profile_id": "generated-pdf-document-preflight-v1",
+  "profile_sha256": "59a3610892f5ab9a0c17194d99988dfb19f44ffed59ff9401796c88310f1c479",
+  "release_authorized": false,
+  "schema_version": "1.0.0",
   "scope_limits": [
     "Existing PDF QA: 32 pages, 8 MiB; unchanged",
     "Staging preflight: 512 declared pages, 32 MiB; not a native execution allowance"
   ],
-  "capabilities_not_established": [
-    "authenticated job identity",
-    "actual measured PDF page count",
-    "whole-file object/tag safety",
-    "aggregate CPU, RSS, descendants or deadline",
-    "scientific completeness or equivalence",
-    "report release"
-  ],
-  "default_pipeline_activated": false,
   "service_installed": false,
-  "release_authorized": false
+  "status": "STAGED_UNQUALIFIED"
 }

@@ -14,6 +14,7 @@ import stat
 import sys
 import tempfile
 
+from reporting._pdf_document_byte_budget import LEGACY_MAX_PDF_BYTES as MAX_RAW_STREAM_BYTES
 from reporting.page_windows import PageWindowPlan
 from reporting.pdf_text_windows import PROFILE_ID as TEXT_PROFILE
 from reporting import pdf_page_surface as prior
@@ -28,8 +29,8 @@ from reporting._pdf_resource_leaves_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_RESOURCE_LEAVES_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "6de06faa02128f4a1d5650bc352492f71879e665f35fc5d4b7ba341b325651a1"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE_SHA256 = "0f50a0dbda655217f0dcb8a4e7590f4347fe54c6a58632a8efeaffa700fd5b5e"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -51,6 +52,7 @@ def resource_leaves_profile() -> dict:
         "language": LANGUAGE,
         "max_pages": MAX_DOCUMENT_PAGES,
         "max_pdf_bytes": MAX_PDF_BYTES,
+        "max_raw_stream_bytes": MAX_RAW_STREAM_BYTES,
         "resource_dictionary_policy": "DISTINCT_INDEXED_GENERATED_RESOURCES",
         "font_binding_policy": "BOUNDED_INDEXED_GENERATION_ZERO_TYPE0_CIDFONT_TYPE2",
         "tounicode_stream_policy": "DISTINCT_INDEXED_FLATE_RAW_BYTES_ONLY",
@@ -75,7 +77,7 @@ def resource_leaves_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(resource_leaves_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "cecea0ee9e3b0c9603d72ee06fa612b0929357fc8a6a0026513d9eaa5e8f5597"
+_FIXED_PROFILE_SHA256 = "83db5ebf1c930a23b61e00e426e77d1689b896094bccfbf6617fe0769727bb2c"
 
 
 def _profile() -> None:

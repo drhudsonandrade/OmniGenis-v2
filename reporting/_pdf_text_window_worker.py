@@ -21,13 +21,15 @@ if __name__ == "__main__":
     # Isolated startup trusts only the resolved deployment source, not caller paths.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from reporting._pdf_document_byte_budget import (
+    MAX_PDF_BYTES, LEGACY_MAX_PDF_BYTES, require_pdf_document_budget,
+)
 from reporting._pdf_process_sandbox import enforce_pdf_landlock, enforce_pdf_network_filter
 from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
 
 PROFILE_ID = "generated-pdf-text-window-v1"
 PROTOCOL_VERSION = 1
 EXTRACTOR_VERSION = "6.19.0"
-MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_DOCUMENT_PAGES = 512
 MAX_WINDOW_PAGES = 16
 MAX_DECODED_BYTES = 8 * 1024 * 1024
@@ -114,6 +116,7 @@ def _read_request(fd: int) -> tuple[dict, bytes]:
         if str(identity[key]) != raw:
             raise ValueError("window request noncanonical integer")
     _validate_identity(identity)
+    require_pdf_document_budget(len(pdf), identity["page_count"])
     if hashlib.sha256(pdf).hexdigest() != identity["pdf_sha256"]:
         raise ValueError("window PDF digest mismatch")
     return identity, pdf

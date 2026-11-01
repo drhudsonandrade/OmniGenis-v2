@@ -126,6 +126,9 @@ class PdfSingleRevisionTests(unittest.TestCase):
                     self.worker._inspect(pdf, identity)
 
     def test_invalid_input_fails_before_any_native_worker(self):
+        """Reject malformed inputs and over-budget candidates before launching workers."""
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        overflow_plan = self.plan_for(overflow, 1)
         with patch.object(self.m, "_run_worker") as worker:
             for change in (
                 dict(pdf_bytes=bytearray(self.pdf)),
@@ -134,7 +137,7 @@ class PdfSingleRevisionTests(unittest.TestCase):
                 dict(expected_plan_sha256="f" * 64),
                 dict(expected_language="pt-BR"),
                 dict(plan={}),
-                dict(pdf_bytes=b"%PDF-1.7" + b"x" * (8 * 1024 * 1024)),
+                dict(pdf_bytes=overflow, plan=overflow_plan, expected_plan_sha256=overflow_plan.plan_sha256),
             ):
                 with self.subTest(fields=sorted(change)):
                     with self.assertRaises(self.m.PdfSingleRevisionError):
@@ -229,11 +232,12 @@ class PdfSingleRevisionTests(unittest.TestCase):
             receipt.to_dict()
 
     def test_manifest_has_single_profile_and_no_release_claims(self):
+        """Pin the selected finite profile, dependency identities and unqualified claims."""
         manifest = json.loads((ROOT / "reporting/pdf-single-revision.v1.json").read_text())
         profile = self.m.single_revision_profile()
         self.assertEqual(manifest, profile)
         self.assertEqual(profile["max_pages"], 64)
-        self.assertEqual(profile["max_pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
         self.assertEqual(profile["parser_version"], "6.19.0")
         self.assertFalse(profile["all_file_revisions_inspected"])
         self.assertFalse(profile["release_authorized"])
