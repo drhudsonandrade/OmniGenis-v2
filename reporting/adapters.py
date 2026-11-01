@@ -358,6 +358,43 @@ def _render_pdf(html: str, html_sha256: str) -> bytes:
         raise RuntimeError("pdf_render_failed") from exc
 
 
+def _semantic_html(presentation_ir: dict) -> tuple[str, str, list[str]]:
+    """Build the unchanged semantic-section HTML from an already captured valid source."""
+    locale_id = presentation_ir["locale_id"]
+    parts = [
+        f'<!doctype html><html lang="{escape(locale_id, quote=True)}"><head><meta charset="utf-8">',
+        f"<title>{GENERATED_PDF_PRODUCT}</title>",
+        f'<meta name="author" content="{GENERATED_PDF_AUTHOR}">',
+        f'<meta name="generator" content="{GENERATED_PDF_PRODUCT}">',
+        "<style>body{font-family:sans-serif}section{margin-block:1rem}pre{white-space:pre-wrap}</style>",
+        "</head><body>",
+        f"<h1>{escape(presentation_ir['report_id'])}</h1>",
+    ]
+    component_ids: list[str] = []
+    for component in presentation_ir["components"]:
+        component_ids.append(component["component_id"])
+        payload = json.dumps(
+            component["content"],
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+        parts.extend(
+            [
+                f'<section data-component="{escape(component["component_id"], quote=True)}">',
+                f"<h2>{escape(component['title'])}</h2>",
+                f"<p>{escape(component['state'])}</p>",
+                f"<pre>{escape(payload)}</pre>",
+                "</section>",
+            ]
+        )
+    parts.append("</body></html>")
+    html = "".join(parts)
+    digest = hashlib.sha256(html.encode("utf-8")).hexdigest()
+    return html, digest, component_ids
+
+
 def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
     """Create one candidate from captured localized IR and require bounded QA.
 
@@ -378,38 +415,8 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
         return _failure("presentation_ir_invalid")
 
     locale_id = presentation_ir["locale_id"]
-    parts = [
-        f'<!doctype html><html lang="{escape(locale_id, quote=True)}"><head><meta charset="utf-8">',
-        f"<title>{GENERATED_PDF_PRODUCT}</title>",
-        f'<meta name="author" content="{GENERATED_PDF_AUTHOR}">',
-        f'<meta name="generator" content="{GENERATED_PDF_PRODUCT}">',
-        "<style>body{font-family:sans-serif}section{margin-block:1rem}pre{white-space:pre-wrap}</style>",
-        "</head><body>",
-        f"<h1>{escape(presentation_ir['report_id'])}</h1>",
-    ]
-    component_ids: list[str] = []
     try:
-        for component in presentation_ir["components"]:
-            component_ids.append(component["component_id"])
-            payload = json.dumps(
-                component["content"],
-                sort_keys=True,
-                separators=(",", ":"),
-                ensure_ascii=False,
-                allow_nan=False,
-            )
-            parts.extend(
-                [
-                    f'<section data-component="{escape(component["component_id"], quote=True)}">',
-                    f"<h2>{escape(component['title'])}</h2>",
-                    f"<p>{escape(component['state'])}</p>",
-                    f"<pre>{escape(payload)}</pre>",
-                    "</section>",
-                ]
-            )
-        parts.append("</body></html>")
-        html = "".join(parts)
-        digest = hashlib.sha256(html.encode("utf-8")).hexdigest()
+        html, digest, component_ids = _semantic_html(presentation_ir)
     except (TypeError, ValueError, UnicodeEncodeError):
         return _failure("presentation_ir_invalid")
 

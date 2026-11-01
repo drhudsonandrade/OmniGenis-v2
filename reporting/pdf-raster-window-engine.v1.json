@@ -149,7 +149,7 @@
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
     "reporting/_pdf_raster_executor.py": "5062b2cc9740a8063e3fcc2f063b5baaa95b0e3a22bf803f17d20701c2df899e",
     "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
-    "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
+    "reporting/_pdf_render_worker.py": "0434222edf2b4f1df1f0bdc86e94731a67d09fd242cb36773630c8333cba5e69",
     "reporting/_pdf_text_window_worker.py": "7f2d2600492826d093f09159356158bfb22b3c8fa5c4a5c09e7d740c573ed36e",
     "reporting/_pdf_visual_worker.py": "00564cacfb041488cfc88c36be391b280ab4c77b49f0e5e180d66a8ea70f9c91",
     "reporting/pdf_text_windows.py": "42b915c3cd58c5e2cc261a0f5e407561092b5e3a21862ce853149e07458433f7"

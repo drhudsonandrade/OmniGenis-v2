@@ -62,7 +62,7 @@
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf-source-inspection-job.v1.json": "9787c5fb7a2e2e00707ebcc2880676b457c8ac3610ee8c05f1dc197a5ce18c82",
-    "reporting/pdf-structure-tree-engine.v1.json": "3d9dc8a0f6e1397f45deb5f5819a1780ec2acba0d110fd5867faf390841db47e",
+    "reporting/pdf-structure-tree-engine.v1.json": "297ed57b6c460a6ddbcca2d9799fd816de6a99bb7fb720c70cf16fa161445bf4",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
     "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
