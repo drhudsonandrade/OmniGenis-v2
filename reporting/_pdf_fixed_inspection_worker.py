@@ -262,7 +262,7 @@ def _kernel_events(raw: bytes, required: tuple[str, ...]) -> dict[str, int]:
         if not separator or not key.isascii():
             raise ValueError('kernel admission event field invalid')
         name = key.decode('ascii')
-        if not name.isidentifier() or name in counters:
+        if not all(part.isidentifier() for part in name.split('.')) or name in counters:
             raise ValueError('kernel admission event field ambiguous')
         counters[name] = _kernel_unsigned(value + b'\n', _EVENT_COUNTER_MAX)
     if not set(required) <= counters.keys():

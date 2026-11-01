@@ -36,7 +36,7 @@
   "release_authorized": false,
   "schema_version": "1.0.0",
   "source_sha256": {
-    "reporting/_pdf_fixed_inspection_worker.py": "1ed1d9967a34fabcb5a0f50d9654f2e38fd163226ddc4f2420fe3a4fe0e617a6",
+    "reporting/_pdf_fixed_inspection_worker.py": "75d34914b92c188e8ad2ad1e6e5a378b2019d8da7b8b74d67d82c4e4c338bb38",
     "reporting/pdf_inspection_result_frame.py": "105d904ef1fa904342fb733a2a64bcdb8028d1a575c0299bd8cf935abf64f95d",
     "reporting/pdf_request_descriptor.py": "3bc2dcbd6d2b28a3d9a92fefb84568fa45bc1b220f5bbdced4da707eb98e2d5f",
     "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",

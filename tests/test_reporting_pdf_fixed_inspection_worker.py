@@ -832,7 +832,7 @@ class FixedKernelObservationTests(unittest.TestCase):
             ('memory.events', memory + b'oom 0\n'),
             ('pids.events', b'max 0\nfuture_pids_2 0\nfuture_pids_2 0\n'),
             *[('memory.events', memory + row) for row in (
-                b'9counter 0\n', b'future-counter 0\n', b'future.counter 0\n',
+                b'9counter 0\n', b'future-counter 0\n', b'future..counter 0\n',
                 b'future_\xff 0\n', b'future 0\x00\n', b'\n')],
             *[('pids.events', row) for row in (
                 b'max 01\n', b'max +1\n', b'max -1\n', b'max 1.0\n',
