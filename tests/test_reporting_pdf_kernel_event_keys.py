@@ -124,6 +124,7 @@ class KernelEventKeyTests(unittest.TestCase):
         for native in (False, True):
             with self.subTest(native=native), harness.case(native) as (fd, context, profile, encoded, expected):
                 before = os.fstat(fd)
+                position = os.lseek(fd, 0, os.SEEK_CUR)
                 with harness.kernel(configure) as fixture, harness.legacy.child(harness.writer(encoded)) as launches:
                     try:
                         result = harness.invoke(fd, context, profile)
@@ -132,7 +133,11 @@ class KernelEventKeyTests(unittest.TestCase):
                     self.assertEqual(result, expected)
                     harness.assert_reaped(launches)
                     harness.assert_released(fixture)
-                self.assertEqual(os.fstat(fd), before)
+                # A legitimate read can update atime; identity and offset must remain stable.
+                after = os.fstat(fd)
+                self.assertEqual((after.st_dev, after.st_ino, after.st_mode, after.st_size),
+                                 (before.st_dev, before.st_ino, before.st_mode, before.st_size))
+                self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), position)
 
 
 if __name__ == '__main__':
