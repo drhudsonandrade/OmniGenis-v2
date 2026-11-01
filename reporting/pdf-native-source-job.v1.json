@@ -25,7 +25,7 @@
   "launch_attempt_budget_policy": {
     "path": "reporting/pdf-native-launch-budget.v1.json",
     "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
-    "sha256": "a6f26bf5ebe6387c7420e69b3e711cf81ffce9ba0f831ea5963050eaac393920"
+    "sha256": "49ab4627fb9f34f4a2efcef26582b3f3b35cde20188cc5ecf432ca7456d4c3ab"
   },
   "parent_pdf_parsing": false,
   "profile": {

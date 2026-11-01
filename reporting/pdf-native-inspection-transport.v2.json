@@ -247,7 +247,7 @@
     "reporting/pdf-fixed-worker-admission.v1.json": "99cb5043c6ca2e67ca44c4fc1fce69c54663e922f34e9de791d843cc60739089",
     "reporting/pdf-inspection-request.v1.json": "d7813c54d292ef82f1a51caaa6f7dc19c743717ed7797786a19e0c8052b11199",
     "reporting/pdf-inspection-result-frame.v1.json": "935fa722c72d183b4f3b6bc95b1c9c036116aa1589b1638397e6ebdccdb65c0a",
-    "reporting/pdf-native-source-job.v1.json": "297677addb017a1144b0e76e470d79200b7cf751643007e369cb639c0d13ca7a",
+    "reporting/pdf-native-source-job.v1.json": "20df78b15562a1a37a62ab0ef13cb9d80b0871b1b798332c2edaa6f45a4da5a1",
     "reporting/pdf-request-descriptor.v1.json": "82aa3da742e136796899244039281a80465a2d054c139ed4b0143a846888e59d",
     "reporting/pdf-sealed-inspection.v1.json": "b71f7a5a691c9d8297d76efe1d94aeed190fb52441cbf42b582c814c9fbb6dbc",
     "reporting/pdf-snapshot-inspection.v1.json": "59e97f2b796348427ee77d1477b6ee37deccd57e5143c121a9e11cc1a73e75f4",
