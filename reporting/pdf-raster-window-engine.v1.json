@@ -3,6 +3,24 @@
   "binary_vendored": false,
   "default_pipeline_activated": false,
   "disable_path": "OMNIGENIS_PDF_RASTER_WINDOWS_DISABLED=1; fail closed without fallback",
+  "document_byte_budget": {
+    "aggregate_job_resources_qualified": false,
+    "default_pipeline_activated": false,
+    "expanded": {
+      "max_pages": 64,
+      "max_pdf_bytes": 16777216
+    },
+    "inner_stream_limits_expanded": false,
+    "legacy": {
+      "max_pages": 512,
+      "max_pdf_bytes": 8388608
+    },
+    "profile_id": "generated-pdf-document-byte-budget-v1",
+    "release_authorized": false,
+    "schema_version": "1.0.0",
+    "selection": "PDF_BYTES_AND_COMPLETE_DOCUMENT_PAGE_COUNT"
+  },
+  "document_byte_budget_sha256": "eb1eb1b5f0908520567f6c8084b27abc02bd94de7f966881e1bb098cdbd5a36d",
   "guards": {
     "aggregate_job_resources_qualified": false,
     "arbitrary_descendant_cleanup_claimed": false,
@@ -116,7 +134,7 @@
     "file_bytes": 67108864,
     "open_files": 128,
     "page_wall_seconds": 8,
-    "pdf_bytes": 8388608,
+    "pdf_bytes": 16777216,
     "pixels_per_page": 4000000,
     "result_bytes": 4096,
     "selected_total_pixels": 16000000,
@@ -126,19 +144,22 @@
     "worker_wall_seconds": 30
   },
   "reused_source_sha256": {
+    "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a",
+    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd",
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
     "reporting/_pdf_raster_executor.py": "5062b2cc9740a8063e3fcc2f063b5baaa95b0e3a22bf803f17d20701c2df899e",
     "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
     "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
-    "reporting/_pdf_text_window_worker.py": "c5176a6987b46f484ba4989bbbbee9383906094545ada7ed806bd53dad3b81a1",
+    "reporting/_pdf_text_window_worker.py": "7f2d2600492826d093f09159356158bfb22b3c8fa5c4a5c09e7d740c573ed36e",
     "reporting/_pdf_visual_worker.py": "00564cacfb041488cfc88c36be391b280ab4c77b49f0e5e180d66a8ea70f9c91",
-    "reporting/pdf_text_windows.py": "fdb1ff1e7947e3a7176bee54fec3cd019eb5bf6e7a86ec5605ef57ace28b7ab8",
-    "reporting/_pdf_bounded_scratch.py": "95111731e32caf9ebdcf8f58062ec82f86df6d78f13a2fc1e0c378d94df4475a",
-    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
+    "reporting/pdf_text_windows.py": "42b915c3cd58c5e2cc261a0f5e407561092b5e3a21862ce853149e07458433f7"
   },
   "schema_version": "1.0.0",
   "source": "https://poppler.freedesktop.org/",
   "source_copied": false,
+  "source_sha256": {
+    "reporting/_pdf_document_byte_budget.py": "522858e03e4f6a7b90dedcae6f479e9acee3f92dd39266325020f48fd5131004"
+  },
   "tool": "pdftoppm",
   "tool_version": "24.02.0"
 }

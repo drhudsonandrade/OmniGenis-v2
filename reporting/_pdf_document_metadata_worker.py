@@ -3,7 +3,8 @@
 Only the current Info, catalog language and document XMP policy plus the existing
 catalog accessibility prerequisites are applied. No page-local metadata, tag
 semantics, full accessibility, text equivalence or release is qualified here.
-Existing document byte, XMP and process limits remain unchanged.
+Whole-file admission follows the paired document class; XMP and process limits
+remain unchanged.
 """
 from __future__ import annotations
 
@@ -33,22 +34,22 @@ STATUS = "DOCUMENT_METADATA_INSPECTED"
 
 
 def _inspect(pdf: bytes, identity: dict) -> dict:
-    """Reuse both unchanged validators and return only fixed successful prerequisite flags."""
+    """Reuse controlled metadata and catalog policy under the declared document class."""
     _validate_identity(identity)
     if (type(pdf) is not bytes or not pdf.startswith(b"%PDF-1.7")
             or len(pdf) > MAX_PDF_BYTES or hashlib.sha256(pdf).hexdigest() != identity["pdf_sha256"]
             or version("pypdf") != PARSER_VERSION):
         raise ValueError("document metadata candidate invalid")
     from reporting.pdf_qa import (
-        GENERATED_PDF_AUTHOR, GENERATED_PDF_METADATA_PROFILE, validate_pdf_candidate,
+        GENERATED_PDF_AUTHOR, GENERATED_PDF_METADATA_PROFILE, _validate_pdf_candidate,
     )
     from reporting.pdf_accessibility import validate_pdf_accessibility_structure
     if GENERATED_PDF_METADATA_PROFILE != METADATA_PROFILE_ID:
         raise ValueError("document metadata policy mismatch")
-    metadata = validate_pdf_candidate(
+    metadata = _validate_pdf_candidate(
         pdf_bytes=pdf, expected_pdf_sha256=identity["pdf_sha256"],
         expected_author=GENERATED_PDF_AUTHOR, expected_language=LANGUAGE,
-        metadata_profile=METADATA_PROFILE_ID,
+        metadata_profile=METADATA_PROFILE_ID, document_page_count=identity["page_count"],
     )
     if (not metadata.passed or metadata.pdf_sha256 != identity["pdf_sha256"]
             or type(metadata.page_count) is not int or metadata.page_count != identity["page_count"]

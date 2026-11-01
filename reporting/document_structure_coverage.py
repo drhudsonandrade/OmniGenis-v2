@@ -13,6 +13,7 @@ from hashlib import sha256
 import json
 import os
 
+from reporting._pdf_document_byte_budget import MAX_PDF_BYTES as _MAX_PDF_BYTES
 from reporting.bindings import _digest
 from reporting.page_checkpoints import _json_bytes
 from reporting import document_raster_coverage as raster_api
@@ -26,7 +27,6 @@ from reporting import pdf_structure_tree as tree_api
 PROFILE_ID = "generated-pdf-document-structure-coverage-v1"
 _PARENT_PROFILE_SHA256 = raster_api.PROFILE_SHA256
 _MAX_PAGES = 64
-_MAX_PDF_BYTES = 8 * 1024 * 1024
 _LANGUAGE = "en-US"
 _DISABLE = "OMNIGENIS_PDF_DOCUMENT_STRUCTURE_COVERAGE_DISABLED"
 _DEPENDENCY_DISABLES = (

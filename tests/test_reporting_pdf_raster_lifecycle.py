@@ -319,7 +319,7 @@ class RasterExecutorLifecycleTests(unittest.TestCase):
         self.assertFalse(life["startup_before_registration_covered"])
         self.assertFalse(value["guards"]["aggregate_job_resources_qualified"])
         self.assertEqual(value["resource_budget"]["document_pages"], 512)
-        self.assertEqual(value["resource_budget"]["pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(value["resource_budget"]["pdf_bytes"], 16 * 1024 * 1024)
         self.assertEqual(life["launcher_sha256"], hashlib.sha256((ROOT / life["launcher_path"]).read_bytes()).hexdigest())
 
 

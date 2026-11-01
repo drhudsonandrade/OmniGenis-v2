@@ -210,11 +210,18 @@ class PdfRasterWindowTests(unittest.TestCase):
             with self.assertRaises(self.m.PdfRasterWindowError):
                 self.inspect(pdf_bytes=pdf, plan=plan, expected_plan_sha256=plan.plan_sha256)
 
+
     def test_input_types_and_byte_budget_prevent_launch(self):
         """Mutable, invalid-header and oversized inputs fail before filesystem preparation."""
-        with patch.object(self.m, "_run_worker", side_effect=AssertionError("launch")):
-            for pdf in (bytearray(self.pdf), None, "%PDF-1.7", b"%PDF-1.6\n", b"%PDF-1.7" + b"x" * (8 * 1024 * 1024)):
-                with self.assertRaises(self.m.PdfRasterWindowError): self.inspect(pdf_bytes=pdf)
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        plan = self.make_plan(overflow, 33)
+        with patch.object(self.m, "_run_worker") as worker:
+            for pdf in (bytearray(self.pdf), None, "%PDF-1.7", b"%PDF-1.6\n"):
+                with self.assertRaises(self.m.PdfRasterWindowError):
+                    self.inspect(pdf_bytes=pdf)
+            with self.assertRaises(self.m.PdfRasterWindowError):
+                self.inspect(pdf_bytes=overflow, plan=plan, expected_plan_sha256=plan.plan_sha256)
+            worker.assert_not_called()
 
     def test_foreign_digests_and_plan_profile_prevent_launch(self):
         """Only exact sealed PDF/IR/plan identities and the raster inspector are admitted."""

@@ -200,15 +200,21 @@ class PdfTextWindowTests(unittest.TestCase):
         with self.assertRaises(self.m.PdfTextWindowError):
             self.inspect()
 
+
     def test_native_type_and_byte_budget_preflight(self):
         """Mutable or oversized inputs fail before opening protocol files or subprocesses."""
         class BytesChild(bytes):
             """Synthetic subclass disallowed at the immutable input boundary."""
-        for raw in (bytearray(self.pdf), BytesChild(self.pdf), b"x", b"%PDF-1.7" + b"x" * (8 * 1024 * 1024)):
-            with self.subTest(kind=type(raw).__name__), patch.object(self.m, "_run_worker") as run:
-                with self.assertRaises(self.m.PdfTextWindowError):
-                    self.inspect(pdf_bytes=raw)
-                run.assert_not_called()
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        plan = self.make_plan(overflow, 33)
+        with patch.object(self.m, "_run_worker") as run:
+            for raw in (bytearray(self.pdf), BytesChild(self.pdf), b"x"):
+                with self.subTest(kind=type(raw).__name__):
+                    with self.assertRaises(self.m.PdfTextWindowError):
+                        self.inspect(pdf_bytes=raw)
+            with self.assertRaises(self.m.PdfTextWindowError):
+                self.inspect(pdf_bytes=overflow, plan=plan, expected_plan_sha256=plan.plan_sha256)
+            run.assert_not_called()
 
     def test_page_and_window_admission_limits_prevent_launch(self):
         """No large constant silently widens the explicitly bounded internal class."""

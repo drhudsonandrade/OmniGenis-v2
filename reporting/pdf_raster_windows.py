@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 
+from reporting._pdf_document_byte_budget import require_pdf_document_budget
 from reporting._pdf_native_launch_budget import admit_launch, wait_native_process_group
 
 from reporting._pdf_bounded_scratch import (
@@ -219,6 +220,7 @@ def inspect_pdf_raster_window(
         if type(plan) is not PageWindowPlan or not _is_digest(expected_plan_sha256):
             raise ValueError("typed raster plan required")
         plan.__post_init__()
+        require_pdf_document_budget(len(pdf_bytes), plan.page_count)
         if (plan.plan_sha256 != expected_plan_sha256 or plan.inspector_profile_id != PROFILE_ID
                 or plan.page_count > MAX_DOCUMENT_PAGES or plan.pages_per_window > MAX_WINDOW_PAGES
                 or type(window_index) is not int or not 0 <= window_index < plan.window_count

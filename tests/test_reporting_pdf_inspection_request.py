@@ -185,8 +185,9 @@ class PdfInspectionRequestTests(unittest.TestCase):
                 with self.assertRaises(self.m.PdfInspectionRequestError):self.encode(**{field:value})
 
     def test_segment_maxima_and_one_byte_overflow(self):
-        """Each 8-MiB boundary is independent and never raised by framing overhead."""
-        raw=b's'*(8*1024*1024);pdf=b'%PDF-1.7'+b'p'*(len(raw)-8)
+        """The source8-MiB and PDF16-MiB boundaries are independent of framing overhead."""
+        raw=b's'*(8*1024*1024);pdf=b'%PDF-1.7'+b'p'*(16*1024*1024-8)
+        self.assertEqual((len(raw),len(pdf)),(8388608,16777216))
         args=dict(presentation_ir_bytes=raw,expected_ir_sha256=sha256(raw).hexdigest(),
                   pdf_bytes=pdf,expected_pdf_sha256=sha256(pdf).hexdigest())
         packet=self.encode(**args)

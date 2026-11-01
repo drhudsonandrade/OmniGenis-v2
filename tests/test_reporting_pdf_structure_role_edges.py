@@ -121,7 +121,10 @@ class PdfStructureRoleEdgesTests(unittest.TestCase):
             self.m.inspect_pdf_structure_role_edges(**candidate)
 
     def test_pdf_plan_locale_type_and_unsupported_size_reject_before_native(self):
+        """Reject malformed inputs and over-budget candidates before launching workers."""
         foreign = self.plan_for(self.pdf, 65)
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        overflow_plan = self.plan_for(overflow, 1)
         with patch.object(self.m, "_run_worker") as worker:
             for change in (
                 dict(pdf_bytes=bytearray(self.pdf)),
@@ -130,7 +133,7 @@ class PdfStructureRoleEdgesTests(unittest.TestCase):
                 dict(expected_plan_sha256="f" * 64),
                 dict(expected_language="pt-BR"),
                 dict(plan=foreign, expected_plan_sha256=foreign.plan_sha256),
-                dict(pdf_bytes=b"%PDF-1.7" + b"x" * 8_388_608),
+                dict(pdf_bytes=overflow, plan=overflow_plan, expected_plan_sha256=overflow_plan.plan_sha256),
             ):
                 with self.subTest(changed=tuple(change)):
                     with self.assertRaises(self.m.PdfStructureRoleEdgesError):
@@ -232,6 +235,7 @@ class PdfStructureRoleEdgesTests(unittest.TestCase):
                 self.inspect()
 
     def test_manifest_and_dependency_profiles_are_not_silently_widened(self):
+        """Pin the selected finite profile, dependency identities and unqualified claims."""
         manifest = json.loads(
             (ROOT / "reporting/pdf-structure-role-edges.v1.json").read_text(),
         )
@@ -239,7 +243,7 @@ class PdfStructureRoleEdgesTests(unittest.TestCase):
         self.assertEqual(manifest, profile)
         self.assertEqual(tuple(self.worker.EDGE_KEYS), EDGES)
         self.assertEqual(profile["max_pages"], 64)
-        self.assertEqual(profile["max_pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
         self.assertEqual(profile["parent_role_profile_sha256"],
                          importlib.import_module(
                              "reporting.pdf_structure_role_tokens").PROFILE_SHA256)

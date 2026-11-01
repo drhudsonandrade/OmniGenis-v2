@@ -28,7 +28,7 @@
     "job_cgroup_exclusivity_verified": false,
     "kernel_observation_policy_sha256": "4684c54f07c27aedd39113323d3fb9e0e8297d5958025f015d04031080006d01",
     "minimum_parent_pid": 1,
-    "native_supervisor_profile_sha256": "aa21846c736fb6786e31e21b0522aa4b09adc11e6a3aa6f66c5084ccd937b9cc",
+    "native_supervisor_profile_sha256": "7ac5ff687f95dc3f4b286b8d7b1209bcfc2296f1a7fc0df0cd0d82aef6d82a46",
     "observation": "SNAPSHOTS_AND_EVENT_COUNTER_CONTINUITY",
     "profile_id": "fixed-pdf-supervisor-resource-scope-v1",
     "rechecks": [
@@ -44,11 +44,11 @@
     "selector": "OMNIGENIS_PDF_FIXED_KERNEL_ADMISSION_V1",
     "selector_value": "1",
     "service_installed": false,
-    "supervisor_profile_sha256": "faaeb3370d9077b635a2bcbc09427bbfcbb925d90e81124d606dfb8cea9f2bb6",
+    "supervisor_profile_sha256": "d020c676e11207bdfd007dcd90488888bcebd6b1ee1285faa514b116d7c41095",
     "uncertain_cleanup_refuses": true,
     "worker_minimum_parent_pid_unchanged": 2
   },
-  "profile_sha256": "c14fe01540677a50f6eb2628edc0da49c9b95918aec90b11cfd8af16477a8b35",
+  "profile_sha256": "850caba50614a648dfeaa0eb6e2511026c1f2d00d90c9bccfb7f76e2cee2b402",
   "profile_values_are": "EXPLICIT_OPTIONAL_POLICY_NOT_MEASURED_CAPACITY",
   "release_authorized": false,
   "schema_version": "1.0.0",

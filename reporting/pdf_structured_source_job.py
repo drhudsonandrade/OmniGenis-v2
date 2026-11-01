@@ -1,7 +1,7 @@
 """Optional composition of forward structure and existing source-aware inspections.
 
-The original adapters, workers, resource profiles and default renderer remain
-unchanged. One immutable candidate and one bounded native-JSON source snapshot
+Adapters and workers use the selected finite file class. The default renderer
+and inner resource guards are preserved. One immutable candidate and one bounded source snapshot
 feed both stages. Matching sealed unsigned observations is not authenticated
 execution, semantic accessibility, aggregate supervision or release authority.
 """
@@ -14,6 +14,9 @@ import os
 import sys
 from time import monotonic_ns
 
+from reporting._pdf_document_byte_budget import (
+    MAX_PDF_BYTES, PROFILE_SHA256 as DOCUMENT_BYTE_BUDGET_SHA256,
+)
 from reporting import pdf_source_inspection_job as source
 from reporting import pdf_structure_tree as structure
 from reporting.pdf_source_inspection_job import (
@@ -29,7 +32,6 @@ from reporting.pdf_inspection_bundle import _pin
 PROFILE_ID = 'structured-source-pdf-inspection-job-v1'
 SOURCE_PROFILE_SHA256 = source.PROFILE_SHA256
 MAX_PAGES = 64
-MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_RESULT_BYTES = 288 * 1024
 MAX_INVOCATIONS = 26
 ACCEPTANCE_NS = 300 * 1000 * 1000 * 1000
@@ -45,10 +47,11 @@ class PdfStructuredSourceJobError(ValueError):
 
 
 def structured_source_job_profile() -> dict:
-    """Detach the finite outer contract and preserve the distinct original child profiles."""
+    """Detach the finite outer contract and preserve the distinct pinned child profiles."""
     return {'schema_version': '1.0.0', 'profile_id': PROFILE_ID,
             'language': LANGUAGE, 'pdf_version': '1.7', 'max_pages': MAX_PAGES,
-            'max_pdf_bytes': MAX_PDF_BYTES, 'max_result_bytes': MAX_RESULT_BYTES,
+            'max_pdf_bytes': MAX_PDF_BYTES,
+            'document_byte_budget_sha256': DOCUMENT_BYTE_BUDGET_SHA256, 'max_result_bytes': MAX_RESULT_BYTES,
             'max_inspector_invocations': MAX_INVOCATIONS,
             'acceptance_deadline_ns': ACCEPTANCE_NS,
             'source_job_profile_sha256': SOURCE_PROFILE_SHA256,
@@ -192,7 +195,7 @@ def execute_pdf_structured_source_job(
     namespace_id: str, job_id: str, request_sha256: str,
     expected_resource_profile_sha256: str,
 ) -> PdfStructuredSourceResult:
-    """Run forward linkage first, then the unchanged source-aware inspection job.
+    """Run forward linkage first, then the pinned source-aware inspection job.
 
     The caller owns trusted source and job expectations. The existing native-JSON
     snapshot is bounded, not an atomic transaction on a concurrently mutating

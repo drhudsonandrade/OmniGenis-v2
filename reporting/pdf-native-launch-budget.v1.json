@@ -1,58 +1,4 @@
 {
-  "schema_version": "1.0.0",
-  "policy": {
-    "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
-    "max_pages": 64,
-    "max_pdf_bytes": 8388608,
-    "text_window_pages": 16,
-    "raster_window_pages": 4,
-    "fixed_roles": [
-      "structure_role_edges", "single_revision", "xref_entries", "xref_resolution",
-      "trailer_catalog", "page_surface", "resource_leaves", "font_descriptor",
-      "cid_widths", "tounicode_header", "tounicode_zlib", "tounicode_cmap_frame",
-      "tounicode_utf16be_targets", "tounicode_bfchar_sources", "tounicode_width_coverage",
-      "structure_tree", "document_content", "object_graph", "document_metadata",
-      "page_tags", "mcid_coverage"
-    ],
-    "launchers": {
-      "object_graph": "reporting/pdf_object_graph.py",
-      "text_windows": "reporting/pdf_text_windows.py",
-      "raster_windows": "reporting/pdf_raster_windows.py"
-    },
-    "direct_attempts": "21+ceil(P/16)+ceil(P/4)",
-    "reserved_raster_child_attempts": "ceil(P/4)+P",
-    "composed_attempt_ceiling": "21+ceil(P/16)+2*ceil(P/4)+P",
-    "at_64_pages": {
-      "direct_attempts": 41,
-      "reserved_raster_child_attempts": 80,
-      "composed_attempt_ceiling": 121,
-      "with_optional_fixed_supervisor": 122
-    },
-    "cumulative_wall_wait": {
-      "budget_ns": 300000000000,
-      "start": "native_coordinator_post_admission",
-      "direct_wait_limit": "min(stage_wall_seconds,remaining_job_seconds)",
-      "cleanup_seconds": 2,
-      "cleanup_within_execution_budget": false,
-      "hard_job_deadline_enforced": false
-    },
-    "aggregate_job_resources_qualified": false,
-    "default_pipeline_activated": false,
-    "release_authorized": false,
-    "retries": 0,
-    "refunds": false,
-    "persistent_checkpoints": false
-  },
-  "source_sha256": {
-    "reporting/_pdf_native_launch_budget.py": "3b4584b4b4bcf3ca2111494bb1bf4202d7de908ca85c7ec6d7e279f5d2c6e77f",
-    "reporting/pdf_native_source_job.py": "dc83d5e48285bc13c61e318ece736a172adf850f693fadc250ef13f9fb0b1c7b",
-    "reporting/pdf_object_graph.py": "8643519be9dc3e4237899be87da24c36ebaf5e951b541197cd688e9c75f89eaa",
-    "reporting/pdf_text_windows.py": "fdb1ff1e7947e3a7176bee54fec3cd019eb5bf6e7a86ec5605ef57ace28b7ab8",
-    "reporting/pdf_raster_windows.py": "665128e5eb25e8c140cbf965cba0c8d9709ce200c34222e0c525da0984a91b25",
-    "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
-    "reporting/_pdf_raster_probe.py": "f20284855e6392dc5b318a150eea479bfe01e9ed716d47b30f5c34b54398eed0",
-    "reporting/_pdf_raster_window_worker.py": "8755dcdb5aedb39ec0dce9f5b619a79b60960541a13254858cd32e6d0c46e8a1"
-  },
   "known_issues": [
     "The existing 300-second post-admission acceptance budget is shared by launch admission, direct-worker waits and terminal acceptance. Each wait uses the shorter stage limit or remaining job time; the existing 2-second cleanup budget is separate. Parent work, process creation and syscalls are not preempted, so this is not a hard whole-job deadline.",
     "Counts are spent launch attempts and reserved child ceilings, never observed process counts or successful execution attestations.",
@@ -62,5 +8,75 @@
     "A foreign PID rejects its inherited copied state before the lock. Poisoning a child's memory does not poison the parent copy.",
     "The fixed worker and default rendering/QA route are outside this scope. document_plan.py legacy estimates remain unchanged and are distinct from this cumulative attempt ceiling.",
     "No aggregate CPU, RSS, scratch, descriptors, hard wall-time, arbitrary-descendant resource qualification, default activation or release authority is established."
-  ]
+  ],
+  "policy": {
+    "aggregate_job_resources_qualified": false,
+    "at_64_pages": {
+      "composed_attempt_ceiling": 121,
+      "direct_attempts": 41,
+      "reserved_raster_child_attempts": 80,
+      "with_optional_fixed_supervisor": 122
+    },
+    "composed_attempt_ceiling": "21+ceil(P/16)+2*ceil(P/4)+P",
+    "cumulative_wall_wait": {
+      "budget_ns": 300000000000,
+      "cleanup_seconds": 2,
+      "cleanup_within_execution_budget": false,
+      "direct_wait_limit": "min(stage_wall_seconds,remaining_job_seconds)",
+      "hard_job_deadline_enforced": false,
+      "start": "native_coordinator_post_admission"
+    },
+    "default_pipeline_activated": false,
+    "direct_attempts": "21+ceil(P/16)+ceil(P/4)",
+    "document_byte_budget_sha256": "eb1eb1b5f0908520567f6c8084b27abc02bd94de7f966881e1bb098cdbd5a36d",
+    "fixed_roles": [
+      "structure_role_edges",
+      "single_revision",
+      "xref_entries",
+      "xref_resolution",
+      "trailer_catalog",
+      "page_surface",
+      "resource_leaves",
+      "font_descriptor",
+      "cid_widths",
+      "tounicode_header",
+      "tounicode_zlib",
+      "tounicode_cmap_frame",
+      "tounicode_utf16be_targets",
+      "tounicode_bfchar_sources",
+      "tounicode_width_coverage",
+      "structure_tree",
+      "document_content",
+      "object_graph",
+      "document_metadata",
+      "page_tags",
+      "mcid_coverage"
+    ],
+    "launchers": {
+      "object_graph": "reporting/pdf_object_graph.py",
+      "raster_windows": "reporting/pdf_raster_windows.py",
+      "text_windows": "reporting/pdf_text_windows.py"
+    },
+    "max_pages": 64,
+    "max_pdf_bytes": 16777216,
+    "persistent_checkpoints": false,
+    "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
+    "raster_window_pages": 4,
+    "refunds": false,
+    "release_authorized": false,
+    "reserved_raster_child_attempts": "ceil(P/4)+P",
+    "retries": 0,
+    "text_window_pages": 16
+  },
+  "schema_version": "1.0.0",
+  "source_sha256": {
+    "reporting/_pdf_native_launch_budget.py": "5312fc97b97392f4e3242de8e9529dd4d52ff0d190ef62597ca84e1fe89aa057",
+    "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
+    "reporting/_pdf_raster_probe.py": "f20284855e6392dc5b318a150eea479bfe01e9ed716d47b30f5c34b54398eed0",
+    "reporting/_pdf_raster_window_worker.py": "8755dcdb5aedb39ec0dce9f5b619a79b60960541a13254858cd32e6d0c46e8a1",
+    "reporting/pdf_native_source_job.py": "237dd80dca1a8722a36d8e383af5d779c42e53b182d9fefc82ac610290e1b62d",
+    "reporting/pdf_object_graph.py": "939a4e03c3f5cb30ceab4141e589e583edc6dfb740e5ff69b9ad90773bbfb727",
+    "reporting/pdf_raster_windows.py": "325eea7f0d6e91510b40457c821f15064f1e4f74392a69180c3ee50fbc74337a",
+    "reporting/pdf_text_windows.py": "42b915c3cd58c5e2cc261a0f5e407561092b5e3a21862ce853149e07458433f7"
+  }
 }

@@ -241,9 +241,12 @@ class PdfDocumentMetadataTests(unittest.TestCase):
 
     def test_over_budget_pdf_rejected_before_hashing(self):
         """Byte admission prevents hashing or subprocess work for excessive candidates."""
-        with patch.object(self.m.hashlib, "sha256", side_effect=AssertionError("hash")), patch.object(self.m, "_run_worker") as run:
+        overflow = b"%PDF-1.7\n" + b"x" * 16777208
+        plan = self.make_plan(overflow, 1)
+        with patch.object(self.m.hashlib, "sha256", side_effect=AssertionError("hash")) as hashed, patch.object(self.m, "_run_worker") as run:
             with self.assertRaises(self.m.PdfDocumentMetadataError):
-                self.inspect(pdf_bytes=b"%PDF-1.7\n" + b"x" * (8 * 1024 * 1024))
+                self.inspect(pdf_bytes=overflow, plan=plan, expected_plan_sha256=plan.plan_sha256)
+            hashed.assert_not_called()
             run.assert_not_called()
 
     def test_non_native_inputs_and_other_versions_rejected(self):
@@ -383,7 +386,7 @@ class PdfDocumentMetadataTests(unittest.TestCase):
         self.assertEqual(manifest["profile_id"],PROFILE);self.assertFalse(manifest["default_pipeline_activated"])
         self.assertEqual(manifest["parser_version"],"6.19.0")
         self.assertEqual(manifest["resource_budget"]["pages"],512)
-        self.assertEqual(manifest["resource_budget"]["pdf_bytes"],8*1024*1024)
+        self.assertEqual(manifest["resource_budget"]["pdf_bytes"],16*1024*1024)
         for path,value in manifest["reused_source_sha256"].items():self.assertEqual(digest((ROOT/path).read_bytes()),value)
 
     def test_all_added_functions_have_docstrings(self):

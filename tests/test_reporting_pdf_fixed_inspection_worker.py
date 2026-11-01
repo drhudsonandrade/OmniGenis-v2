@@ -1388,7 +1388,7 @@ class FixedKernelAdmissionEntrypointTests(unittest.TestCase):
         """Verify admission policy and source hashes while retaining the legacy worker identity and disabled qualification claims."""
         manifest = json.loads((ROOT/'reporting/pdf-fixed-worker-admission.v1.json').read_text())
         self.assertEqual(self.worker.PROFILE_SHA256,
-            '48701b4b85dc7f56d5ac1b5032bb71069c9d44189de3da265b59e94d3b3fead3')
+            '52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b')
         self.assertEqual(manifest['legacy_worker_profile_sha256'], self.worker.PROFILE_SHA256)
         self.assertEqual(manifest['profile'], self.worker.kernel_admission_profile())
         self.assertEqual(manifest['profile_sha256'], sha256(_json_bytes(manifest['profile'])).hexdigest())

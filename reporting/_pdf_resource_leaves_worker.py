@@ -20,6 +20,7 @@ import sys
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from reporting._pdf_document_byte_budget import LEGACY_MAX_PDF_BYTES as MAX_RAW_STREAM_BYTES
 from reporting import _pdf_page_surface_worker as previous
 from reporting._pdf_object_graph_worker import (
     MAX_PDF_BYTES, PARSER_VERSION, PROTOCOL_VERSION, RESULT_BYTES,
@@ -185,7 +186,7 @@ def _verify_resource_leaves(
                     or type(cmap.raw_get("/Filter")) is not NameObject
                     or cmap.raw_get("/Filter") != "/FlateDecode"
                     or type(getattr(cmap, "_data", None)) is not bytes
-                    or not 0 < len(cmap._data) <= MAX_PDF_BYTES):
+                    or not 0 < len(cmap._data) <= MAX_RAW_STREAM_BYTES):
                 raise ValueError("generated raw ToUnicode reference changed")
             cmap_count += 1
 

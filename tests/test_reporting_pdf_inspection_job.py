@@ -159,8 +159,8 @@ class PdfInspectionJobTests(unittest.TestCase):
                 self.assertEqual(calls, [])
 
     def test_oversized_pdf_is_not_a_partial_job(self):
-        """The new coordinator never widens the original eight-MiB input class."""
-        pdf = b'%PDF-1.7\n' + b'0' * 8388608
+        """The optional coordinator refuses bytes beyond its explicit sixteen-MiB class."""
+        pdf = b'%PDF-1.7\n' + b'0' * 16777208
         with self.mocked() as calls, self.assertRaises(self.m.PdfInspectionJobError):
             self.run_job(pdf_bytes=pdf, expected_pdf_sha256=sha256(pdf).hexdigest())
         self.assertEqual(calls, [])

@@ -13,6 +13,9 @@ from hashlib import sha256
 import json
 import os
 
+from reporting._pdf_document_byte_budget import (
+    document_byte_budget_profile, require_pdf_document_budget,
+)
 from reporting.bindings import _digest
 from reporting.page_checkpoints import _json_bytes
 from reporting import document_plan as preflight
@@ -33,6 +36,7 @@ def document_inspection_reconciliation_profile() -> dict:
     """Pin the existing bounded profiles without widening native admission."""
     return {
         "schema_version": "1.0.0", "profile_id": PROFILE_ID,
+        "document_byte_budget": document_byte_budget_profile(),
         "preflight_profile_sha256": preflight.PROFILE_SHA256,
         "graph_probe_profile_sha256": graph_probe.PROFILE_SHA256,
         "inspection_bundle_profile_id": inspection_bundle.PROFILE_ID,
@@ -86,6 +90,7 @@ class PdfDocumentInspectionReconciliation:
             raise ValueError("document inspection receipt types invalid")
 
         planned = self.document.to_dict()
+        require_pdf_document_budget(planned["pdf_byte_count"], planned["declared_page_count"])
         graph_record = self.graph_observation.to_dict()
         bundled = self.inspections.to_dict()
         if (planned["preflight_sha256"] != self.expected_preflight_sha256

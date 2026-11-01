@@ -174,11 +174,18 @@ class PdfDocumentContentTests(unittest.TestCase):
         for pdf in (b'not-pdf', self.pdf.replace(b'%PDF-1.7', b'%PDF-1.6', 1)):
             with self.assertRaises(self.m.PdfDocumentContentError): self.inspect(pdf_bytes=pdf)
 
+
     def test_input_byte_limit_and_native_bytes_only(self):
         """Mutable inputs and excessive byte counts cannot enter the worker."""
-        with patch.object(self.m, '_run_worker', side_effect=AssertionError('must not launch')):
-            for value in (bytearray(self.pdf), memoryview(self.pdf), b'%PDF-1.7' + b'x' * 8388608):
-                with self.assertRaises(self.m.PdfDocumentContentError): self.inspect(pdf_bytes=value)
+        overflow = b'%PDF-1.7' + b'x' * 16777209
+        plan = self.make_plan(self.ir, overflow, 1)
+        with patch.object(self.m, '_run_worker') as worker:
+            for value in (bytearray(self.pdf), memoryview(self.pdf)):
+                with self.assertRaises(self.m.PdfDocumentContentError):
+                    self.inspect(pdf_bytes=value)
+            with self.assertRaises(self.m.PdfDocumentContentError):
+                self.inspect(pdf_bytes=overflow, plan=plan, expected_plan_sha256=plan.plan_sha256)
+            worker.assert_not_called()
 
     def test_sixty_five_page_plan_is_not_admitted(self):
         """The optional content class is 64 pages, not the generic 512-page ceiling."""

@@ -11,18 +11,35 @@
     "aggregate_job_resources_qualified": false,
     "all_file_revisions_inspected": false,
     "default_pipeline_activated": false,
-    "graph_probe_profile_sha256": "cde96682e2f8ddc75b16d8e63511a19f26839204913abc592f94f6c15fa5ae35",
+    "document_byte_budget": {
+      "aggregate_job_resources_qualified": false,
+      "default_pipeline_activated": false,
+      "expanded": {
+        "max_pages": 64,
+        "max_pdf_bytes": 16777216
+      },
+      "inner_stream_limits_expanded": false,
+      "legacy": {
+        "max_pages": 512,
+        "max_pdf_bytes": 8388608
+      },
+      "profile_id": "generated-pdf-document-byte-budget-v1",
+      "release_authorized": false,
+      "schema_version": "1.0.0",
+      "selection": "PDF_BYTES_AND_COMPLETE_DOCUMENT_PAGE_COUNT"
+    },
+    "graph_probe_profile_sha256": "f0bf9b1ddaf7b69317278c9c6c114299831e72e39bfd43605a6491dd1020225b",
     "inspection_bundle_profile_id": "complete-pdf-inspection-metadata-v1",
     "max_bound_pages": 512,
-    "max_bound_pdf_bytes": 8388608,
-    "preflight_profile_sha256": "09d124ddb69da0cceedb55099404a0c36c12c4ed0d86e23aefce4e6e9f9ab6a8",
+    "max_bound_pdf_bytes": 16777216,
+    "preflight_profile_sha256": "59a3610892f5ab9a0c17194d99988dfb19f44ffed59ff9401796c88310f1c479",
     "profile_id": "generated-pdf-document-inspection-reconciliation-v1",
     "receipts_authenticated": false,
     "release_authorized": false,
     "schema_version": "1.0.0"
   },
   "profile_id": "generated-pdf-document-inspection-reconciliation-v1",
-  "profile_sha256": "1f56c02ba46ea88100d6ac3746cfc84ca025efb74c1734b3e87dec1175c964b6",
+  "profile_sha256": "8f298b8a6871bd5e1b7c7aa38e0414ff22b8adb622788779bde1d819cd046250",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "service_installed": false,

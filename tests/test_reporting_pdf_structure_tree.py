@@ -216,10 +216,12 @@ class PdfStructureTreeTests(unittest.TestCase):
     def test_sixty_five_pages_and_mutable_input_do_not_launch(self):
         """The optional 64-page boundary cannot silently inherit the generic 512-page class."""
         plan = self.plan_for(self.pdf, 65)
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        overflow_plan = self.plan_for(overflow, 1)
         with patch.object(self.m, '_run_worker') as native:
             for change in ({'plan': plan, 'expected_plan_sha256': plan.plan_sha256},
                            {'pdf_bytes': bytearray(self.pdf)},
-                           {'pdf_bytes': b'%PDF-1.7' + b'x' * 8388608}):
+                           {"pdf_bytes": overflow, "plan": overflow_plan, "expected_plan_sha256": overflow_plan.plan_sha256}):
                 with self.assertRaises(self.m.PdfStructureTreeError): self.inspect(**change)
             native.assert_not_called()
 

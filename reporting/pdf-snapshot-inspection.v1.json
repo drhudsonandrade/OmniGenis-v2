@@ -2,14 +2,14 @@
   "default_pipeline_activated": false,
   "dependencies_changed": false,
   "disable_environment": "OMNIGENIS_PDF_SNAPSHOT_INSPECTION_DISABLED=1",
-  "existing_profiles_changed": false,
+  "existing_profiles_changed": true,
   "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
   "known_issues": [
     "Source bytes and independent expected identities must come from upstream authenticated immutable storage. This entrypoint neither authenticates their origin nor implements the sealing transaction.",
     "Only the existing native-JSON canonical encoding is admitted. Alternate whitespace, escaping, numeric spelling, rounding and underflow representations are rejected, not rewritten. This is not general high-precision scientific JSON support.",
     "A linear raw node/depth budget precheck runs before the standard decoder; strict JSON hooks and the existing native-object validator remain authoritative for validity. Finite admission bounds are not hard aggregate memory or time supervision.",
-    "The returned type and resource-profile SHA remain those of the unchanged structured-source inspection job. The separate source-admission profile pin does not add an execution signature or evidence that a particular entrypoint ran.",
-    "All existing guarded inspections and supported 64-page/8-MiB optional limits remain unchanged; graph-depth rejection remains effective. The standard rendering route remains 32 pages/8 MiB.",
+    "The returned type and resource-profile SHA are those of the selected structured-source inspection job. The separate source-admission profile pin does not add an execution signature or evidence that a particular entrypoint ran.",
+    "The guarded optional inspections share the 64-page/16-MiB file class. Inner stream and graph-depth guards remain effective. The standard rendering route remains 32 pages/8 MiB.",
     "No retry, custom executor, arbitrary storage handle, checkpoint, profile upgrade or source refresh is accepted. No long-report delivery, full PDF/UA accessibility, scientific qualification or release is activated."
   ],
   "profile": {
@@ -27,9 +27,9 @@
     "source_encoding": "EXISTING_CANONICAL_SORTED_COMPACT_UTF8_NATIVE_JSON",
     "source_storage_authenticated": false,
     "source_type": "EXACT_IMMUTABLE_BYTES",
-    "structured_job_profile_sha256": "ef527ca30db7a034f6b11f896b11a09a9afedf4b91b899b9bceacfd4245828a5"
+    "structured_job_profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
   },
-  "profile_sha256": "d9c1963782511051a1952df6f5f1a15f92966bd924b635b5023f5a7d88a32d7c",
+  "profile_sha256": "d1a7925d842c644e3fb165dfac538d4baa12c7bf9ddaca10697f237e5def9a87",
   "release_authorized": false,
   "reused_source_sha256": {
     "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
@@ -38,16 +38,16 @@
     "reporting/bindings.py": "bdbc232cb0cfd507001731075ea9856cd421b60202f2871511d406aead09eb38",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-source-inspection-job.v1.json": "2a71a867872e181f913e2e555665ba5d651b2cac78a756acc809f97654eac5d1",
-    "reporting/pdf-structure-tree-engine.v1.json": "3545583523eda4d02c75d3f559c1e977ada74204affae319a13d48c1e796fd3e",
-    "reporting/pdf-structured-source-job.v1.json": "73b574d563fbfab6af0fae61226a6872121630f5fd051fa3867eb7bc9c145d43",
+    "reporting/pdf-source-inspection-job.v1.json": "9787c5fb7a2e2e00707ebcc2880676b457c8ac3610ee8c05f1dc197a5ce18c82",
+    "reporting/pdf-structure-tree-engine.v1.json": "3d9dc8a0f6e1397f45deb5f5819a1780ec2acba0d110fd5867faf390841db47e",
+    "reporting/pdf-structured-source-job.v1.json": "f4930c57b2bb9d55d3d84a41b57df815ce01628a11bd58e9a858979f6e256f5e",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
-    "reporting/pdf_inspection_job.py": "4ed9ec1205b12574fa6a65b25e4577928375723d1ddabae9ede7cd5661a80fe8",
+    "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
     "reporting/pdf_inspection_set.py": "1f5c86e09cf2b492e80a96676f602682c896b309ca8a7996c706c09c7c8a703d",
-    "reporting/pdf_source_inspection_job.py": "87523da1ca7eeacccede2a9c188575c831ea7c290d2d5492dfc3f1f0e9976520",
+    "reporting/pdf_source_inspection_job.py": "835c904d151b9e6f6973b00a01fb2fd0ecd4bb6ee11bf656134d91814afc06a1",
     "reporting/pdf_structure_tree.py": "606cf6f16cf9031fd23c08adf8277fe489f5158c64f870d447dd88c2119b67d7",
-    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c",
+    "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
     "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
   },
   "schema_version": "1.0.0",

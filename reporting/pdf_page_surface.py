@@ -14,6 +14,7 @@ import stat
 import sys
 import tempfile
 
+from reporting._pdf_document_byte_budget import LEGACY_MAX_PDF_BYTES as MAX_RAW_STREAM_BYTES
 from reporting.page_windows import PageWindowPlan
 from reporting.pdf_text_windows import PROFILE_ID as TEXT_PROFILE
 from reporting import pdf_trailer_catalog as prior
@@ -28,8 +29,8 @@ from reporting._pdf_page_surface_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_PAGE_SURFACE_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "0bf16bc9a672b2fddfcf8ada89cd599260255b6c2252957cdc969d3135a5c49c"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE_SHA256 = "3d3502d1f2ff01f63a4d05195e219b5ae63e21e2c75667df4f2492b3395058ae"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -51,6 +52,7 @@ def page_surface_profile() -> dict:
         "language": LANGUAGE,
         "max_pages": MAX_DOCUMENT_PAGES,
         "max_pdf_bytes": MAX_PDF_BYTES,
+        "max_raw_stream_bytes": MAX_RAW_STREAM_BYTES,
         "native_page_dictionary_policy": "EXACT_GENERATED_KEYS_INDEXED_GENERATION_ZERO",
         "page_box_policy": "FINITE_EQUAL_MEDIA_TRIM_BLEED_BOUNDED",
         "content_stream_policy": "DISTINCT_INDEXED_FLATE_RAW_BYTES_ONLY",
@@ -73,7 +75,7 @@ def page_surface_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(page_surface_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "6de06faa02128f4a1d5650bc352492f71879e665f35fc5d4b7ba341b325651a1"
+_FIXED_PROFILE_SHA256 = "0f50a0dbda655217f0dcb8a4e7590f4347fe54c6a58632a8efeaffa700fd5b5e"
 
 
 def _profile() -> None:

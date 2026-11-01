@@ -307,11 +307,12 @@ class PdfPageSurfaceTests(unittest.TestCase):
             self.assertEqual(self.inspect().page_count, 1)
 
     def test_manifest_exact_profile_and_restricted_claims(self):
+        """Pin the selected finite profile, dependency identities and unqualified claims."""
         manifest = json.loads((ROOT / "reporting/pdf-page-surface.v1.json").read_text())
         profile = self.m.page_surface_profile()
         self.assertEqual(manifest, profile)
         self.assertEqual(profile["max_pages"], 64)
-        self.assertEqual(profile["max_pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
         self.assertFalse(profile["decoded_contents_audited"])
         self.assertFalse(profile["pdf_ua_qualified"])
         self.assertFalse(profile["default_pipeline_activated"])

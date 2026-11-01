@@ -198,12 +198,18 @@ class PdfObjectGraphTests(unittest.TestCase):
         with self.assertRaises(self.m.PdfObjectGraphError):
             self.inspect(plan=plan, expected_plan_sha256=plan.plan_sha256)
 
+
     def test_input_budget_and_native_type_prevent_launch(self):
-        """Mutable bytes and data above eight MiB are rejected before protocol creation."""
-        with patch.object(self.m, "_run_worker", side_effect=AssertionError("unexpected launch")):
-            for raw in (None, bytearray(self.pdf), memoryview(self.pdf), b"not pdf", b"%PDF-1.7" + b"x" * (8 * 1024 * 1024)):
+        """Mutable bytes and data above sixteen MiB cannot create a worker request."""
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        plan = self.make_plan(overflow, 33)
+        with patch.object(self.m, "_run_worker") as worker:
+            for raw in (None, bytearray(self.pdf), memoryview(self.pdf), b"not pdf"):
                 with self.assertRaises(self.m.PdfObjectGraphError):
                     self.inspect(pdf_bytes=raw)
+            with self.assertRaises(self.m.PdfObjectGraphError):
+                self.inspect(pdf_bytes=overflow, plan=plan, expected_plan_sha256=plan.plan_sha256)
+            worker.assert_not_called()
 
     def test_foreign_pdf_plan_and_digest_prevent_launch(self):
         """Foreign, mutable or stale plan identities cannot start the native inspector."""
@@ -396,7 +402,7 @@ class PdfObjectGraphTests(unittest.TestCase):
         self.assertEqual(record["profile_id"], ENGINE)
         self.assertEqual(record["parser_version"], "6.19.0")
         self.assertEqual(record["policy_source_sha256"], digest((ROOT / "reporting/_pdf_safety_worker.py").read_bytes()))
-        self.assertEqual(record["resource_budget"], {"pdf_bytes": 8388608, "pages": 512, "object_visits": 20000, "graph_depth": 64, "memory_bytes": 268435456, "cpu_seconds": 5, "wall_seconds": 10, "open_files": 128, "result_bytes": 4096})
+        self.assertEqual(record["resource_budget"], {"pdf_bytes": 16777216, "pages": 512, "object_visits": 20000, "graph_depth": 64, "memory_bytes": 268435456, "cpu_seconds": 5, "wall_seconds": 10, "open_files": 128, "result_bytes": 4096})
         self.assertFalse(record["default_pipeline_activated"])
         self.assertFalse(record["whole_report_qualified"])
 
@@ -418,8 +424,8 @@ class PdfObjectGraphTests(unittest.TestCase):
     def test_request_file_budget_and_mutation_are_rejected(self):
         """An oversized or observably mutated request fails before effective-object evaluation."""
         with tempfile.TemporaryFile() as request:
-            request.truncate(8388608 + 257)
-            with self.assertRaises(ValueError):
+            request.truncate(self.w.MAX_PDF_BYTES + self.w.HEADER_BYTES + 1)
+            with self.assertRaisesRegex(ValueError, "^object graph request budget$"):
                 self.w._read_request(request.fileno())
         identity = self.identity()
         header = " ".join(["1", *(str(identity[k]) for k in self.w.IDENTITY_FIELDS)])

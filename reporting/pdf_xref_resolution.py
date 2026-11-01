@@ -28,8 +28,8 @@ from reporting._pdf_xref_resolution_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_XREF_RESOLUTION_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "22cefc2ba113c99cb1f4ecae039cf3c090e9603f02f0b140880f1dce44be1fa0"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE_SHA256 = "6987ff64e46b3e1803143a0c1e599fe18ce84ace9a95f56982c4d88ca859f208"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -70,7 +70,7 @@ def xref_resolution_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(xref_resolution_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "211feff2c3c875bd868206b8c5db15db386fa74ae59276c53f8b48cc9455f8e5"
+_FIXED_PROFILE_SHA256 = "5f2e1d595ddffa7a04e2feaf5563eae7df07b8b36db45d918dd5e3fa02b1f0e7"
 
 
 def _profile() -> None:

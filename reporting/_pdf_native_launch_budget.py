@@ -17,13 +17,15 @@ import sys
 import threading
 from time import monotonic_ns
 
+from reporting._pdf_document_byte_budget import (
+    MAX_PDF_BYTES, PROFILE_SHA256 as DOCUMENT_BYTE_BUDGET_SHA256,
+)
 from reporting._pdf_process_lifecycle import wait_owned_process_group
 
 from reporting.page_windows import PageWindowPlan, plan_pdf_page_windows
 
 POLICY_ID = "native-pdf-cumulative-launch-attempt-budget-v1"
 MAX_PAGES = 64
-MAX_PDF_BYTES = 8 * 1024 * 1024
 ACCEPTANCE_NS = 300 * 1000 * 1000 * 1000
 TEXT_WIDTH = 16
 RASTER_WIDTH = 4
@@ -45,7 +47,8 @@ def launch_budget_policy() -> dict:
     """Detach the separately versioned contract without changing resource profiles."""
     return {
         "policy_id": POLICY_ID, "max_pages": MAX_PAGES,
-        "max_pdf_bytes": MAX_PDF_BYTES, "text_window_pages": TEXT_WIDTH,
+        "max_pdf_bytes": MAX_PDF_BYTES,
+            "document_byte_budget_sha256": DOCUMENT_BYTE_BUDGET_SHA256, "text_window_pages": TEXT_WIDTH,
         "raster_window_pages": RASTER_WIDTH, "fixed_roles": list(FIXED_ROLES),
         "launchers": {"object_graph": "reporting/pdf_object_graph.py",
                       "text_windows": "reporting/pdf_text_windows.py",

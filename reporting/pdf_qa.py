@@ -296,14 +296,27 @@ def _controlled_xmp_fields(xmp):
 
 
 def validate_pdf_candidate(
+    *, pdf_bytes: object, expected_pdf_sha256: object, expected_author: object,
+    expected_language: object, metadata_profile: object = None,
+) -> PdfCandidateValidation:
+    """Validate a candidate with the unchanged default controlled-metadata byte limit."""
+    return _validate_pdf_candidate(
+        pdf_bytes=pdf_bytes, expected_pdf_sha256=expected_pdf_sha256,
+        expected_author=expected_author, expected_language=expected_language,
+        metadata_profile=metadata_profile,
+    )
+
+
+def _validate_pdf_candidate(
     *,
     pdf_bytes: object,
     expected_pdf_sha256: object,
     expected_author: object,
     expected_language: object,
     metadata_profile: object = None,
+    document_page_count: object = None,
 ) -> PdfCandidateValidation:
-    """Validate candidate identity and optional controlled metadata, without release."""
+    """Reuse controlled metadata under a worker-bound document class or the default cap."""
     profile = (
         GENERATED_PDF_METADATA_PROFILE
         if isinstance(metadata_profile, str) and metadata_profile == GENERATED_PDF_METADATA_PROFILE
@@ -319,7 +332,15 @@ def validate_pdf_candidate(
         return _result(errors=("pdf_metadata_profile_invalid",),profile=profile)
     if not isinstance(pdf_bytes,bytes) or not pdf_bytes.startswith(b"%PDF-"):
         return _result(errors=("pdf_structure_invalid",),profile=profile)
-    if profile and len(pdf_bytes) > _PROFILE_MAX_PDF_BYTES:
+    if document_page_count is not None:
+        from reporting._pdf_document_byte_budget import require_pdf_document_budget
+        try:
+            if profile != GENERATED_PDF_METADATA_PROFILE:
+                raise ValueError("controlled document metadata profile required")
+            require_pdf_document_budget(len(pdf_bytes), document_page_count)
+        except ValueError:
+            return _result(errors=("pdf_metadata_budget_exceeded",),profile=profile)
+    elif profile and len(pdf_bytes) > _PROFILE_MAX_PDF_BYTES:
         return _result(errors=("pdf_metadata_budget_exceeded",),profile=profile)
     digest=hashlib.sha256(pdf_bytes).hexdigest()
     if not isinstance(expected_pdf_sha256,str) or _SHA256.fullmatch(expected_pdf_sha256) is None:
@@ -344,7 +365,7 @@ def validate_pdf_candidate(
         return _result(digest=digest,errors=("pdf_structure_invalid",),profile=profile)
 
     errors = []
-    if page_count < 1:
+    if page_count < 1 or (document_page_count is not None and page_count != document_page_count):
         errors.append("pdf_structure_invalid")
     try:
         if profile:

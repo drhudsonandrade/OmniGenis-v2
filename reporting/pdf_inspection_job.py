@@ -17,6 +17,9 @@ import os
 import sys
 from time import monotonic_ns
 
+from reporting._pdf_document_byte_budget import (
+    MAX_PDF_BYTES, PROFILE_SHA256 as DOCUMENT_BYTE_BUDGET_SHA256,
+)
 from reporting.page_checkpoints import PageWindowCheckpoint, _json_bytes, _validate_context
 from reporting.page_windows import PageWindowPlan, plan_pdf_page_windows
 from reporting.pdf_inspection_bundle import bind_pdf_inspection_bundle, _pin
@@ -34,7 +37,6 @@ from reporting.pdf_raster_windows import (
 
 PROFILE_ID = 'sequential-pdf-inspection-job-v1'
 MAX_PAGES = 64
-MAX_PDF_BYTES = 8 * 1024 * 1024
 TEXT_WIDTH = 16
 RASTER_WIDTH = 4
 MAX_INVOCATIONS = 24
@@ -53,6 +55,7 @@ def inspection_job_profile() -> dict:
     return {'schema_version': '1.0.0', 'profile_id': PROFILE_ID,
             'language': LANGUAGE, 'pdf_version': '1.7',
             'max_pages': MAX_PAGES, 'max_pdf_bytes': MAX_PDF_BYTES,
+            'document_byte_budget_sha256': DOCUMENT_BYTE_BUDGET_SHA256,
             'text_window_pages': TEXT_WIDTH, 'raster_window_pages': RASTER_WIDTH,
             'max_inspector_invocations': MAX_INVOCATIONS,
             'acceptance_deadline_ns': ACCEPTANCE_NS,

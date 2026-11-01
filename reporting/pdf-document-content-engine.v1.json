@@ -3,6 +3,24 @@
   "default_pipeline_activated": false,
   "disable_behavior": "fail_closed",
   "disable_environment": "OMNIGENIS_PDF_DOCUMENT_CONTENT_DISABLED=1",
+  "document_byte_budget": {
+    "aggregate_job_resources_qualified": false,
+    "default_pipeline_activated": false,
+    "expanded": {
+      "max_pages": 64,
+      "max_pdf_bytes": 16777216
+    },
+    "inner_stream_limits_expanded": false,
+    "legacy": {
+      "max_pages": 512,
+      "max_pdf_bytes": 8388608
+    },
+    "profile_id": "generated-pdf-document-byte-budget-v1",
+    "release_authorized": false,
+    "schema_version": "1.0.0",
+    "selection": "PDF_BYTES_AND_COMPLETE_DOCUMENT_PAGE_COUNT"
+  },
+  "document_byte_budget_sha256": "eb1eb1b5f0908520567f6c8084b27abc02bd94de7f966881e1bb098cdbd5a36d",
   "integration_mode": "USE_VIA_ADAPTER",
   "known_issues": [
     "Only current semantic-section normalized text is compared; CR, LF and form-feed are removed while all other code points remain.",
@@ -27,24 +45,27 @@
     "memory_bytes": 268435456,
     "open_files": 128,
     "pages": 64,
-    "pdf_bytes": 8388608,
+    "pdf_bytes": 16777216,
     "result_bytes": 4096,
     "text_chars": 1048576,
     "wall_seconds": 10
   },
   "reused_source_sha256": {
     "reporting/_pdf_content_worker.py": "9962b160ba4f605cc3db8505778fbb2a82acece794470fde1c90d492854ab205",
-    "reporting/_pdf_object_graph_worker.py": "c250b4e5afda399695108920ca1cdd03311d76eec3ae3343c49c42142bf504f4",
+    "reporting/_pdf_object_graph_worker.py": "484184af8da15084d05e6e66e275aa8b781962a1b1c1c0fe5e3edc4bee263838",
+    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd",
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
     "reporting/_pdf_render_worker.py": "8d15e1801c8e690bd93cb681e43407b4d49fea8d40da1e8b53d89f14b6b20d30",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
-    "reporting/pdf_inspection_job.py": "4ed9ec1205b12574fa6a65b25e4577928375723d1ddabae9ede7cd5661a80fe8",
-    "reporting/pdf_object_graph.py": "8643519be9dc3e4237899be87da24c36ebaf5e951b541197cd688e9c75f89eaa",
-    "reporting/pdf_text_windows.py": "fdb1ff1e7947e3a7176bee54fec3cd019eb5bf6e7a86ec5605ef57ace28b7ab8",
-    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd"
+    "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
+    "reporting/pdf_object_graph.py": "939a4e03c3f5cb30ceab4141e589e583edc6dfb740e5ff69b9ad90773bbfb727",
+    "reporting/pdf_text_windows.py": "42b915c3cd58c5e2cc261a0f5e407561092b5e3a21862ce853149e07458433f7"
   },
   "schema_version": "1.0.0",
   "source_code_copied": false,
-  "source_projection": "Unchanged reporting.pdf_content._expected_content; current localized semantic-section PresentationIR only"
+  "source_projection": "Unchanged reporting.pdf_content._expected_content; current localized semantic-section PresentationIR only",
+  "source_sha256": {
+    "reporting/_pdf_document_byte_budget.py": "522858e03e4f6a7b90dedcae6f479e9acee3f92dd39266325020f48fd5131004"
+  }
 }

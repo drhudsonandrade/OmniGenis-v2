@@ -1,6 +1,6 @@
 """Optional composition of native font relations and complete source inspection.
 
-Both existing inspection chains keep their pinned profiles and guards. The
+Both inspection chains use one pinned finite file class and existing guards. The
 combined result binds unsigned observations to the same source and job; it
 does not authenticate execution, qualify aggregate resources or release PDFs.
 """
@@ -13,6 +13,9 @@ import os
 import sys
 from time import monotonic_ns
 
+from reporting._pdf_document_byte_budget import (
+    MAX_PDF_BYTES, PROFILE_SHA256 as DOCUMENT_BYTE_BUDGET_SHA256,
+)
 from reporting import pdf_inspection_job as legacy
 from reporting import pdf_structured_source_job as structured
 from reporting import pdf_tounicode_width_coverage as native
@@ -30,10 +33,9 @@ from reporting.page_windows import plan_pdf_page_windows
 from reporting.pdf_inspection_bundle import _pin
 
 PROFILE_ID = "native-source-pdf-inspection-job-v1"
-NATIVE_PROFILE_SHA256 = "0e9cd91a89366753dd85e3dd7adbd8b592928c459ff59cd91622a5bece4b5b0d"
-STRUCTURED_PROFILE_SHA256 = "ef527ca30db7a034f6b11f896b11a09a9afedf4b91b899b9bceacfd4245828a5"
+NATIVE_PROFILE_SHA256 = "c0bef5f8c23b4c40d2ddcf23e485cbfda0653d8ca1c740cc2925b3f0b1434797"
+STRUCTURED_PROFILE_SHA256 = "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
 MAX_PAGES = 64
-MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_RESULT_BYTES = 304 * 1024
 MAX_OUTER_STAGES = 2
 ACCEPTANCE_NS = 300 * 1000 * 1000 * 1000
@@ -50,7 +52,9 @@ def native_source_job_profile() -> dict:
     return {
         "schema_version": "1.0.0", "profile_id": PROFILE_ID,
         "language": LANGUAGE, "pdf_version": "1.7", "max_pages": MAX_PAGES,
-        "max_pdf_bytes": MAX_PDF_BYTES, "max_result_bytes": MAX_RESULT_BYTES,
+        "max_pdf_bytes": MAX_PDF_BYTES,
+        "document_byte_budget_sha256": DOCUMENT_BYTE_BUDGET_SHA256,
+        "max_result_bytes": MAX_RESULT_BYTES,
         "max_outer_stages": MAX_OUTER_STAGES, "acceptance_deadline_ns": ACCEPTANCE_NS,
         "native_width_profile_sha256": NATIVE_PROFILE_SHA256,
         "structured_source_job_profile_sha256": STRUCTURED_PROFILE_SHA256,
@@ -66,7 +70,7 @@ PROFILE_SHA256 = sha256(_json_bytes(native_source_job_profile())).hexdigest()
 
 
 def _profile(expected: str) -> None:
-    """Reject outer drift and recursively validate both unchanged prerequisite profiles."""
+    """Reject outer drift and recursively validate both selected prerequisite profiles."""
     _pin(expected)
     if (sys.platform != "linux" or os.environ.get(_DISABLE) == "1"
             or expected != PROFILE_SHA256
@@ -207,7 +211,7 @@ def execute_pdf_native_source_job(
     namespace_id: str, job_id: str, request_sha256: str,
     expected_resource_profile_sha256: str,
 ) -> PdfNativeSourceResult:
-    """Execute the pinned native chain, then the unchanged structured-source job.
+    """Execute the pinned native chain, then the pinned structured-source job.
 
     The caller supplies trusted source/job expectations, never receipts or an
     executor. Bounded native-JSON capture and comparisons detect persistent

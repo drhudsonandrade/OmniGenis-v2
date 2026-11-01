@@ -3,8 +3,9 @@
 The previous document reconciliation binds declared text/raster ranges and the
 effective object graph to one job. This additive metadata-only boundary pins an
 existing native whole-document text receipt to that same PDF, IR and text plan.
-It never launches workers, authenticates source storage/results, broadens the
-native 64-page/8-MiB text class, or qualifies scientific/clinical release.
+It never launches workers or authenticates source storage/results. The receipt
+must fit the selected native 64-page/16-MiB file class; decoded-text bounds and
+scientific/clinical release requirements are separate.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from hashlib import sha256
 import json
 import os
 
+from reporting._pdf_document_byte_budget import MAX_PDF_BYTES as _MAX_PDF_BYTES
 from reporting.bindings import _digest
 from reporting.page_checkpoints import _json_bytes
 from reporting import document_inspection_reconciliation as prior
@@ -22,7 +24,6 @@ from reporting import pdf_object_graph as object_graph
 
 PROFILE_ID = "generated-pdf-document-content-reconciliation-v1"
 _MAX_PAGES = 64
-_MAX_PDF_BYTES = 8 * 1024 * 1024
 _LANGUAGE = "en-US"
 _DISABLE = "OMNIGENIS_PDF_DOCUMENT_CONTENT_RECONCILIATION_DISABLED"
 

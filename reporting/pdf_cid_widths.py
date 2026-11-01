@@ -29,8 +29,8 @@ from reporting._pdf_cid_widths_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_CID_WIDTHS_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "d5a6bd2642b56e47f09437e442c0d66e4defc35e575199e84822a43a5e0e88db"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE_SHA256 = "d2037e921601d15ef10ddd130487ac8cd37e8326cee5f18bc2e7284269491519"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -75,7 +75,7 @@ def cid_widths_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(cid_widths_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "7b436ffbf10bf7d41eab3363cced89e84989a323f3d9412b19ee3d6b9b6734ad"
+_FIXED_PROFILE_SHA256 = "4aba561c7218d21f40136a14e225d192ed48c6949370956986889280987479a3"
 
 
 def _profile() -> None:

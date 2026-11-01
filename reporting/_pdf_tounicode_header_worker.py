@@ -18,6 +18,7 @@ import sys
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from reporting._pdf_document_byte_budget import LEGACY_MAX_PDF_BYTES
 from reporting import _pdf_cid_widths_worker as previous
 from reporting._pdf_object_graph_worker import (
     MAX_PDF_BYTES, PARSER_VERSION, PROTOCOL_VERSION, RESULT_BYTES,
@@ -34,7 +35,7 @@ POLICY_ID = "generated-native-tounicode-flate-header-v1"
 STATUS = "TOUNICODE_FLATE_HEADER_ADMITTED"
 LANGUAGE = previous.LANGUAGE
 MAX_DOCUMENT_PAGES = previous.MAX_DOCUMENT_PAGES
-MAX_RAW_CMAP_BYTES = MAX_PDF_BYTES
+MAX_RAW_CMAP_BYTES = LEGACY_MAX_PDF_BYTES
 
 
 def _identity(value: dict) -> None:

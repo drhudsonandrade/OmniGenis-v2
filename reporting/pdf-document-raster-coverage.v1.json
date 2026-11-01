@@ -6,7 +6,7 @@
     "full_accessibility_qualified": false,
     "language": "en-US",
     "max_bound_pages": 64,
-    "max_bound_pdf_bytes": 8388608,
+    "max_bound_pdf_bytes": 16777216,
     "max_raster_pixels_per_page": 4000000,
     "max_raster_pixels_per_window": 16000000,
     "min_edge_margin_px": 2,
@@ -15,7 +15,7 @@
     "native_raster_profile_id": "generated-pdf-raster-window-v1",
     "native_raster_tool_sha256": "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d",
     "ordered_digest_kind": "RASTER_WINDOW_METADATA_ONLY_NOT_FULL_IMAGE",
-    "parent_content_profile_sha256": "8f4db9796a6b2fe1d289f0c0559702f4a20e5bd9177158040684185b4bffb5f5",
+    "parent_content_profile_sha256": "1a1f23ff981c38d5dfa126f5a199bd9b5df0a2288b38015668dfeed384b981be",
     "profile_id": "generated-pdf-document-raster-coverage-v1",
     "raster_window_pages": 4,
     "release_authorized": false,
@@ -24,6 +24,6 @@
     "whole_document_visual_equivalence_verified": false,
     "worker_results_authenticated": false
   },
-  "profile_sha256": "a29953ed3560e058866b5f5c5190beb9085e7ab365b66d3237ce26eb5a533aba",
+  "profile_sha256": "f154c47bb80a9af1b5c8f97fecca16a4a4e8cb463bcf57b6c1b3f25b6afc2017",
   "release_authorized": false
 }

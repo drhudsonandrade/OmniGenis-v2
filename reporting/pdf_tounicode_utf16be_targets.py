@@ -31,9 +31,9 @@ from reporting._pdf_tounicode_utf16be_targets_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_UTF16BE_TARGETS_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "a0b7ad9f42efb03c0ef58c85d4339572f8d2f3fafc451247cf3d8eb21ed4735a"
+_FIXED_PARENT_PROFILE_SHA256 = "c67ffb6ec7452bb5036a364825191da96769d8171993fbbf9352d3a614840d79"
 _FIXED_ENVELOPE = (
-    64, 8 * 1024 * 1024, 256 * 1024, 512 * 1024,
+    64, 16 * 1024 * 1024, 256 * 1024, 512 * 1024,
     256, 16384, 100, 262144,
 )
 _LIMITS = {
@@ -84,7 +84,7 @@ def tounicode_utf16be_targets_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_utf16be_targets_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "b20db009e9453d1b60b067dbc17688970be8e27d0ff4aa23eb0f2ee494098495"
+_FIXED_PROFILE_SHA256 = "becaba64879ed60662de3c4c952c1262720fee0bd09f89241da0a3938511c6f2"
 
 
 def _profile() -> None:

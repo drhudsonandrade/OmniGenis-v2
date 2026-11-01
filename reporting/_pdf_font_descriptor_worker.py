@@ -18,6 +18,7 @@ import sys
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from reporting._pdf_document_byte_budget import LEGACY_MAX_PDF_BYTES as MAX_RAW_STREAM_BYTES
 from reporting import _pdf_resource_leaves_worker as previous
 from reporting._pdf_object_graph_worker import (
     MAX_PDF_BYTES, PARSER_VERSION, PROTOCOL_VERSION, RESULT_BYTES,
@@ -105,9 +106,9 @@ def _raw_fontfile2(stream: object) -> None:
             or type(stream.raw_get("/Filter")) is not NameObject
             or stream.raw_get("/Filter") != "/FlateDecode"
             or type(stream.raw_get("/Length1")) is not NumberObject
-            or not 0 < int(stream.raw_get("/Length1")) <= MAX_PDF_BYTES
+            or not 0 < int(stream.raw_get("/Length1")) <= MAX_RAW_STREAM_BYTES
             or type(getattr(stream, "_data", None)) is not bytes
-            or not 6 <= len(stream._data) <= MAX_PDF_BYTES):
+            or not 6 <= len(stream._data) <= MAX_RAW_STREAM_BYTES):
         raise ValueError("generated embedded font stream envelope invalid")
     cmf, flg = stream._data[:2]
     if ((cmf & 0x0F) != 8 or (cmf >> 4) > 7

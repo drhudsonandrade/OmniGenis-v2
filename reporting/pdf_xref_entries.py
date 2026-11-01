@@ -29,8 +29,8 @@ from reporting._pdf_xref_entries_worker import (
 
 
 _DISABLE = "OMNIGENIS_PDF_XREF_ENTRIES_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "d66b42e0ddfa874dc504933348cf415bc30877de7bb9d4f7de9f9c1d2c7f48c3"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE_SHA256 = "564a7e609902c3ad8abbe9e7b17b0e5f612931521d6af7017d94bee53873c9f9"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -73,7 +73,7 @@ def xref_entries_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(xref_entries_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "22cefc2ba113c99cb1f4ecae039cf3c090e9603f02f0b140880f1dce44be1fa0"
+_FIXED_PROFILE_SHA256 = "6987ff64e46b3e1803143a0c1e599fe18ce84ace9a95f56982c4d88ca859f208"
 
 
 def _profile() -> None:

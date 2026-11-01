@@ -190,12 +190,15 @@ class PdfXrefEntriesTests(unittest.TestCase):
             child.assert_not_called()
 
     def test_invalid_input_fails_without_child(self):
+        """Reject malformed inputs and over-budget candidates before launching workers."""
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        overflow_plan = page_plan(overflow, 1)
         with patch.object(self.m, "_run_worker") as child:
             variants = (
                 {"pdf_bytes": bytearray(self.pdf)},
                 {"pdf_bytes": b"not-a-pdf"},
                 {"pdf_bytes": _CASES[33]},
-                {"pdf_bytes": b"%PDF-1.7" + b"x" * (8 * 1024 * 1024)},
+                {"pdf_bytes": overflow, "plan": overflow_plan, "expected_plan_sha256": overflow_plan.plan_sha256},
                 {"plan": {}},
                 {"expected_plan_sha256": "f" * 64},
                 {"expected_language": "pt-BR"},
@@ -280,11 +283,12 @@ class PdfXrefEntriesTests(unittest.TestCase):
             receipt.to_dict()
 
     def test_manifest_is_exact_and_claims_are_bounded(self):
+        """Pin the selected finite profile, dependency identities and unqualified claims."""
         saved = json.loads((ROOT / "reporting/pdf-xref-entries.v1.json").read_text())
         profile = self.m.xref_entries_profile()
         self.assertEqual(saved, profile)
         self.assertEqual(profile["max_pages"], 64)
-        self.assertEqual(profile["max_pdf_bytes"], 8 * 1024 * 1024)
+        self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
         self.assertFalse(profile["release_authorized"])
         self.assertFalse(profile["all_file_revisions_inspected"])
 

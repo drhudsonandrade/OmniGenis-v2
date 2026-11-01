@@ -14,6 +14,7 @@ import stat
 import sys
 import tempfile
 
+from reporting._pdf_document_byte_budget import LEGACY_MAX_PDF_BYTES
 from reporting.page_windows import PageWindowPlan
 from reporting.pdf_text_windows import PROFILE_ID as TEXT_PROFILE
 from reporting import pdf_cid_widths as previous
@@ -28,8 +29,8 @@ from reporting._pdf_tounicode_header_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_HEADER_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "7b436ffbf10bf7d41eab3363cced89e84989a323f3d9412b19ee3d6b9b6734ad"
-_FIXED_ENVELOPE = (64, 8 * 1024 * 1024)
+_FIXED_PARENT_PROFILE_SHA256 = "4aba561c7218d21f40136a14e225d192ed48c6949370956986889280987479a3"
+_FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
     "file_bytes": RESULT_BYTES, "open_files": OPEN_FILES,
@@ -71,7 +72,7 @@ def tounicode_header_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_header_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "7b20e974fa7ca8a6c478b1a1ada58e8d8a19992fcc28d2ec4cc5fb612be07f66"
+_FIXED_PROFILE_SHA256 = "9fdd911b498ef76aa9e82962f066dff2eebbc43c44035b09c635644c4fdde68c"
 
 
 def _profile() -> None:
@@ -79,7 +80,7 @@ def _profile() -> None:
     previous._profile()
     if (sys.platform != "linux" or os.environ.get(_DISABLE) == "1"
             or (MAX_DOCUMENT_PAGES, MAX_PDF_BYTES) != _FIXED_ENVELOPE
-            or MAX_RAW_CMAP_BYTES != MAX_PDF_BYTES
+            or MAX_RAW_CMAP_BYTES != LEGACY_MAX_PDF_BYTES
             or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
             or previous.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256

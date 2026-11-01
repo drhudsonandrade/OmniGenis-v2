@@ -20,12 +20,12 @@
     "reconstructed_typed_result": false,
     "release_authorized": false,
     "result_encoding": "EXACT_ORIGINAL_CANONICAL_JSON_BYTES",
-    "result_profile_sha256": "ef527ca30db7a034f6b11f896b11a09a9afedf4b91b899b9bceacfd4245828a5",
+    "result_profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499",
     "schema_version": "1.0.0",
     "sender_authenticated": false,
-    "source_job_profile_sha256": "4b29dc1c97227678b88b2d3d225e7e460c8d3523eabc764aa65c52e2a2a03d17"
+    "source_job_profile_sha256": "010200dbc8b89874b16dad3f21d0fa81c84027694523c0978666d431737f0415"
   },
-  "profile_sha256": "c994251417266d15ac74cca19b0fb145f868b83ce7f6ee0934218c4fa05dc9b5",
+  "profile_sha256": "b59ded160140ce1547b9eeff1af000b43007b23f63beaccc2533238cad5bff07",
   "provenance": "NEW_BOUNDED_TRANSPORT_FROM_EXISTING_RESULT_CONTRACT",
   "release_authorized": false,
   "reused_source_sha256": {
@@ -35,7 +35,7 @@
     "reporting/pdf_inspection_request.py": "f9e72d162992debe09f081dc945edd1bc6740730682e4de4a5f1c80d43113dd3",
     "reporting/pdf_sealed_inspection.py": "8193ba835f3036104cdcadbf4d16f8b21803e46852935bb20f3af0b4e45ecd2f",
     "reporting/pdf_snapshot_inspection.py": "833069a527d554ce09c1dba165de47cdfda4178b07ce674724c80d5c5e7856b5",
-    "reporting/pdf_structured_source_job.py": "c53401605fb211a7ef4847276e5856c7d0ca62b5daa02fcabcfe1aa90c8e769c"
+    "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d"
   },
   "schema_version": "1.0.0"
 }

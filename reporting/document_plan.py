@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from hashlib import sha256
 import os
 
+from reporting._pdf_document_byte_budget import document_byte_budget_profile
 from reporting.bindings import _digest, _identity
 from reporting.page_checkpoints import _json_bytes
 from reporting.page_windows import PageWindowPlan, plan_pdf_page_windows
@@ -67,6 +68,7 @@ def document_preflight_profile() -> dict:
         "existing_qa_profile_id": qa.PROFILE_ID,
         "current_job_max_pages": job.MAX_PAGES,
         "current_job_max_pdf_bytes": job.MAX_PDF_BYTES,
+        "document_byte_budget": document_byte_budget_profile(),
         "current_job_max_invocations": job.MAX_INVOCATIONS,
         "current_job_profile_sha256": job.PROFILE_SHA256,
         "text_window_width": TEXT_WIDTH, "raster_window_width": RASTER_WIDTH,

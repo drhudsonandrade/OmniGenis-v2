@@ -540,7 +540,8 @@ class PdfNativeSourceJobTests(unittest.TestCase):
         cycle["cycle"] = cycle
         variants = [{"presentation_ir": value} for value in
                     (cycle, None, {"components": [object()]}, {"large": "x" * 8388609})]
-        variants.append({"pdf_bytes": b"%PDF-1.7" + b"x" * 8388608})
+        overflow = b"%PDF-1.7" + b"x" * 16777209
+        variants.append({"pdf_bytes": overflow, "expected_pdf_sha256": sha256(overflow).hexdigest()})
         for changed in variants:
             with self.mocked() as calls:
                 with self.assertRaises(self.m.PdfNativeSourceJobError):
