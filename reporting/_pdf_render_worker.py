@@ -230,8 +230,8 @@ def main(argv: list[str] | None = None) -> int:
                 return 64
         if os.fstat(pdf_fd).st_size or os.fstat(result_fd).st_size:
             return 64
-        limits = (_apply_resource_limits(max_pdf_bytes=NATIVE_PDF_BYTES)
-                  if native_mode else _apply_resource_limits())
+        render_options = {"max_pdf_bytes": NATIVE_PDF_BYTES} if native_mode else {}
+        limits = _apply_resource_limits(**render_options)
         _arm_worker_lifetime(parent_pid)
         if __name__ == "__main__":
             # -I excludes the worker script directory from sys.path; restore
@@ -249,13 +249,12 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         return 70
     try:
-        html, digest = (_read_request(request_fd, protocol_version=NATIVE_PROTOCOL_VERSION)
-                        if native_mode else _read_request(request_fd))
+        request_options = {"protocol_version": NATIVE_PROTOCOL_VERSION} if native_mode else {}
+        html, digest = _read_request(request_fd, **request_options)
     except Exception:
         return _failure(result_fd, "pdf_render_protocol_invalid", limits, native_mode=native_mode)
     os.environ["SOURCE_DATE_EPOCH"] = SOURCE_DATE_EPOCH
-    pdf, error = (_render(html, digest, max_pdf_bytes=NATIVE_PDF_BYTES)
-                  if native_mode else _render(html, digest))
+    pdf, error = _render(html, digest, **render_options)
     page_count = None
     if error is None and native_mode:
         page_count, error = _discover_page_count(pdf)
