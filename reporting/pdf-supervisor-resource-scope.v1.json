@@ -54,7 +54,7 @@
   "schema_version": "1.0.0",
   "service_installed": false,
   "source_sha256": {
-    "reporting/_pdf_fixed_inspection_worker.py": "1ed1d9967a34fabcb5a0f50d9654f2e38fd163226ddc4f2420fe3a4fe0e617a6",
+    "reporting/_pdf_fixed_inspection_worker.py": "75d34914b92c188e8ad2ad1e6e5a378b2019d8da7b8b74d67d82c4e4c338bb38",
     "reporting/pdf_supervised_inspection.py": "50295862cd7ef81457dc5299b4d15fab09c17605b5c8af30f9a959ab16f81d62"
   }
 }
