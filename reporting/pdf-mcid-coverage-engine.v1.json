@@ -76,7 +76,7 @@
   "reused_source_sha256": {
     "reporting/_pdf_object_graph_worker.py": "484184af8da15084d05e6e66e275aa8b781962a1b1c1c0fe5e3edc4bee263838",
     "reporting/_pdf_page_tags_worker.py": "6d54979b76702a42820b608587dd59d57d628d7def14846d1bb45ded59a0f6ef",
-    "reporting/_pdf_process_lifecycle.py": "8d77dff7db7fff5e00d99135ddbf65bc4db747dbf254b6ab354a62659620bffd",
+    "reporting/_pdf_process_lifecycle.py": "6f7e39dd83d5f1d2f3726527c83d282b11f064222e3d1c46cbf0c369d297f465",
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
     "reporting/_pdf_render_worker.py": "0434222edf2b4f1df1f0bdc86e94731a67d09fd242cb36773630c8333cba5e69",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
