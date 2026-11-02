@@ -70,7 +70,7 @@
   },
   "schema_version": "1.0.0",
   "source_sha256": {
-    "reporting/_pdf_native_launch_budget.py": "5312fc97b97392f4e3242de8e9529dd4d52ff0d190ef62597ca84e1fe89aa057",
+    "reporting/_pdf_native_launch_budget.py": "82e64bb37ae9d536326dd6d2bff8ec02c5a2bb6293d1ccfdf503c7d82ec51afb",
     "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
     "reporting/_pdf_raster_probe.py": "f20284855e6392dc5b318a150eea479bfe01e9ed716d47b30f5c34b54398eed0",
     "reporting/_pdf_raster_window_worker.py": "8755dcdb5aedb39ec0dce9f5b619a79b60960541a13254858cd32e6d0c46e8a1",

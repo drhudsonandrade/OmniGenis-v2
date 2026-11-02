@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+import math
 import os
 from pathlib import Path
 import stat
@@ -312,8 +313,17 @@ def wait_native_process_group(process, *, wall_seconds: float) -> int:
 
     The existing independent two-second cleanup budget is unchanged. A deadline
     fault after spawn must still clean/reap; parent work and syscalls are not
-    preempted. Standalone adapters retain their original stage deadline.
+    preempted. Standalone adapters retain their original stage deadline. Invalid
+    caller budgets are rejected before scope admission, capping or process access.
     """
+    if isinstance(wall_seconds, bool) or not isinstance(wall_seconds, (int, float)):
+        raise ValueError("finite inspection wall budget required")
+    try:
+        valid_wall = math.isfinite(wall_seconds) and wall_seconds >= 0
+    except OverflowError:
+        valid_wall = False
+    if not valid_wall:
+        raise ValueError("finite inspection wall budget required")
     scope = None
     try:
         _before_lock()
