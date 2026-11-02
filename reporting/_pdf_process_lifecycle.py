@@ -58,7 +58,13 @@ def wait_owned_process_group(
         valid_cleanup = False
     if not valid_cleanup:
         raise ValueError("finite positive cleanup budget required")
-    if not math.isfinite(wall_seconds) or wall_seconds < 0:
+    if isinstance(wall_seconds, bool) or not isinstance(wall_seconds, (int, float)):
+        raise ValueError("finite inspection wall budget required")
+    try:
+        valid_wall = math.isfinite(wall_seconds) and wall_seconds >= 0
+    except OverflowError:
+        valid_wall = False
+    if not valid_wall:
         raise ValueError("finite inspection wall budget required")
     failure = None
     try:
