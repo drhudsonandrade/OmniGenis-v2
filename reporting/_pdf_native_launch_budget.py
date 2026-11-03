@@ -1,19 +1,23 @@
 """Owner-bound cumulative attempts for one synchronous native inspection job.
 
-This private ledger binds declared request headers, not adversarial concurrent
-writers or authenticated successful execution. Reservations are ceilings, not
-observed processes. Direct waits share the post-admission acceptance deadline;
-parent work and syscalls are not preempted. CPU, RSS, arbitrary descendants and
+Default reservations bind declared request headers, not authenticated execution.
+Optional owner-bound observations record successful direct-child creation and
+existing lifecycle exits separately from ceilings. They do not authenticate
+hostile source changes or observe nested children. Direct waits share the
+post-admission acceptance deadline; parent syscalls, aggregate resources and
 release remain unqualified.
 """
 from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+from hashlib import sha256
+import json
 import math
 import os
 from pathlib import Path
 import stat
+from subprocess import Popen as _Process
 import sys
 import threading
 from time import monotonic_ns
@@ -21,7 +25,7 @@ from time import monotonic_ns
 from reporting._pdf_document_byte_budget import (
     MAX_PDF_BYTES, PROFILE_SHA256 as DOCUMENT_BYTE_BUDGET_SHA256,
 )
-from reporting._pdf_process_lifecycle import wait_owned_process_group
+from reporting._pdf_process_lifecycle import _observe as _observe_owned, wait_owned_process_group
 
 from reporting.page_windows import PageWindowPlan, plan_pdf_page_windows
 
@@ -140,12 +144,19 @@ class NativeLaunchScope:
     """Own one immutable attempt sequence through final coordinator acceptance."""
 
     __slots__ = ("_pid", "_thread", "_attempts", "_pdf_size", "_next", "_invalid", "_closed",
-                 "_started", "_previous")
+                 "_started", "_previous", "_observe", "_processes", "_pending", "_complete")
 
-    def __init__(self, plan: PageWindowPlan, pdf_size: int, *, started_ns: int | None = None) -> None:
+    def __init__(self, plan: PageWindowPlan, pdf_size: int, *, started_ns: int | None = None,
+                 observe_processes: bool = False) -> None:
         """Derive internal attempts; callers never provide roles or reusable allowances."""
         if type(pdf_size) is not int or not 1 <= pdf_size <= MAX_PDF_BYTES:
             raise ValueError("native launch source size")
+        if type(observe_processes) is not bool:
+            raise ValueError("native process observation flag")
+        self._observe = observe_processes
+        self._processes = []
+        self._pending = None
+        self._complete = False
         self._pid = os.getpid()
         self._thread = threading.current_thread()
         self._attempts = _schedule(plan)
@@ -222,7 +233,10 @@ class NativeLaunchScope:
         """Check live ownership and exact completion while the shared lock is held."""
         self._active()
         self._remaining_seconds()
-        if self._next != len(self._attempts):
+        if (self._next != len(self._attempts)
+                or (self._observe and (self._pending is not None
+                    or len(self._processes) != len(self._attempts)
+                    or any(row["exit_code"] != 0 for row, _ in self._processes)))):
             self._invalid = True
             raise ValueError("native launch schedule incomplete")
 
@@ -238,14 +252,102 @@ class NativeLaunchScope:
         _before_lock()
         with _LOCK:
             self._require_complete()
+            self._complete = True
             self._closed = True
             _ACTIVE = None
+
+    def _record_spawn(self, index: int, process: object, command: list[str]) -> None:
+        """Bind an actually created, unreaped direct child to its admitted attempt.
+
+        The source hash describes the current controlled source, not authenticated
+        execution against hostile concurrent source changes. Reservations for
+        nested raster children remain separate and are never observed here.
+        """
+        self._active()
+        if not self._observe:
+            return
+        if (index != self._next - 1 or index != len(self._processes)
+                or self._pending is not None or not isinstance(process, _Process)
+                or type(process.pid) is not int or process.pid <= 1
+                or process.args != command or process.returncode is not None):
+            raise ValueError("native observed spawn identity")
+        # WNOWAIT retains an exited child's identity for the existing lifecycle
+        # cleanup. ECHILD rejects an unrelated or already-reaped PID.
+        _observe_owned(process)
+        if os.getpgid(process.pid) != process.pid:
+            raise ValueError("native observed process group")
+        self._remaining_seconds()
+        attempt = self._attempts[index]
+        fields = attempt.header.decode("ascii").strip().split(" ")
+        row = {
+            "sequence": index, "kind": attempt.kind, "worker": Path(attempt.worker).name,
+            "worker_source_sha256": sha256(Path(attempt.worker).read_bytes()).hexdigest(),
+            "request_header_sha256": sha256(attempt.header).hexdigest(),
+            "pdf_sha256": fields[1], "ir_sha256": fields[2], "plan_sha256": fields[3],
+            "page_count": int(fields[4]),
+            "window": [int(v) for v in fields[5:]] if len(fields) == 8 else None,
+            "parent_pid": self._pid, "pid": process.pid,
+            "spawn_monotonic_ns": self._previous, "exit_monotonic_ns": None,
+            "exit_code": None,
+        }
+        self._processes.append((row, process))
+        self._pending = (row, process)
+
+    def _require_observed_process(self, process: object) -> None:
+        """Reject foreign or repeated waits without touching that process object."""
+        if self._observe:
+            self._active()
+            if self._pending is None or self._pending[1] is not process:
+                self._invalid = True
+                raise ValueError("native unregistered or already observed process")
+
+    def _record_exit(self, process: object, code: int) -> None:
+        """Retain only a completed existing lifecycle wait and its actual return code."""
+        if not self._observe:
+            return
+        self._require_observed_process(process)
+        if type(code) is not int or process.returncode != code:
+            self._invalid = True
+            raise ValueError("native observed exit identity")
+        row, _ = self._pending
+        row["exit_monotonic_ns"] = self._previous
+        row["exit_code"] = code
+        self._pending = None
+        if code != 0:
+            self._invalid = True
+
+    def process_ledger(self) -> dict:
+        """Return detached observations only after successful close of the full scope.
+
+        These records cover direct native inspection children, not generation,
+        nested raster processes, aggregate resources or artifact release.
+        """
+        self._owner()
+        if (not self._observe or not self._closed or not self._complete or self._invalid
+                or self._pending is not None or len(self._processes) != len(self._attempts)
+                or any(row["exit_code"] != 0 for row, _ in self._processes)):
+            raise ValueError("complete direct process observations unavailable")
+        value = {
+            "schema": "native-direct-process-observation/v1",
+            "state": "COMPLETE_DIRECT_CHILDREN_OBSERVED",
+            "observed_spawns": len(self._processes), "observed_exits": len(self._processes),
+            "reserved_nested_attempts_not_observed": sum(a.reserved_children for a in self._attempts),
+            "declared_retries": 0, "processes": [row for row, _ in self._processes],
+            "descendants_qualified": False, "aggregate_job_resources_qualified": False,
+            "release_authorized": False,
+        }
+        encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        detached = json.loads(encoded)
+        detached["ledger_sha256"] = sha256(encoded).hexdigest()
+        return detached
 
     def _consume(self, kind: str, command: object, fds: object, scratch: object) -> None:
         """Validate and spend the next exact request while the short-held lock is owned."""
         self._active()
         try:
             self._remaining_seconds()
+            if self._observe and self._pending is not None:
+                raise ValueError("native previous observed process has not exited")
             if self._next >= len(self._attempts):
                 raise ValueError("native launch exhausted")
             attempt = self._attempts[self._next]
@@ -298,8 +400,34 @@ def admit_launch(kind: str, command: object, fds: object, scratch: object = None
         scope = _ACTIVE
         if scope is not None:
             scope._consume(kind, command, fds, scratch)
+    index = None if scope is None else scope._next - 1
+    registered = False
+
+    def register(process):
+        """Record only after Popen succeeded; clean the owned child on record failure."""
+        nonlocal registered
+        if scope is None or not scope._observe:
+            return
+        try:
+            _before_lock()
+            with _LOCK:
+                if registered:
+                    raise ValueError("native duplicate spawn observation")
+                scope._record_spawn(index, process, command)
+                registered = True
+        except BaseException as failure:
+            scope._invalid = True
+            if isinstance(process, _Process):
+                try:
+                    wait_owned_process_group(process, wall_seconds=0)
+                except BaseException as cleanup:
+                    raise failure from cleanup
+            raise
+
     try:
-        yield
+        yield register
+        if scope is not None and scope._observe and not registered:
+            raise ValueError("native successful spawn was not observed")
     except BaseException:
         if scope is not None:
             _before_lock()
@@ -324,6 +452,11 @@ def wait_native_process_group(process, *, wall_seconds: float) -> int:
         valid_wall = False
     if not valid_wall:
         raise ValueError("finite inspection wall budget required")
+    _before_lock()
+    with _LOCK:
+        active = _ACTIVE
+        if active is not None:
+            active._require_observed_process(process)
     scope = None
     try:
         _before_lock()
@@ -348,6 +481,7 @@ def wait_native_process_group(process, *, wall_seconds: float) -> int:
             with _LOCK:
                 scope._active()
                 scope._remaining_seconds()
+                scope._record_exit(process, result)
         return result
     except BaseException:
         if scope is not None:

@@ -127,13 +127,15 @@ def _decode(data: bytes, expected: dict) -> PdfObjectGraphInspection:
 
 def _start(command: list[str], fds: tuple[int, int]) -> subprocess.Popen:
     """Start the isolated fixed worker inheriting only its anonymous request and result."""
-    with admit_launch("object_graph", command, fds):
-        return subprocess.Popen(
+    with admit_launch("object_graph", command, fds) as observed:
+        process = subprocess.Popen(
             command, cwd=Path(__file__).resolve().parents[1],
             env={"PATH": os.defpath, "LANG": "C.UTF-8"}, shell=False,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             close_fds=True, pass_fds=fds, start_new_session=True,
         )
+        observed(process)
+        return process
 
 
 def _wait(process: subprocess.Popen) -> int:
