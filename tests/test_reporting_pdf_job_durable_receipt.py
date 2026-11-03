@@ -56,6 +56,17 @@ class DurableJobReceiptTests(unittest.TestCase):
         self.addCleanup(link.unlink)
         with self.assertRaises(OSError):write_job_receipt(link,self.run_id,"SUCCEEDED",self.sha)
 
+    def test_rejects_symlink_in_ancestor_component(self):
+        ancestor = self.root / "real"
+        ancestor.mkdir(mode=0o700)
+        target = ancestor / "private"
+        target.mkdir(mode=0o700)
+        link = self.root / "alias"
+        link.symlink_to(ancestor, target_is_directory=True)
+        with self.assertRaises(OSError):
+            write_job_receipt(link / "private", self.run_id, "SUCCEEDED", self.sha)
+        self.assertEqual(list(target.iterdir()), [])
+
     def test_rejects_preexisting_symlink_destination(self):
         target=self.root/"target"
         target.write_text("unchanged")

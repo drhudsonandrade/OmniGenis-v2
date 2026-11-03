@@ -15,6 +15,39 @@ from secrets import token_hex
 SCHEMA = "pdf-job-durable-receipt/v1"
 
 
+def _open_private_directory(directory: Path) -> int:
+    """Walk absolute path components with dirfds; never follow ancestor links.
+
+    Root-owned sticky ancestors (such as /tmp) are permitted, but every other
+    ancestor must be owned by root or the caller and not group/world writable.
+    The final directory is separately checked for exact owner-only mode.
+    """
+    if not directory.is_absolute() or any(x in (".", "..") for x in directory.parts):
+        raise ValueError("receipt absolute directory required")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    fd = os.open("/", flags)
+    try:
+        for part in directory.parts[1:]:
+            next_fd = os.open(part, flags, dir_fd=fd)
+            try:
+                info = os.fstat(next_fd)
+                if info.st_uid not in (0, os.geteuid()):
+                    raise ValueError("receipt untrusted ancestor owner")
+                writable = info.st_mode & 0o022
+                trusted_sticky = info.st_uid == 0 and bool(info.st_mode & stat.S_ISVTX)
+                if writable and not trusted_sticky:
+                    raise ValueError("receipt writable ancestor")
+            except BaseException:
+                os.close(next_fd)
+                raise
+            os.close(fd)
+            fd = next_fd
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
 def write_job_receipt(directory: Path, run_id: str, state: str,
                       result_sha256: str | None) -> Path:
     """Create one canonical, fsynced receipt; never overwrite or follow links.
@@ -40,8 +73,7 @@ def write_job_receipt(directory: Path, run_id: str, state: str,
                         "state": state, "result_sha256": result_sha256,
                         "release_authorized": False}, sort_keys=True,
                        separators=(",", ":"), ensure_ascii=True) + "\n").encode("ascii")
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
-    dirfd = os.open(directory, flags)
+    dirfd = _open_private_directory(directory)
     temporary = "." + run_id + "." + token_hex(16) + ".tmp"
     staged = False
     published = False
