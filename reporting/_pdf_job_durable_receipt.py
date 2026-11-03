@@ -73,8 +73,8 @@ def write_job_receipt(directory: Path, run_id: str, state: str,
                         "state": state, "result_sha256": result_sha256,
                         "release_authorized": False}, sort_keys=True,
                        separators=(",", ":"), ensure_ascii=True) + "\n").encode("ascii")
-    dirfd = _open_private_directory(directory)
     temporary = "." + run_id + "." + token_hex(16) + ".tmp"
+    dirfd = _open_private_directory(directory)
     staged = False
     published = False
     try:

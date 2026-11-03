@@ -87,22 +87,55 @@ class DurableJobReceiptTests(unittest.TestCase):
         self.assertTrue(checked)
 
     def test_no_receipt_on_file_sync_failure(self):
-        original=os.fsync
         def fail(fd):
             raise OSError("simulated sync error")
         with patch("reporting._pdf_job_durable_receipt.os.fsync", side_effect=fail):
             with self.assertRaises(OSError):self.write()
         self.assertFalse((self.root/(self.run_id+".json")).exists())
+        self.assertEqual(list(self.root.iterdir()), [])
 
     def test_no_receipt_on_directory_sync_failure_is_not_success(self):
-        real=os.fsync
-        count=[0]
-        def fail_after_file(fd):
-            count[0]+=1
-            if count[0]>=2:raise OSError("simulated directory sync error")
-            return real(fd)
-        with patch("reporting._pdf_job_durable_receipt.os.fsync", side_effect=fail_after_file):
-            with self.assertRaises(OSError):self.write()
-        self.assertFalse((self.root/(self.run_id+".json")).exists())
+        for failing_call in (2, 3):
+            with self.subTest(failing_call=failing_call):
+                real = os.fsync
+                count = [0]
+
+                def fail_at(fd):
+                    count[0] += 1
+                    if count[0] >= failing_call:
+                        raise OSError("simulated directory sync error")
+                    return real(fd)
+
+                with patch("reporting._pdf_job_durable_receipt.os.fsync", side_effect=fail_at):
+                    with self.assertRaises(OSError):
+                        self.write()
+                self.assertGreaterEqual(count[0], failing_call)
+                self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_token_generation_failure_does_not_leak_directory_descriptor(self):
+        """A staging-name failure must not leave an open directory descriptor."""
+        from reporting import _pdf_job_durable_receipt as receipt
+        original = receipt._open_private_directory
+        opened = []
+
+        def capture(directory):
+            fd = original(directory)
+            opened.append(fd)
+            return fd
+
+        with patch.object(receipt, "_open_private_directory", side_effect=capture):
+            with patch.object(receipt, "token_hex", side_effect=OSError("random source unavailable")):
+                with self.assertRaises(OSError):
+                    self.write()
+        leaked = []
+        for fd in opened:
+            try:
+                os.fstat(fd)
+            except OSError:
+                continue
+            leaked.append(fd)
+            os.close(fd)
+        self.assertEqual(leaked, [])
+        self.assertEqual(list(self.root.iterdir()), [])
 
 if __name__=="__main__":unittest.main()
