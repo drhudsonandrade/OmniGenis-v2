@@ -149,11 +149,13 @@ def _decode(data: bytes, expected: dict) -> PdfRasterWindowInspection:
 
 def _start(command: list[str], fds: tuple[int, int, int], scratch: str) -> subprocess.Popen:
     """Launch the isolated worker with only declared protocol and private scratch descriptors."""
-    with admit_launch("raster_windows", command, fds, scratch):
-        return subprocess.Popen(command, cwd=Path(__file__).resolve().parents[1],
+    with admit_launch("raster_windows", command, fds, scratch) as observed:
+        process = subprocess.Popen(command, cwd=Path(__file__).resolve().parents[1],
             env=raster_child_environment(scratch), shell=False,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             close_fds=True, pass_fds=fds, start_new_session=True)
+        observed(process)
+        return process
 
 
 def _wait(process: subprocess.Popen) -> int:

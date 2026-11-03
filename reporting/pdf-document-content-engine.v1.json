@@ -59,8 +59,8 @@
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
     "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
-    "reporting/pdf_object_graph.py": "939a4e03c3f5cb30ceab4141e589e583edc6dfb740e5ff69b9ad90773bbfb727",
-    "reporting/pdf_text_windows.py": "42b915c3cd58c5e2cc261a0f5e407561092b5e3a21862ce853149e07458433f7"
+    "reporting/pdf_object_graph.py": "ca478e51cb7ee78ac9066dff923dc188f568671222ee5fd0f81f0414e6c90710",
+    "reporting/pdf_text_windows.py": "fc913d4e0275039e27da5c43e543fe9453bbf08bfa09d2470836e76e9ba76697"
   },
   "schema_version": "1.0.0",
   "source_code_copied": false,
