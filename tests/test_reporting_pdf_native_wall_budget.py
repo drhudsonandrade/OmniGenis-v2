@@ -1,5 +1,5 @@
 """Cumulative native deadlines at real launcher and owned-child wait boundaries."""
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from hashlib import sha256
 import ctypes
 import json
@@ -68,6 +68,44 @@ class PdfNativeWallBudgetTests(unittest.TestCase):
         self.assertIsNotNone(process.returncode)
         with self.assertRaises(ChildProcessError):
             os.waitpid(process.pid, os.WNOHANG)
+
+    def assert_invalid_wait_inputs(self, *, active_scope):
+        """Invalid original budgets must not enter scope admission or child cleanup."""
+        from reporting import _pdf_process_lifecycle as lifecycle
+        invalid = (None, "5", [], object(), True, False, -1, float("nan"),
+                   float("inf"), -float("inf"), 10 ** 10000)
+        for index, allowance in enumerate(invalid):
+            with self.subTest(index=index), self.scope() if active_scope else nullcontext():
+                with patch.object(budget, "_before_lock", wraps=budget._before_lock) as admit, \
+                     patch.object(lifecycle, "_observe", side_effect=AssertionError("unexpected observation")) as observe, \
+                     patch.object(os, "killpg") as group, patch.object(os, "kill") as child, \
+                     patch.object(os, "waitpid") as reap:
+                    error = None
+                    try:
+                        budget.wait_native_process_group(object(), wall_seconds=allowance)
+                    except Exception as caught:
+                        error = caught
+                    self.assertIsInstance(error, ValueError)
+                    self.assertEqual(str(error), "finite inspection wall budget required")
+                    for operation in (admit, observe, group, child, reap):
+                        operation.assert_not_called()
+
+    def test_invalid_wall_budget_before_active_scope_capping(self):
+        """An active job cannot turn infinity or comparison failure into child cleanup."""
+        self.assert_invalid_wait_inputs(active_scope=True)
+
+    def test_invalid_wall_budget_before_standalone_scope_admission(self):
+        """Standalone callers reject the same invalid values before scope or process access."""
+        self.assert_invalid_wait_inputs(active_scope=False)
+
+    def test_zero_budget_accepts_an_already_exited_owned_child(self):
+        """Zero remains a valid wait budget when the real owned child is already waitable."""
+        for allowance in (0, 0.0):
+            with self.subTest(allowance=allowance), self.scope():
+                with self.child(0, seconds=0) as process:
+                    os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)
+                    self.assertEqual(budget.wait_native_process_group(process, wall_seconds=allowance), 0)
+                    self.assert_reaped(process)
 
     def test_expired_job_refuses_next_launch_before_popen(self):
         """The literal cumulative boundary rejects a fresh process attempt."""

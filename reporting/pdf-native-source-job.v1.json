@@ -25,7 +25,7 @@
   "launch_attempt_budget_policy": {
     "path": "reporting/pdf-native-launch-budget.v1.json",
     "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
-    "sha256": "49ab4627fb9f34f4a2efcef26582b3f3b35cde20188cc5ecf432ca7456d4c3ab"
+    "sha256": "6abd3b7cc4b4921c6904291aff4203aaf5d8b5cd9c4299e69e7e4bc92cba6e57"
   },
   "parent_pdf_parsing": false,
   "profile": {
@@ -57,8 +57,8 @@
     "reporting/_pdf_tounicode_width_coverage_worker.py": "4d0a8efb3506b27cb66bd1da90a928464de480f41ead43b8585b7c1f9166bbb5",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-native-launch-budget.v1.json": "49ab4627fb9f34f4a2efcef26582b3f3b35cde20188cc5ecf432ca7456d4c3ab",
-    "reporting/pdf-structured-source-job.v1.json": "df71f9db648f7cc12946609ac19718bc04165d9b73476b9ea5ce696f3d4f32e6",
+    "reporting/pdf-native-launch-budget.v1.json": "6abd3b7cc4b4921c6904291aff4203aaf5d8b5cd9c4299e69e7e4bc92cba6e57",
+    "reporting/pdf-structured-source-job.v1.json": "dc32dda8c8ff1210cf12ac05c3373760cb21730a00613c0a0b518b6d03572c73",
     "reporting/pdf-tounicode-width-coverage.v1.json": "109a2246c4c582ef98462493792fac10a89a13a0acfdd1bdc510af9a89d59930",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",

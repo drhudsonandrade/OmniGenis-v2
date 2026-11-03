@@ -509,6 +509,22 @@ class CleanupAllowanceTests(unittest.TestCase):
                 child.assert_not_called()
                 reap.assert_not_called()
 
+    def test_invalid_wall_budget_refuses_before_process_operations(self):
+        """Reject nonnumeric, boolean and unbounded wall budgets without touching child."""
+        from reporting import _pdf_process_lifecycle as lifecycle
+        invalid = (None, "5", [], object(), True, False, -1, float("nan"),
+                   float("inf"), -float("inf"), 10 ** 10000)
+        for index, allowance in enumerate(invalid):
+            with self.subTest(index=index), patch.object(lifecycle, "_observe") as observe, \
+                 patch.object(os, "killpg") as group, patch.object(os, "kill") as child, \
+                 patch.object(os, "waitpid") as reap:
+                with self.assertRaises(ValueError):
+                    lifecycle.wait_owned_process_group(object(), wall_seconds=allowance)
+                observe.assert_not_called()
+                group.assert_not_called()
+                child.assert_not_called()
+                reap.assert_not_called()
+
     def run_delayed_observation(self, *, route, visible_at, group_cost=0, allowance=5):
         """Use a real retained child with controlled monotonic observation latency."""
         from reporting import _pdf_process_lifecycle as lifecycle, adapters
