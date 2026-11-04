@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import stat
+from subprocess import Popen as _Process
 import sys
 import tempfile
 from time import monotonic_ns
@@ -20,6 +21,7 @@ from reporting import _pdf_render_worker as render_worker
 from reporting import pdf_inspection_job as legacy
 from reporting import pdf_native_source_job as native_source
 from reporting._pdf_native_launch_budget import require_no_active_scope
+from reporting._pdf_process_lifecycle import _observe as _observe_owned
 from reporting.adapters import (
     _PDF_RENDER_ENV_LOCK, _start_pdf_render_worker, _wait_pdf_render_worker,
     _capture_adapter_ir, _validate_ir, _semantic_html,
@@ -185,9 +187,35 @@ def _decode_render_result(data: bytes, *, candidate_fd: int,
         raise PdfGeneratedSourceJobError('pdf_generated_render_result_invalid') from None
 
 
-def render_pdf_candidate(html: str, html_sha256: str) -> PdfRenderedCandidate:
-    """Render generated HTML once through the explicit optional anonymous-file wire."""
+def _observe_render_spawn(process: object, command: list[str]) -> dict:
+    """Observe one actual unreaped render child, not an authenticated kernel launch.
+
+    The existing waitable-child check retains its PID through the later owned
+    group cleanup. Timestamps are local observations, not exact kernel events.
+    Source hashes describe controlled files, not hostile concurrent execution.
+    """
+    if (not isinstance(process, _Process) or type(process.pid) is not int
+            or process.pid <= 1 or process.args != command or process.returncode is not None):
+        raise ValueError('render observed child identity')
+    _observe_owned(process)
+    if os.getpgid(process.pid) != process.pid:
+        raise ValueError('render observed process group')
+    current = monotonic_ns()
+    if type(current) is not int or current < 0:
+        raise ValueError('render observed clock')
+    worker = Path(__file__).with_name('_pdf_render_worker.py')
+    return {'kind': 'render', 'worker': worker.name,
+            'worker_source_sha256': sha256(worker.read_bytes()).hexdigest(),
+            'parent_pid': os.getpid(), 'pid': process.pid,
+            'spawn_monotonic_ns': current}
+
+
+def _render_pdf_candidate(html: str, html_sha256: str, *,
+                          observe_processes: bool) -> tuple[PdfRenderedCandidate, dict | None]:
+    """Share the unchanged rendering wire with optional direct-child observations."""
     try:
+        if type(observe_processes) is not bool:
+            raise ValueError('render observation mode')
         _render_profile()
         _pin(html_sha256)
         if type(html) is not str or len(html) > _RENDER_HTML_BYTES:
@@ -208,18 +236,51 @@ def render_pdf_candidate(html: str, html_sha256: str) -> PdfRenderedCandidate:
                 'PATH', 'HOME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TZ', 'FONTCONFIG_FILE', 'FONTCONFIG_PATH',
             ) if key in os.environ}
             env['SOURCE_DATE_EPOCH'] = '0'
-            process = _start_pdf_render_worker([
+            command = [
                 sys.executable, '-I', '-B', str(Path(__file__).with_name('_pdf_render_worker.py')),
                 *(str(fd) for fd in fds), str(os.getpid()), 'native-source-v1',
-            ], env=env, pass_fds=fds)
+            ]
+            process = _start_pdf_render_worker(command, env=env, pass_fds=fds)
+            observation = None
+            if observe_processes:
+                try:
+                    observation = _observe_render_spawn(process, command)
+                except BaseException as failure:
+                    if isinstance(process, _Process):
+                        try:
+                            _wait_pdf_render_worker(process, wall_seconds=0)
+                        except BaseException as cleanup:
+                            raise failure from cleanup
+                    raise
             code = _wait_pdf_render_worker(process, wall_seconds=30)
             if code != 0 or os.fstat(result.fileno()).st_size > _RENDER_RESULT_BYTES:
                 raise ValueError('render lifecycle or response budget')
+            if observe_processes:
+                current = monotonic_ns()
+                if (type(code) is not int or process.returncode != code
+                        or type(current) is not int or current < observation['spawn_monotonic_ns']):
+                    raise ValueError('render observed exit or clock')
+                observation.update(exit_monotonic_ns=current, exit_code=code)
             result.seek(0)
-            return _decode_render_result(result.read(_RENDER_RESULT_BYTES + 1),
+            rendered = _decode_render_result(result.read(_RENDER_RESULT_BYTES + 1),
                 candidate_fd=candidate.fileno(), expected_html_sha256=html_sha256)
+            if observe_processes:
+                observation.update({
+                    'request_header_sha256': sha256(f'2 {html_sha256}\n'.encode('ascii')).hexdigest(),
+                    'html_sha256': html_sha256, 'pdf_sha256': rendered.pdf_sha256,
+                    'page_count': rendered.page_count, 'render_sha256': rendered.result_sha256,
+                    'profile_sha256': rendered.profile_sha256,
+                })
+                observation['observation_sha256'] = sha256(_json_bytes(observation)).hexdigest()
+            return rendered, observation
     except Exception:
         raise PdfGeneratedSourceJobError('pdf_generated_render_failed') from None
+
+
+def render_pdf_candidate(html: str, html_sha256: str) -> PdfRenderedCandidate:
+    """Render using the original result-only contract without process recording."""
+    rendered, _ = _render_pdf_candidate(html, html_sha256, observe_processes=False)
+    return rendered
 
 
 PROFILE_ID = 'generated-source-pdf-inspection-job-v1'
@@ -230,6 +291,8 @@ MAX_RESULT_BYTES = 320 * 1024
 ACCEPTANCE_NS = 330 * 1000 * 1000 * 1000
 LANGUAGE = 'en-US'
 _DISABLE = 'OMNIGENIS_PDF_GENERATED_SOURCE_JOB_DISABLED'
+OBSERVATION_SCHEMA = 'generated-source-job-process-observation/v1'
+MAX_OBSERVATION_BYTES = 96 * 1024
 
 
 def generated_source_job_profile() -> dict:
@@ -384,11 +447,11 @@ class PdfGeneratedSourceResult:
         return sha256(self.to_bytes()).hexdigest()
 
 
-def execute_pdf_generated_source_job(
+def _execute_pdf_generated_source_job(
     *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
     namespace_id: str, job_id: str, request_sha256: str,
-    expected_resource_profile_sha256: str,
-) -> PdfGeneratedSourceResult:
+    expected_resource_profile_sha256: str, observe_processes: bool,
+) -> tuple[PdfGeneratedSourceResult, dict | None]:
     """Generate one whole candidate and inspect those exact bytes, without retries.
 
     Only the existing captured semantic-section/en-US source is accepted. Native
@@ -400,6 +463,8 @@ def execute_pdf_generated_source_job(
     """
     try:
         require_no_active_scope()
+        if type(observe_processes) is not bool:
+            raise ValueError('generated source observation mode')
         _profile(expected_resource_profile_sha256)
         if (type(expected_language) is not str or expected_language != LANGUAGE
                 or type(namespace_id) is not str or type(job_id) is not str):
@@ -435,7 +500,11 @@ def execute_pdf_generated_source_job(
     try:
         check()
         html, html_digest, _components = _semantic_html(captured)
-        rendered = render_pdf_candidate(html, html_digest)
+        render_observation = native_observation = None
+        if observe_processes:
+            rendered, render_observation = _render_pdf_candidate(html, html_digest, observe_processes=True)
+        else:
+            rendered = render_pdf_candidate(html, html_digest)
         check()
         if type(rendered) is not PdfRenderedCandidate:
             raise ValueError('generated render result type')
@@ -449,12 +518,18 @@ def execute_pdf_generated_source_job(
             pages_per_window=legacy.TEXT_WIDTH, inspector_profile_id=legacy.TEXT_PROFILE,
         )
         plan_digest = plan.plan_sha256
-        inspected = execute_pdf_native_source_job(
+        inspector = (native_source.execute_observed_pdf_native_source_job
+                     if observe_processes else execute_pdf_native_source_job)
+        inspected = inspector(
             presentation_ir=captured, pdf_bytes=pdf, expected_pdf_sha256=rendered.pdf_sha256,
             expected_ir_sha256=expected_ir_sha256, page_count=rendered.page_count,
             expected_language=LANGUAGE, namespace_id=namespace_id, job_id=job_id,
             request_sha256=request_sha256, expected_resource_profile_sha256=NATIVE_SOURCE_PROFILE_SHA256,
         )
+        if observe_processes:
+            if type(inspected) is not tuple or len(inspected) != 2:
+                raise ValueError('generated native observation pair')
+            inspected, native_observation = inspected
         check()
         if type(inspected) is not PdfNativeSourceResult or rendered.result_sha256 != render_digest:
             raise ValueError('generated source child type or mutation')
@@ -468,6 +543,140 @@ def execute_pdf_generated_source_job(
         )
         result.to_bytes()
         check()
-        return result
+        observation = (_generated_process_observation(result, render_observation, native_observation)
+                       if observe_processes else None)
+        if observe_processes:
+            check()
+            if result.result_sha256 != observation['generated_result_sha256']:
+                raise ValueError('generated observed result changed')
+        return result, observation
     except Exception:
         raise PdfGeneratedSourceJobError('pdf_generated_source_job_execution_failed') from None
+
+
+def _generated_process_observation(result: PdfGeneratedSourceResult, render: dict,
+                                   native: dict) -> dict:
+    """Bind unsigned direct renderer/inspector data without promoting reservations.
+
+    Each upstream observation is internally produced, never caller supplied.
+    Digests and identity checks establish consistency, not authentication or
+    protection against hostile code in the parent process.
+    """
+    def verify_digest(record, field):
+        """Reject malformed or changed descriptive metadata before composition."""
+        if type(record) is not dict:
+            raise ValueError('generated observation type')
+        digest = record.get(field)
+        _pin(digest)
+        if sha256(_json_bytes({k: v for k, v in record.items() if k != field})).hexdigest() != digest:
+            raise ValueError('generated observation digest')
+
+    result_bytes = result.to_bytes()
+    verify_digest(render, 'observation_sha256')
+    verify_digest(native, 'observation_sha256')
+    if (len(_json_bytes(native)) > native_source.MAX_OBSERVATION_BYTES
+            or native.get('schema') != native_source.OBSERVATION_SCHEMA
+            or native.get('state') != 'COMPLETE_DIRECT_INSPECTION_JOB_OBSERVED'
+            or native.get('inspection_sha256') != result.expected_inspection_sha256
+            or native.get('resource_profile_sha256') != NATIVE_SOURCE_PROFILE_SHA256):
+        raise ValueError('generated native observation identity')
+    for name in ('pdf_sha256', 'ir_sha256', 'plan_sha256', 'page_count',
+                 'namespace_id', 'job_id', 'request_sha256'):
+        if native.get(name) != getattr(result, name):
+            raise ValueError('generated native observation binding')
+    if (render.get('kind') != 'render' or render.get('worker') != '_pdf_render_worker.py'
+            or render.get('parent_pid') != os.getpid() or type(render.get('pid')) is not int
+            or render['pid'] <= 1 or type(render.get('exit_code')) is not int or render['exit_code'] != 0
+            or render.get('render_sha256') != result.expected_render_sha256
+            or render.get('profile_sha256') != RENDER_PROFILE_SHA256
+            or render.get('html_sha256') != result.html_sha256
+            or render.get('pdf_sha256') != result.pdf_sha256
+            or render.get('page_count') != result.page_count
+            or render.get('request_header_sha256') != sha256(f'2 {result.html_sha256}\n'.encode('ascii')).hexdigest()):
+        raise ValueError('generated render observation binding')
+    for name in ('spawn_monotonic_ns', 'exit_monotonic_ns'):
+        if type(render.get(name)) is not int or render[name] < 0:
+            raise ValueError('generated render observation clock')
+    if render['exit_monotonic_ns'] < render['spawn_monotonic_ns']:
+        raise ValueError('generated render observation clock order')
+    _pin(render.get('worker_source_sha256'))
+    ledger = native.get('direct_process_ledger')
+    verify_digest(ledger, 'ledger_sha256')
+    expected = 21 + (result.page_count + 15) // 16 + (result.page_count + 3) // 4
+    rows = ledger.get('processes')
+    if (type(rows) is not list or len(rows) != expected
+            or any(type(ledger.get(name)) is not int or ledger[name] != expected
+                   for name in ('observed_spawns', 'observed_exits'))
+            or ledger.get('declared_retries') != 0):
+        raise ValueError('generated direct process counts')
+    for row in rows:
+        if (type(row) is not dict or row.get('parent_pid') != render['parent_pid']
+                or type(row.get('pid')) is not int or row['pid'] <= 1
+                or type(row.get('exit_code')) is not int or row['exit_code'] != 0
+                or type(row.get('spawn_monotonic_ns')) is not int
+                or row['spawn_monotonic_ns'] < render['exit_monotonic_ns']
+                or any(row.get(name) != getattr(result, name)
+                       for name in ('pdf_sha256', 'ir_sha256', 'page_count'))):
+            raise ValueError('generated direct process identity')
+    value = {
+        'schema': OBSERVATION_SCHEMA, 'state': 'DIRECT_GENERATED_JOB_PROCESSES_OBSERVED',
+        'generated_result_sha256': sha256(result_bytes).hexdigest(),
+        **{name: getattr(result, name) for name in (
+            'pdf_sha256', 'ir_sha256', 'html_sha256', 'plan_sha256', 'page_count',
+            'namespace_id', 'job_id', 'request_sha256', 'resource_profile_sha256',
+        )},
+        'render_process': render, 'native_observation': native,
+        'observed_direct_spawns': expected + 1, 'observed_direct_exits': expected + 1,
+        'declared_retries': 0, 'render_direct_child_observed': True,
+        'nested_processes_observed': False, 'external_observer_measured': False,
+        'whole_graph_observed': False, 'authenticated_worker_execution': False,
+        'aggregate_job_resources_qualified': False, 'native_profile_qualified': False,
+        'default_pipeline_activated': False, 'release_authorized': False,
+    }
+    value['observation_sha256'] = sha256(_json_bytes(value)).hexdigest()
+    encoded = _json_bytes(value)
+    if len(encoded) > MAX_OBSERVATION_BYTES:
+        raise ValueError('generated process observation byte budget')
+    return json.loads(encoded)
+
+
+def execute_pdf_generated_source_job(
+    *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str,
+) -> PdfGeneratedSourceResult:
+    """Generate the unchanged private candidate without optional process recording."""
+    result, _ = _execute_pdf_generated_source_job(
+        presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256,
+        expected_language=expected_language, namespace_id=namespace_id, job_id=job_id,
+        request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        observe_processes=False,
+    )
+    return result
+
+
+def execute_observed_pdf_generated_source_job(
+    *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str,
+) -> tuple[PdfGeneratedSourceResult, dict]:
+    """Observe the direct renderer and inspectors of one unchanged generating job.
+
+    Return the private candidate and a bounded detached observation only after
+    actual owned-child completion and final source/policy checks. No caller
+    callback, worker, receipt or budget is admitted. Failures return no partial
+    pair. Nested helpers, external-observer costs, whole-graph enforcement and
+    release remain unqualified. No service, tracing, privilege, persistent
+    storage, retry or default behavior is activated.
+    """
+    result, observation = _execute_pdf_generated_source_job(
+        presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256,
+        expected_language=expected_language, namespace_id=namespace_id, job_id=job_id,
+        request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        observe_processes=True,
+    )
+    if observation is None:
+        raise PdfGeneratedSourceJobError('pdf_generated_source_job_execution_failed')
+    return result, observation
