@@ -41,6 +41,8 @@ MAX_OUTER_STAGES = 2
 ACCEPTANCE_NS = 300 * 1000 * 1000 * 1000
 LANGUAGE = "en-US"
 _DISABLE = "OMNIGENIS_PDF_NATIVE_SOURCE_JOB_DISABLED"
+OBSERVATION_SCHEMA = "native-source-job-process-observation/v1"
+MAX_OBSERVATION_BYTES = 64 * 1024
 
 
 class PdfNativeSourceJobError(ValueError):
@@ -205,12 +207,12 @@ class PdfNativeSourceResult:
         return sha256(self.to_bytes()).hexdigest()
 
 
-def execute_pdf_native_source_job(
+def _execute_pdf_native_source_job(
     *, presentation_ir: object, pdf_bytes: object, expected_pdf_sha256: str,
     expected_ir_sha256: str, page_count: int, expected_language: str,
     namespace_id: str, job_id: str, request_sha256: str,
-    expected_resource_profile_sha256: str,
-) -> PdfNativeSourceResult:
+    expected_resource_profile_sha256: str, observe_processes: bool,
+) -> tuple[PdfNativeSourceResult, dict | None]:
     """Execute the pinned native chain, then the pinned structured-source job.
 
     The caller supplies trusted source/job expectations, never receipts or an
@@ -222,6 +224,8 @@ def execute_pdf_native_source_job(
     """
     try:
         require_no_active_scope()
+        if type(observe_processes) is not bool:
+            raise ValueError("native source observation mode")
         _profile(expected_resource_profile_sha256)
         if (type(pdf_bytes) is not bytes or not pdf_bytes.startswith(b"%PDF-1.7")
                 or len(pdf_bytes) > MAX_PDF_BYTES or type(page_count) is not int
@@ -267,7 +271,11 @@ def execute_pdf_native_source_job(
 
     launches = None
     try:
-        launches = NativeLaunchScope(plan, len(pdf_bytes), started_ns=started)
+        if observe_processes:
+            launches = NativeLaunchScope(plan, len(pdf_bytes), started_ns=started,
+                                         observe_processes=True)
+        else:
+            launches = NativeLaunchScope(plan, len(pdf_bytes), started_ns=started)
         launches.__enter__()
         check()
         first = inspect_pdf_tounicode_width_coverage(
@@ -305,9 +313,94 @@ def execute_pdf_native_source_job(
         result.to_bytes()
         check()
         launches.complete_and_close()
-        return result
+        observation = _process_observation(result, launches) if observe_processes else None
+        if observe_processes:
+            check()
+            if result.inspection_sha256 != observation["inspection_sha256"]:
+                raise ValueError("native source observed result changed")
+        return result, observation
     except Exception:
         raise PdfNativeSourceJobError("pdf_native_source_job_execution_failed") from None
     finally:
         if launches is not None:
             launches.close()
+
+
+
+def _process_observation(result: PdfNativeSourceResult, launches: NativeLaunchScope) -> dict:
+    """Bind completed direct-child observations to the exact accepted inspection.
+
+    The single-use scope validates actual spawns and existing lifecycle exits.
+    Its nested-child reservations remain explicitly unobserved. This detached
+    unsigned sidecar is not an execution attestation or a release decision.
+    """
+    result_bytes = result.to_bytes()
+    record = {
+        "schema": OBSERVATION_SCHEMA,
+        "state": "COMPLETE_DIRECT_INSPECTION_JOB_OBSERVED",
+        "inspection_sha256": sha256(result_bytes).hexdigest(),
+        **{name: getattr(result, name) for name in (
+            "pdf_sha256", "ir_sha256", "plan_sha256", "page_count", "namespace_id",
+            "job_id", "request_sha256", "resource_profile_sha256",
+        )},
+        "direct_process_ledger": launches.process_ledger(),
+        "generation_observed": False, "nested_processes_observed": False,
+        "external_observer_measured": False, "authenticated_worker_execution": False,
+        "aggregate_job_resources_qualified": False, "native_profile_qualified": False,
+        "default_pipeline_activated": False, "release_authorized": False,
+    }
+    record["observation_sha256"] = sha256(_json_bytes(record)).hexdigest()
+    encoded = _json_bytes(record)
+    if len(encoded) > MAX_OBSERVATION_BYTES:
+        raise ValueError("native source observation byte budget")
+    return json.loads(encoded)
+
+
+def execute_pdf_native_source_job(
+    *, presentation_ir: object, pdf_bytes: object, expected_pdf_sha256: str,
+    expected_ir_sha256: str, page_count: int, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str,
+) -> PdfNativeSourceResult:
+    """Execute the unchanged bounded inspection without optional process recording.
+
+    Existing input, result-wire, disable and lifecycle contracts are preserved.
+    This operation does not produce a direct-process observation sidecar.
+    """
+    result, _ = _execute_pdf_native_source_job(
+        presentation_ir=presentation_ir, pdf_bytes=pdf_bytes,
+        expected_pdf_sha256=expected_pdf_sha256, expected_ir_sha256=expected_ir_sha256,
+        page_count=page_count, expected_language=expected_language,
+        namespace_id=namespace_id, job_id=job_id, request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        observe_processes=False,
+    )
+    return result
+
+
+def execute_observed_pdf_native_source_job(
+    *, presentation_ir: object, pdf_bytes: object, expected_pdf_sha256: str,
+    expected_ir_sha256: str, page_count: int, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str,
+) -> tuple[PdfNativeSourceResult, dict]:
+    """Opt into actual direct-child records while executing the same inspection.
+
+    Return the unchanged inspection result and a bounded, detached, digest-bound
+    observation sidecar only after all direct child launches/exits complete and
+    final source/policy checks pass. No callback, worker, budget or receipt can be
+    supplied. Failures return no partial pair. Rendering, nested descendants and
+    external observers are not observed; resource qualification is not granted.
+    No tracing, service, privilege, persistent storage or default is activated.
+    """
+    result, observation = _execute_pdf_native_source_job(
+        presentation_ir=presentation_ir, pdf_bytes=pdf_bytes,
+        expected_pdf_sha256=expected_pdf_sha256, expected_ir_sha256=expected_ir_sha256,
+        page_count=page_count, expected_language=expected_language,
+        namespace_id=namespace_id, job_id=job_id, request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        observe_processes=True,
+    )
+    if observation is None:
+        raise PdfNativeSourceJobError("pdf_native_source_job_execution_failed")
+    return result, observation
