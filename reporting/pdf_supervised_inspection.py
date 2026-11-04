@@ -243,11 +243,31 @@ def _unreaped_exit(process: subprocess.Popen) -> int | None:
 
 
 def _finish_child(process: subprocess.Popen) -> int:
-    """Retire and explicitly reap an owned child despite an original-group signal fault."""
+    """Retire an owned child even when its time guard fails; never approve that failure.
+
+    Ownership proof always precedes signalling. A malformed or failed clock
+    latches refusal but leaves a finite number of nonblocking reap attempts.
+    A frozen clock cannot extend polling indefinitely. This is not a hard
+    real-time bound on scheduling or uninterruptible operating-system calls.
+    """
     unresolved = False
     exit_code = None
+    previous = None
+    cleanup_deadline = None
+    interrupted = None
     try:
-        cleanup_deadline = monotonic_ns() + CLEANUP_SECONDS * 1_000_000_000
+        try:
+            previous = monotonic_ns()
+            if type(previous) is not int or not 0 <= previous <= 2**63 - 1:
+                raise ValueError('cleanup clock invalid')
+            cleanup_deadline = previous + CLEANUP_SECONDS * 1_000_000_000
+        except KeyboardInterrupt as error:
+            # Preserve cancellation until the same bounded owned-child cleanup
+            # and pipe teardown have run; never turn it into successful return.
+            interrupted = error
+            unresolved = True
+        except Exception:
+            unresolved = True
         _unreaped_exit(process)
         try:
             os.killpg(process.pid, signal.SIGKILL)
@@ -266,7 +286,25 @@ def _finish_child(process: subprocess.Popen) -> int:
                 # A denied direct signal still permits a finite attempt to
                 # reap a child that exits independently before the deadline.
                 unresolved = True
-        while True:
+        # At most 200 sleeps at the existing 10 ms cadence, independent of
+        # clock health. Kernel wait/ownership errors still stop this cleanup.
+        poll_limit = CLEANUP_SECONDS * 100
+        for attempt in range(poll_limit + 1):
+            remaining = 0.01
+            if cleanup_deadline is not None:
+                try:
+                    current = monotonic_ns()
+                    if type(current) is not int or not previous <= current <= 2**63 - 1:
+                        raise ValueError('cleanup clock invalid')
+                    previous = current
+                    remaining = (cleanup_deadline - current) / 1_000_000_000
+                except KeyboardInterrupt as error:
+                    interrupted = error
+                    unresolved = True
+                    cleanup_deadline = None
+                except Exception:
+                    unresolved = True
+                    cleanup_deadline = None
             if _unreaped_exit(process) is not None:
                 pid, status = os.waitpid(process.pid, os.WNOHANG)
                 if pid != process.pid:
@@ -274,8 +312,7 @@ def _finish_child(process: subprocess.Popen) -> int:
                 exit_code = os.waitstatus_to_exitcode(status)
                 process.returncode = exit_code
                 break
-            remaining = (cleanup_deadline - monotonic_ns()) / 1_000_000_000
-            if remaining <= 0:
+            if remaining <= 0 or attempt == poll_limit:
                 raise subprocess.TimeoutExpired(process.args, CLEANUP_SECONDS)
             sleep(min(0.01, remaining))
     except Exception:
@@ -287,6 +324,8 @@ def _finish_child(process: subprocess.Popen) -> int:
                     stream.close()
                 except Exception:
                     unresolved = True
+    if interrupted is not None:
+        raise interrupted
     if unresolved:
         raise _Refusal('cleanup_unresolved') from None
     return exit_code
@@ -441,5 +480,10 @@ def execute_supervised_pdf_inspection(
         except Exception:
             raise PdfSupervisedInspectionError('pdf_supervised_inspection_cleanup_unresolved') from None
         finally:
-            if resource_scope is not None and not resource_scope.close():
-                raise PdfSupervisedInspectionError('pdf_supervised_inspection_cleanup_unresolved') from None
+            if resource_scope is not None:
+                try:
+                    scope_closed = resource_scope.close() is True
+                except Exception:
+                    scope_closed = False
+                if not scope_closed:
+                    raise PdfSupervisedInspectionError('pdf_supervised_inspection_cleanup_unresolved') from None
