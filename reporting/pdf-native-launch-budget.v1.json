@@ -74,7 +74,7 @@
     "reporting/_pdf_raster_launch_budget.py": "6010a59fa4666071b6578117a0343f714bfff688d9b9f56e33ddd3197e52ba1f",
     "reporting/_pdf_raster_probe.py": "f20284855e6392dc5b318a150eea479bfe01e9ed716d47b30f5c34b54398eed0",
     "reporting/_pdf_raster_window_worker.py": "8755dcdb5aedb39ec0dce9f5b619a79b60960541a13254858cd32e6d0c46e8a1",
-    "reporting/pdf_native_source_job.py": "237dd80dca1a8722a36d8e383af5d779c42e53b182d9fefc82ac610290e1b62d",
+    "reporting/pdf_native_source_job.py": "d8bddaea99c41613b9849f9c520a663a3c9dd3b0791e5dc86c61a327897eb7e1",
     "reporting/pdf_object_graph.py": "ca478e51cb7ee78ac9066dff923dc188f568671222ee5fd0f81f0414e6c90710",
     "reporting/pdf_raster_windows.py": "08d23bc7eb8ffc65ef18738f82f1d5d5d4d98bda7633d72684d27cb0c4166d5e",
     "reporting/pdf_text_windows.py": "fc913d4e0275039e27da5c43e543fe9453bbf08bfa09d2470836e76e9ba76697"
