@@ -254,12 +254,18 @@ def _finish_child(process: subprocess.Popen) -> int:
     exit_code = None
     previous = None
     cleanup_deadline = None
+    interrupted = None
     try:
         try:
             previous = monotonic_ns()
             if type(previous) is not int or not 0 <= previous <= 2**63 - 1:
                 raise ValueError('cleanup clock invalid')
             cleanup_deadline = previous + CLEANUP_SECONDS * 1_000_000_000
+        except KeyboardInterrupt as error:
+            # Preserve cancellation until the same bounded owned-child cleanup
+            # and pipe teardown have run; never turn it into successful return.
+            interrupted = error
+            unresolved = True
         except Exception:
             unresolved = True
         _unreaped_exit(process)
@@ -292,6 +298,10 @@ def _finish_child(process: subprocess.Popen) -> int:
                         raise ValueError('cleanup clock invalid')
                     previous = current
                     remaining = (cleanup_deadline - current) / 1_000_000_000
+                except KeyboardInterrupt as error:
+                    interrupted = error
+                    unresolved = True
+                    cleanup_deadline = None
                 except Exception:
                     unresolved = True
                     cleanup_deadline = None
@@ -314,6 +324,8 @@ def _finish_child(process: subprocess.Popen) -> int:
                     stream.close()
                 except Exception:
                     unresolved = True
+    if interrupted is not None:
+        raise interrupted
     if unresolved:
         raise _Refusal('cleanup_unresolved') from None
     return exit_code

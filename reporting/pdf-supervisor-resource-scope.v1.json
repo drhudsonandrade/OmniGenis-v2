@@ -55,6 +55,6 @@
   "service_installed": false,
   "source_sha256": {
     "reporting/_pdf_fixed_inspection_worker.py": "75d34914b92c188e8ad2ad1e6e5a378b2019d8da7b8b74d67d82c4e4c338bb38",
-    "reporting/pdf_supervised_inspection.py": "afabbb3c02524450c059eeed96f9c0381f796f31c9c904d580cbd6da363264d3"
+    "reporting/pdf_supervised_inspection.py": "92157fce0d61ae0baa99f7fc5db9f1424597452075128b6c5d35b848f7d64a41"
   }
 }

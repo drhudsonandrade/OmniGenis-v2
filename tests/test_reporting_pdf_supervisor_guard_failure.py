@@ -220,6 +220,47 @@ class SupervisorGuardFailureTests(unittest.TestCase):
                 self.reaped(child, -signal.SIGKILL)
         self.assertEqual(len(os.listdir('/proc/self/fd')), before)
 
+    def test_clock_interrupt_reaps_exited_child_before_reraising_same_interrupt(self):
+        """Initial and polling time cancellations cannot leave an owned completed zombie."""
+        for when in ('initial', 'poll'):
+            interrupt = KeyboardInterrupt()
+            values = [interrupt] if when == 'initial' else [100, interrupt]
+            with self.subTest(when=when), self.child(exited=True) as child:
+                with patch.object(supervisor, 'monotonic_ns', side_effect=values):
+                    with self.assertRaises(KeyboardInterrupt) as caught:
+                        supervisor._finish_child(child)
+                self.assertIs(caught.exception, interrupt)
+                self.reaped(child, 0)
+
+    def test_clock_interrupt_retires_live_child_before_reraising_same_interrupt(self):
+        """A time-read cancellation preserves the normal bounded direct-child cleanup."""
+        for when in ('initial', 'poll'):
+            interrupt = KeyboardInterrupt()
+            values = [interrupt] if when == 'initial' else [100, interrupt]
+            with self.subTest(when=when), self.child() as child:
+                with patch.object(supervisor, 'monotonic_ns', side_effect=values):
+                    with self.assertRaises(KeyboardInterrupt) as caught:
+                        supervisor._finish_child(child)
+                self.assertIs(caught.exception, interrupt)
+                self.reaped(child, -signal.SIGKILL)
+
+    def test_clock_interrupt_does_not_override_lost_child_ownership(self):
+        """Pending cancellation cannot authorize signalling or reaping an unknown PID."""
+        child = SimpleNamespace(pid=42, args=['synthetic'], returncode=None,
+                                stdin=io.BytesIO(), stdout=io.BytesIO())
+        interrupt = KeyboardInterrupt()
+        with patch.object(supervisor, 'monotonic_ns', side_effect=interrupt), \
+             patch.object(supervisor, '_unreaped_exit', side_effect=ChildProcessError('lost')), \
+             patch.object(supervisor.os, 'killpg') as group, \
+             patch.object(supervisor.os, 'kill') as direct, \
+             patch.object(supervisor.os, 'waitpid') as reap:
+            with self.assertRaises(KeyboardInterrupt) as caught:
+                supervisor._finish_child(child)
+        self.assertIs(caught.exception, interrupt)
+        group.assert_not_called(); direct.assert_not_called(); reap.assert_not_called()
+        self.assertIsNone(child.returncode)
+        self.assertTrue(child.stdin.closed and child.stdout.closed)
+
     def test_guard_error_before_launch_preserves_request_and_closes_guard(self):
         """An admission recheck failure cannot spawn or consume the borrowed request."""
         fixture = self.fixture()
