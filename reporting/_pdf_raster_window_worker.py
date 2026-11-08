@@ -27,6 +27,7 @@ if __name__ == "__main__":
 from reporting import _pdf_bounded_scratch as mount_metadata
 from reporting._pdf_process_sandbox import enforce_pdf_landlock, enforce_pdf_network_filter
 from reporting._pdf_raster_launch_budget import RasterLaunchBudget, _require_launch_budget
+from reporting._pdf_raster_child_observation import MODE as OBSERVATION_MODE
 from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
 from reporting._pdf_text_window_worker import (
     IDENTITY_FIELDS, MAX_DOCUMENT_PAGES, MAX_PDF_BYTES, _is_digest,
@@ -118,12 +119,20 @@ def _raster_page(tool: str, source: Path, prefix: Path, number: int, *,
     command = [sys.executable, "-I", str(Path(__file__).resolve().with_name("_pdf_raster_executor.py")),
                str(os.getpid()), tool, str(source), str(prefix), str(number)] + metadata_args
     _require_launch_budget(launch_budget).consume_page(number)
-    result = subprocess.run(
-        command, stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
-        timeout=PAGE_WALL_SECONDS, check=False, shell=False, **metadata_options,
-    )
-    if result.returncode != 0:
+    if launch_budget.observing:
+        process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
+            shell=False, **metadata_options)
+        launch_budget.record_spawn(process, command)
+        code = launch_budget.wait_observed(process, wall_seconds=PAGE_WALL_SECONDS)
+    else:
+        result = subprocess.run(
+            command, stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
+            timeout=PAGE_WALL_SECONDS, check=False, shell=False, **metadata_options,
+        )
+        code = result.returncode
+    if code != 0:
         raise ValueError("raster executor failure")
     return Path(str(prefix) + ".png")
 
@@ -167,7 +176,7 @@ def _read_raster(path: Path, expected: tuple[int, int]) -> tuple[int, int, int, 
     return width, height, width * height, margin, pixel_hash
 
 
-def _inspect(pdf: bytes, identity: dict, scratch: Path) -> dict:
+def _inspect(pdf: bytes, identity: dict, scratch: Path, *, observe_processes: bool = False) -> dict | tuple[dict, dict]:
     """Inspect every selected page, preserving the existing ordered raster-hash convention."""
     _validate_identity(identity)
     if (type(pdf) is not bytes or len(pdf) > MAX_PDF_BYTES
@@ -183,7 +192,7 @@ def _inspect(pdf: bytes, identity: dict, scratch: Path) -> dict:
     expected = [_geometry(reader.pages[n - 1]) for n in pages]
     if sum(w * h for w, h in expected) > MAX_TOTAL_PIXELS:
         raise ValueError("raster selected pixel budget")
-    launch_budget = RasterLaunchBudget(pages)
+    launch_budget = RasterLaunchBudget(pages, observe_processes=observe_processes)
     try:
         tool_version, tool_hash, tool = _tool_identity(launch_budget=launch_budget)
         if tool_version != TOOL_VERSION or tool_hash != TOOL_SHA256:
@@ -206,8 +215,11 @@ def _inspect(pdf: bytes, identity: dict, scratch: Path) -> dict:
                 inspected += 1
                 image_path.unlink()
         launch_budget.require_complete()
-        return {"status": "WINDOW_RASTER_INSPECTED", "raster_sha256": aggregate.hexdigest(),
+        inspection = {"status": "WINDOW_RASTER_INSPECTED", "raster_sha256": aggregate.hexdigest(),
                 "inspected_pages": inspected, "total_pixels": total_pixels, "min_edge_margin_px": minimum}
+        if observe_processes:
+            return inspection, launch_budget.process_ledger(identity, inspection)
+        return inspection
     finally:
         launch_budget.close()
 
@@ -215,10 +227,11 @@ def _inspect(pdf: bytes, identity: dict, scratch: Path) -> dict:
 def main(argv: list[str] | None = None) -> int:
     """Apply mandatory guards before reading one exact request; failures emit no evidence."""
     argv = sys.argv if argv is None else argv
-    if sys.platform != "linux" or len(argv) != 5:
+    observed = len(argv) == 6 and argv[-1] == OBSERVATION_MODE
+    if sys.platform != "linux" or (len(argv) != 5 and not observed):
         return 64
     try:
-        request_fd, result_fd, scratch_fd, parent = map(int, argv[1:])
+        request_fd, result_fd, scratch_fd, parent = map(int, argv[1:5])
         if min(request_fd, result_fd, scratch_fd) < 3 or len({request_fd, result_fd, scratch_fd}) != 3:
             return 64
         infos = [os.fstat(fd) for fd in (request_fd, result_fd)]
@@ -235,9 +248,15 @@ def main(argv: list[str] | None = None) -> int:
             enforce_pdf_landlock(Path(__file__), writable_scratch_fd=scratch_fd)
             enforce_pdf_network_filter()
             identity, pdf = _read_request(request_fd)
-            inspection = _inspect(pdf, identity, scratch)
-            encoded = json.dumps({"protocol_version": PROTOCOL_VERSION, "profile_id": PROFILE_ID,
-                "identity": identity, "limits": limits, "inspection": inspection}, sort_keys=True,
+            if observed:
+                inspection, observation = _inspect(pdf, identity, scratch, observe_processes=True)
+            else:
+                inspection = _inspect(pdf, identity, scratch)
+            record = {"protocol_version": PROTOCOL_VERSION, "profile_id": PROFILE_ID,
+                "identity": identity, "limits": limits, "inspection": inspection}
+            if observed:
+                record["process_observation"] = observation
+            encoded = json.dumps(record, sort_keys=True,
                 separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode("ascii")
             if not 0 < len(encoded) <= RESULT_BYTES:
                 return 70

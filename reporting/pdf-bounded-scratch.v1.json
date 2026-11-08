@@ -37,7 +37,7 @@
     "reporting/_pdf_fixed_inspection_worker.py": "75d34914b92c188e8ad2ad1e6e5a378b2019d8da7b8b74d67d82c4e4c338bb38",
     "reporting/_pdf_process_lifecycle.py": "6f7e39dd83d5f1d2f3726527c83d282b11f064222e3d1c46cbf0c369d297f465",
     "reporting/_pdf_visual_worker.py": "00564cacfb041488cfc88c36be391b280ab4c77b49f0e5e180d66a8ea70f9c91",
-    "reporting/pdf_raster_windows.py": "08d23bc7eb8ffc65ef18738f82f1d5d5d4d98bda7633d72684d27cb0c4166d5e",
+    "reporting/pdf_raster_windows.py": "4141ca71b1f0465f3c31be700f23866834104051e6626708b463b7220ad0b757",
     "reporting/pdf_visual.py": "7ca796df7fa13870f54edc7796c35960736488983e52664fc047ce71367d4485"
   },
   "status": "OPTIONAL_NOT_ACTIVATED"

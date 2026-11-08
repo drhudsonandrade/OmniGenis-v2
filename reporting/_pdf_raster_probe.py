@@ -80,11 +80,13 @@ def _start(output, *, launch_budget: RasterLaunchBudget) -> subprocess.Popen:
     command = [sys.executable, "-I", str(Path(__file__).resolve()), str(os.getpid())]
     cwd = Path(__file__).resolve().parents[1]
     _require_launch_budget(launch_budget).consume_probe()
-    return subprocess.Popen(
+    process = subprocess.Popen(
         command, cwd=cwd, env={"PATH": os.defpath, "LANG": "C.UTF-8"},
         stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
         close_fds=True, shell=False,
     )
+    launch_budget.record_spawn(process, command)
+    return process
 
 
 def _wait(process: subprocess.Popen) -> int:
@@ -116,7 +118,9 @@ def _run_probe(*, launch_budget: RasterLaunchBudget) -> bytes:
     with tempfile.TemporaryFile() as output:
         _validate_output(output.fileno(), output.fileno())
         process = _start(output, launch_budget=launch_budget)
-        if _wait(process) != 0:
+        code = (launch_budget.wait_observed(process, wall_seconds=WALL_SECONDS)
+                if launch_budget.observing else _wait(process))
+        if code != 0:
             raise ValueError("version probe failed")
         return _read_output(output)
 
