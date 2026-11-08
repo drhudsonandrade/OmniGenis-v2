@@ -251,11 +251,12 @@ class RasterProcessObservationTests(unittest.TestCase):
 
     def test_result_mutation_after_worker_refuses(self):
         """A plan cannot change while the optional result is in flight."""
-        record,pid,identity=self.cached_wire()
+        real=self.m._run_worker
         def change(*args,**kwargs):
-            """Mutate the caller object after launch without substituting a successful result."""
+            """Return the real admitted reply, then mutate the caller's plan before recheck."""
+            result=real(*args,**kwargs)
             object.__setattr__(self.plan,'page_count',9)
-            return canonical(record),pid
+            return result
         with patch.object(self.m,'_run_worker',side_effect=change):
             with self.assertRaises(self.m.PdfRasterWindowError):self.observed()
 
