@@ -129,27 +129,39 @@ def _persist(directory: Path, run_id: str, state: str, digest: str | None) -> di
     return outcome
 
 
-def execute_receipted_pdf_generated_source_job(
+def _observation_bytes(result: generated.PdfGeneratedSourceResult, observation: dict) -> bytes:
+    """Recompose the exact bounded direct-process record against its sealed result.
+
+    Only the fixed generator supplies observations. Canonical equality includes
+    its closed scope claims and nested digests, but does not authenticate native
+    execution or independently observe unreported descendants.
+    """
+    if type(observation) is not dict:
+        raise ValueError('qualification observation type')
+    encoded = generated._json_bytes(observation)
+    if len(encoded) > generated.MAX_OBSERVATION_BYTES:
+        raise ValueError('qualification observation byte budget')
+    rebuilt = generated._generated_process_observation(
+        result, observation.get('render_process'), observation.get('native_observation'))
+    if generated._json_bytes(rebuilt) != encoded:
+        raise ValueError('qualification observation does not match generated result')
+    return encoded
+
+
+def _execute_receipted_pdf_generated_source_job(
     *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
     namespace_id: str, job_id: str, request_sha256: str,
     expected_resource_profile_sha256: str, receipt_directory: Path, run_id: str,
-) -> tuple[generated.PdfGeneratedSourceResult, dict]:
-    """Generate once in qualification mode and verify a durable computation record.
-
-    Default-disabled, fixed executor, unchanged resource profile, no console I/O.
-    A prior run directory refuses before execution even without a receipt. Failure
-    recording is cleanup of an admitted attempt and can occur after disable.
-    Failure/interrupt records do not prove cleanup of the native process graph.
-    A postcommit refusal may leave SUCCEEDED computation evidence but returns no
-    result pair; recovery requires independent expectations and never reruns work.
-    Only metadata is persisted. This does not activate supported execution, hard
-    aggregate enforcement, durable artifact delivery or release authorization.
-    """
+    observe_processes: bool,
+) -> tuple[generated.PdfGeneratedSourceResult, dict | None, dict]:
+    """Run the fixed qualification path, observing only when explicitly selected."""
     arguments = dict(presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256,
                      expected_language=expected_language, namespace_id=namespace_id,
                      job_id=job_id, request_sha256=request_sha256,
                      expected_resource_profile_sha256=expected_resource_profile_sha256)
     try:
+        if type(observe_processes) is not bool:
+            raise ValueError('qualification observation mode')
         captured, source_bytes = _admit(arguments, receipt_directory, run_id)
     except Exception:
         raise PdfQualificationJobError('pdf_qualification_job_input_invalid') from None
@@ -157,9 +169,19 @@ def execute_receipted_pdf_generated_source_job(
         with _run_directory(receipt_directory, run_id, create=True) as (directory, check):
             try:
                 _require_policy()
-                result = generated.execute_pdf_generated_source_job(
-                    **{**arguments, 'presentation_ir': captured})
+                observation = None
+                if observe_processes:
+                    pair = generated.execute_observed_pdf_generated_source_job(
+                        **{**arguments, 'presentation_ir': captured})
+                    if type(pair) is not tuple or len(pair) != 2:
+                        raise ValueError('qualification observed result pair')
+                    result, observation = pair
+                else:
+                    result = generated.execute_pdf_generated_source_job(
+                        **{**arguments, 'presentation_ir': captured})
                 digest = _completed_digest(result, arguments, captured, source_bytes)
+                observation_bytes = (_observation_bytes(result, observation)
+                                     if observe_processes else None)
                 check()
             except BaseException as failure:
                 try:
@@ -177,16 +199,75 @@ def execute_receipted_pdf_generated_source_job(
                 raise
             try:
                 outcome = _persist(directory, run_id, 'SUCCEEDED', digest)
+                detached = json.loads(observation_bytes) if observe_processes else None
                 if _completed_digest(result, arguments, captured, source_bytes) != digest:
                     raise ValueError('qualification result changed during completion')
+                if observe_processes:
+                    if (_observation_bytes(result, observation) != observation_bytes
+                            or generated._json_bytes(detached) != observation_bytes
+                            or _completed_digest(result, arguments, captured, source_bytes) != digest):
+                        raise ValueError('qualification observation changed during completion')
                 check()
             except Exception:
                 raise PdfQualificationJobError('pdf_qualification_job_completion_unverified') from None
-            return result, outcome
+            return result, detached, outcome
     except PdfQualificationJobError:
         raise
     except Exception:
         raise PdfQualificationJobError('pdf_qualification_job_claim_failed') from None
+
+def execute_receipted_pdf_generated_source_job(
+    *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str, receipt_directory: Path, run_id: str,
+) -> tuple[generated.PdfGeneratedSourceResult, dict]:
+    """Generate once in qualification mode and verify a durable computation record.
+
+    Default-disabled, fixed executor, unchanged resource profile, no console I/O.
+    A prior run directory refuses before execution even without a receipt. Failure
+    recording is cleanup of an admitted attempt and can occur after disable.
+    Failure/interrupt records do not prove cleanup of the native process graph.
+    A postcommit refusal may leave SUCCEEDED computation evidence but returns no
+    result pair; recovery requires independent expectations and never reruns work.
+    Only metadata is persisted. This does not activate supported execution, hard
+    aggregate enforcement, durable artifact delivery or release authorization.
+    """
+    result, _observation, outcome = _execute_receipted_pdf_generated_source_job(
+        presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256,
+        expected_language=expected_language, namespace_id=namespace_id, job_id=job_id,
+        request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        receipt_directory=receipt_directory, run_id=run_id, observe_processes=False,
+    )
+    return result, outcome
+
+
+def execute_observed_receipted_pdf_generated_source_job(
+    *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str, receipt_directory: Path, run_id: str,
+) -> tuple[generated.PdfGeneratedSourceResult, dict, dict]:
+    """Return one qualification result, its direct-process observation and outcome.
+
+    The fixed observed generator runs once under existing opt-in/disable and
+    exclusive-attempt rules. The detached bounded observation and unchanged v1
+    receipt bind the same result digest. Only the computation receipt persists;
+    recovery cannot reconstruct observations or deliver a stored PDF. Refusals
+    return no triple, even when computation was committed before a final check.
+    Nested processes, external observer cost, whole-job resources and supported
+    execution remain unqualified. No default, service or release is activated.
+    """
+    result, observation, outcome = _execute_receipted_pdf_generated_source_job(
+        presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256,
+        expected_language=expected_language, namespace_id=namespace_id, job_id=job_id,
+        request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        receipt_directory=receipt_directory, run_id=run_id, observe_processes=True,
+    )
+    if observation is None:
+        raise PdfQualificationJobError('pdf_qualification_job_completion_unverified')
+    return result, observation, outcome
+
 
 
 def read_qualification_job_outcome(
