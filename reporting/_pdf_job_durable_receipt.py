@@ -200,18 +200,20 @@ def read_job_receipt(directory: Path, run_id: str, state: str,
 
 
 def qualification_receipt_boundary() -> dict:
-    """Declare only the local qualification receipt boundary; never activate jobs.
+    """Describe qualification-receipt configuration without enforcing execution.
 
-    Default and explicit rollback disable the qualification surface. This
-    operation does not execute a job, persist a receipt, authorize release or
-    qualify an external supervisor. Unknown configuration fails closed.
+    Default and explicit disable return a disabled declaration for consumers.
+    Existing writer/readback APIs remain independent and are not guarded by this
+    descriptor. No job, persistence, native qualification or release is activated.
+    Unknown configuration fails closed; exported metadata is detached.
     """
     mode = os.environ.get('OMNIGENIS_PDF_QUALIFICATION_RECEIPT_MODE')
     disabled = os.environ.get('OMNIGENIS_PDF_QUALIFICATION_RECEIPT_DISABLED')
     if mode not in (None, 'qualification-only') or disabled not in (None, '1'):
         raise ValueError('qualification receipt boundary configuration invalid')
     return {
-        'mode': 'QUALIFICATION_ONLY' if mode == 'qualification-only' and disabled is None else 'DISABLED',
+        'mode': ('QUALIFICATION_ONLY' if mode == 'qualification-only' and disabled is None
+                 else 'DISABLED'),
         'receipt_schema': SCHEMA,
         'supported_execution': False,
         'native_resources_qualified': False,
