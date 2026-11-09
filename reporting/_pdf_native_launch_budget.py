@@ -144,15 +144,21 @@ class NativeLaunchScope:
     """Own one immutable attempt sequence through final coordinator acceptance."""
 
     __slots__ = ("_pid", "_thread", "_attempts", "_pdf_size", "_next", "_invalid", "_closed",
-                 "_started", "_previous", "_observe", "_processes", "_pending", "_complete")
+                 "_started", "_previous", "_observe", "_processes", "_pending", "_complete",
+                 "_observe_raster", "_raster_entries")
 
     def __init__(self, plan: PageWindowPlan, pdf_size: int, *, started_ns: int | None = None,
-                 observe_processes: bool = False) -> None:
+                 observe_processes: bool = False, observe_raster_children: bool = False) -> None:
         """Derive internal attempts; callers never provide roles or reusable allowances."""
         if type(pdf_size) is not int or not 1 <= pdf_size <= MAX_PDF_BYTES:
             raise ValueError("native launch source size")
         if type(observe_processes) is not bool:
             raise ValueError("native process observation flag")
+        if (type(observe_raster_children) is not bool
+                or (observe_raster_children and not observe_processes)):
+            raise ValueError("raster child observation requires direct observation")
+        self._observe_raster = observe_raster_children
+        self._raster_entries = []
         self._observe = observe_processes
         self._processes = []
         self._pending = None
@@ -233,6 +239,10 @@ class NativeLaunchScope:
         """Check live ownership and exact completion while the shared lock is held."""
         self._active()
         self._remaining_seconds()
+        if (self._observe_raster and len(self._raster_entries)
+                != sum(a.kind == "raster_windows" for a in self._attempts)):
+            self._invalid = True
+            raise ValueError("nested raster observations incomplete")
         if (self._next != len(self._attempts)
                 or (self._observe and (self._pending is not None
                     or len(self._processes) != len(self._attempts)
@@ -341,6 +351,40 @@ class NativeLaunchScope:
         detached["ledger_sha256"] = sha256(encoded).hexdigest()
         return detached
 
+    def _record_raster(self, worker_pid, receipt, observation) -> None:
+        """Associate only the latest actually reaped raster worker under this owner."""
+        from reporting.pdf_raster_windows import PdfRasterWindowInspection
+        from reporting._pdf_raster_job_observation import validate_window
+        self._active()
+        try:
+            self._remaining_seconds()
+            if (not self._observe_raster or self._pending is not None or not self._processes
+                    or len(self._processes) != self._next or type(worker_pid) is not int
+                    or type(receipt) is not PdfRasterWindowInspection):
+                raise ValueError("raster job association unavailable")
+            row, _ = self._processes[-1]
+            expected = sum(a.kind == "raster_windows" for a in self._attempts[:self._next])
+            if (row["kind"] != "raster_windows" or row["pid"] != worker_pid or row["exit_code"] != 0
+                    or len(self._raster_entries) != expected - 1):
+                raise ValueError("raster job association identity or order")
+            values = receipt.to_dict()
+            entry = {"sequence":row["sequence"], "inspection":{k:values[k] for k in
+                     ("status","raster_sha256","total_pixels","min_edge_margin_px","inspected_pages")},
+                     "observation":observation}
+            accepted = validate_window(row,entry)
+            self._raster_entries.append({k:accepted[k] for k in ("sequence","inspection","observation")})
+        except BaseException:
+            self._invalid = True
+            raise
+
+    def raster_process_ledger(self) -> dict:
+        """Reconcile nested records only after the original exact scope completed."""
+        from reporting._pdf_raster_job_observation import build_raster_ledger
+        self._owner()
+        if not self._observe_raster:
+            raise ValueError("nested raster observation not selected")
+        return build_raster_ledger(self.process_ledger(), self._raster_entries)
+
     def _consume(self, kind: str, command: object, fds: object, scratch: object) -> None:
         """Validate and spend the next exact request while the short-held lock is owned."""
         self._active()
@@ -350,14 +394,18 @@ class NativeLaunchScope:
                 raise ValueError("native previous observed process has not exited")
             if self._next >= len(self._attempts):
                 raise ValueError("native launch exhausted")
+            if (self._observe_raster and len(self._raster_entries)
+                    != sum(a.kind == "raster_windows" for a in self._attempts[:self._next])):
+                raise ValueError("previous raster observation missing")
             attempt = self._attempts[self._next]
+            suffix = ["observe-children-v1"] if self._observe_raster and kind == "raster_windows" else []
             count = 3 if attempt.kind == "raster_windows" else 2
             if (kind != attempt.kind or type(fds) is not tuple or len(fds) != count
                     or any(type(fd) is not int or fd < 0 for fd in fds)
                     or len(set(fds)) != count or type(command) is not list
                     or any(type(argument) is not str for argument in command)
                     or command != [sys.executable, "-I", attempt.worker,
-                                   *(str(fd) for fd in fds), str(self._pid)]):
+                                   *(str(fd) for fd in fds), str(self._pid)] + suffix):
                 raise ValueError("native launch command mismatch")
             before = tuple(os.fstat(fd) for fd in fds[:2])
             if (any(not stat.S_ISREG(info.st_mode) or info.st_nlink != 0
@@ -489,3 +537,25 @@ def wait_native_process_group(process, *, wall_seconds: float) -> int:
             with _LOCK:
                 scope._invalid = True
         raise
+
+
+def raster_child_observation_requested() -> bool:
+    """Select the existing worker opt-in only for a live explicitly extended job."""
+    _before_lock()
+    with _LOCK:
+        scope = _ACTIVE
+        if scope is None or not scope._observe_raster:
+            return False
+        scope._active()
+        scope._remaining_seconds()
+        return True
+
+
+def record_raster_child_observation(worker_pid, receipt, observation) -> None:
+    """Attach content-free child records without granting any signaling authority."""
+    _before_lock()
+    with _LOCK:
+        scope = _ACTIVE
+        if scope is None:
+            raise ValueError("active raster job observation required")
+        scope._record_raster(worker_pid, receipt, observation)

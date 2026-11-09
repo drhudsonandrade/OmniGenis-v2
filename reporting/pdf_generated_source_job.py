@@ -451,6 +451,7 @@ def _execute_pdf_generated_source_job(
     *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
     namespace_id: str, job_id: str, request_sha256: str,
     expected_resource_profile_sha256: str, observe_processes: bool,
+    observe_raster_children: bool = False,
 ) -> tuple[PdfGeneratedSourceResult, dict | None]:
     """Generate one whole candidate and inspect those exact bytes, without retries.
 
@@ -463,7 +464,8 @@ def _execute_pdf_generated_source_job(
     """
     try:
         require_no_active_scope()
-        if type(observe_processes) is not bool:
+        if (type(observe_processes) is not bool or type(observe_raster_children) is not bool
+                or (observe_raster_children and not observe_processes)):
             raise ValueError('generated source observation mode')
         _profile(expected_resource_profile_sha256)
         if (type(expected_language) is not str or expected_language != LANGUAGE
@@ -518,7 +520,8 @@ def _execute_pdf_generated_source_job(
             pages_per_window=legacy.TEXT_WIDTH, inspector_profile_id=legacy.TEXT_PROFILE,
         )
         plan_digest = plan.plan_sha256
-        inspector = (native_source.execute_observed_pdf_native_source_job
+        inspector = (native_source.execute_raster_observed_pdf_native_source_job if observe_raster_children
+                     else native_source.execute_observed_pdf_native_source_job
                      if observe_processes else execute_pdf_native_source_job)
         inspected = inspector(
             presentation_ir=captured, pdf_bytes=pdf, expected_pdf_sha256=rendered.pdf_sha256,
@@ -530,6 +533,12 @@ def _execute_pdf_generated_source_job(
             if type(inspected) is not tuple or len(inspected) != 2:
                 raise ValueError('generated native observation pair')
             inspected, native_observation = inspected
+        raster_ledger = None
+        if observe_raster_children:
+            from reporting._pdf_raster_job_observation import validate_native
+            nested = validate_native(inspected, native_observation)
+            native_observation = nested['direct_observation']
+            raster_ledger = nested['raster_child_ledger']
         check()
         if type(inspected) is not PdfNativeSourceResult or rendered.result_sha256 != render_digest:
             raise ValueError('generated source child type or mutation')
@@ -545,6 +554,9 @@ def _execute_pdf_generated_source_job(
         check()
         observation = (_generated_process_observation(result, render_observation, native_observation)
                        if observe_processes else None)
+        if observe_raster_children:
+            from reporting._pdf_raster_job_observation import compose_generated
+            observation = compose_generated(result, observation, raster_ledger)
         if observe_processes:
             check()
             if result.result_sha256 != observation['generated_result_sha256']:
@@ -676,6 +688,30 @@ def execute_observed_pdf_generated_source_job(
         request_sha256=request_sha256,
         expected_resource_profile_sha256=expected_resource_profile_sha256,
         observe_processes=True,
+    )
+    if observation is None:
+        raise PdfGeneratedSourceJobError('pdf_generated_source_job_execution_failed')
+    return result, observation
+
+
+def execute_raster_observed_pdf_generated_source_job(
+    *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str,
+) -> tuple[PdfGeneratedSourceResult, dict]:
+    """Generate once and bind actual raster children to that same complete result.
+
+    The optional envelope links the original direct renderer/inspector record
+    and fixed raster probe/page children. No rerender, tracer, helper timer,
+    service, privilege or default activation is added. Arbitrary descendants,
+    external observer costs, aggregate enforcement and release stay unqualified.
+    """
+    result, observation = _execute_pdf_generated_source_job(
+        presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256,
+        expected_language=expected_language, namespace_id=namespace_id, job_id=job_id,
+        request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        observe_processes=True, observe_raster_children=True,
     )
     if observation is None:
         raise PdfGeneratedSourceJobError('pdf_generated_source_job_execution_failed')

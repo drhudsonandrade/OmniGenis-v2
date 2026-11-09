@@ -212,6 +212,7 @@ def _execute_pdf_native_source_job(
     expected_ir_sha256: str, page_count: int, expected_language: str,
     namespace_id: str, job_id: str, request_sha256: str,
     expected_resource_profile_sha256: str, observe_processes: bool,
+    observe_raster_children: bool = False,
 ) -> tuple[PdfNativeSourceResult, dict | None]:
     """Execute the pinned native chain, then the pinned structured-source job.
 
@@ -224,7 +225,8 @@ def _execute_pdf_native_source_job(
     """
     try:
         require_no_active_scope()
-        if type(observe_processes) is not bool:
+        if (type(observe_processes) is not bool or type(observe_raster_children) is not bool
+                or (observe_raster_children and not observe_processes)):
             raise ValueError("native source observation mode")
         _profile(expected_resource_profile_sha256)
         if (type(pdf_bytes) is not bytes or not pdf_bytes.startswith(b"%PDF-1.7")
@@ -271,7 +273,10 @@ def _execute_pdf_native_source_job(
 
     launches = None
     try:
-        if observe_processes:
+        if observe_raster_children:
+            launches = NativeLaunchScope(plan, len(pdf_bytes), started_ns=started,
+                                         observe_processes=True, observe_raster_children=True)
+        elif observe_processes:
             launches = NativeLaunchScope(plan, len(pdf_bytes), started_ns=started,
                                          observe_processes=True)
         else:
@@ -314,6 +319,9 @@ def _execute_pdf_native_source_job(
         check()
         launches.complete_and_close()
         observation = _process_observation(result, launches) if observe_processes else None
+        if observe_raster_children:
+            from reporting._pdf_raster_job_observation import compose_native
+            observation = compose_native(result, observation, launches.raster_process_ledger())
         if observe_processes:
             check()
             if result.inspection_sha256 != observation["inspection_sha256"]:
@@ -400,6 +408,32 @@ def execute_observed_pdf_native_source_job(
         namespace_id=namespace_id, job_id=job_id, request_sha256=request_sha256,
         expected_resource_profile_sha256=expected_resource_profile_sha256,
         observe_processes=True,
+    )
+    if observation is None:
+        raise PdfNativeSourceJobError("pdf_native_source_job_execution_failed")
+    return result, observation
+
+
+def execute_raster_observed_pdf_native_source_job(
+    *, presentation_ir: object, pdf_bytes: object, expected_pdf_sha256: str,
+    expected_ir_sha256: str, page_count: int, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str,
+) -> tuple[PdfNativeSourceResult, dict]:
+    """Observe fixed direct and raster children in one unchanged native inspection.
+
+    The new bounded envelope retains the old direct-only record and reconciles
+    its raster reservations with actual probe/page observations. It does not
+    authenticate execution, census arbitrary descendants or authorize release.
+    Existing source, disable, deadline and resource limits remain unchanged.
+    """
+    result, observation = _execute_pdf_native_source_job(
+        presentation_ir=presentation_ir, pdf_bytes=pdf_bytes,
+        expected_pdf_sha256=expected_pdf_sha256, expected_ir_sha256=expected_ir_sha256,
+        page_count=page_count, expected_language=expected_language,
+        namespace_id=namespace_id, job_id=job_id, request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        observe_processes=True, observe_raster_children=True,
     )
     if observation is None:
         raise PdfNativeSourceJobError("pdf_native_source_job_execution_failed")

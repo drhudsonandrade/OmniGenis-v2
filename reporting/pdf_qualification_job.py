@@ -129,13 +129,19 @@ def _persist(directory: Path, run_id: str, state: str, digest: str | None) -> di
     return outcome
 
 
-def _observation_bytes(result: generated.PdfGeneratedSourceResult, observation: dict) -> bytes:
+def _observation_bytes(result: generated.PdfGeneratedSourceResult, observation: dict,
+                       *, observe_raster_children: bool = False) -> bytes:
     """Recompose the exact bounded direct-process record against its sealed result.
 
     Only the fixed generator supplies observations. Canonical equality includes
     its closed scope claims and nested digests, but does not authenticate native
     execution or independently observe unreported descendants.
     """
+    if type(observe_raster_children) is not bool:
+        raise ValueError('qualification raster observation mode')
+    if observe_raster_children:
+        from reporting._pdf_raster_job_observation import validate_generated
+        return generated._json_bytes(validate_generated(result, observation))
     if type(observation) is not dict:
         raise ValueError('qualification observation type')
     encoded = generated._json_bytes(observation)
@@ -152,7 +158,7 @@ def _execute_receipted_pdf_generated_source_job(
     *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
     namespace_id: str, job_id: str, request_sha256: str,
     expected_resource_profile_sha256: str, receipt_directory: Path, run_id: str,
-    observe_processes: bool,
+    observe_processes: bool, observe_raster_children: bool = False,
 ) -> tuple[generated.PdfGeneratedSourceResult, dict | None, dict]:
     """Run the fixed qualification path, observing only when explicitly selected."""
     arguments = dict(presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256,
@@ -160,7 +166,8 @@ def _execute_receipted_pdf_generated_source_job(
                      job_id=job_id, request_sha256=request_sha256,
                      expected_resource_profile_sha256=expected_resource_profile_sha256)
     try:
-        if type(observe_processes) is not bool:
+        if (type(observe_processes) is not bool or type(observe_raster_children) is not bool
+                or (observe_raster_children and not observe_processes)):
             raise ValueError('qualification observation mode')
         captured, source_bytes = _admit(arguments, receipt_directory, run_id)
     except Exception:
@@ -171,8 +178,9 @@ def _execute_receipted_pdf_generated_source_job(
                 _require_policy()
                 observation = None
                 if observe_processes:
-                    pair = generated.execute_observed_pdf_generated_source_job(
-                        **{**arguments, 'presentation_ir': captured})
+                    generator = (generated.execute_raster_observed_pdf_generated_source_job
+                                 if observe_raster_children else generated.execute_observed_pdf_generated_source_job)
+                    pair = generator(**{**arguments, 'presentation_ir': captured})
                     if type(pair) is not tuple or len(pair) != 2:
                         raise ValueError('qualification observed result pair')
                     result, observation = pair
@@ -180,7 +188,8 @@ def _execute_receipted_pdf_generated_source_job(
                     result = generated.execute_pdf_generated_source_job(
                         **{**arguments, 'presentation_ir': captured})
                 digest = _completed_digest(result, arguments, captured, source_bytes)
-                observation_bytes = (_observation_bytes(result, observation)
+                observation_options = {'observe_raster_children': True} if observe_raster_children else {}
+                observation_bytes = (_observation_bytes(result, observation, **observation_options)
                                      if observe_processes else None)
                 check()
             except BaseException as failure:
@@ -203,7 +212,7 @@ def _execute_receipted_pdf_generated_source_job(
                 if _completed_digest(result, arguments, captured, source_bytes) != digest:
                     raise ValueError('qualification result changed during completion')
                 if observe_processes:
-                    if (_observation_bytes(result, observation) != observation_bytes
+                    if (_observation_bytes(result, observation, **observation_options) != observation_bytes
                             or generated._json_bytes(detached) != observation_bytes
                             or _completed_digest(result, arguments, captured, source_bytes) != digest):
                         raise ValueError('qualification observation changed during completion')
@@ -291,3 +300,29 @@ def read_qualification_job_outcome(
             return outcome
     except Exception:
         raise PdfQualificationJobError('pdf_qualification_job_recovery_failed') from None
+
+
+def execute_raster_observed_receipted_pdf_generated_source_job(
+    *, presentation_ir: object, expected_ir_sha256: str, expected_language: str,
+    namespace_id: str, job_id: str, request_sha256: str,
+    expected_resource_profile_sha256: str, receipt_directory: Path, run_id: str,
+) -> tuple[generated.PdfGeneratedSourceResult, dict, dict]:
+    """Return one qualification result, integrated child records and its v1 outcome.
+
+    This explicit path enforces the existing default-disabled qualification
+    policy and exclusive attempt. Direct and nested observations are bound to
+    the same result before and after persistence, with no automatic retry.
+    Only the computation receipt persists; recovery does not reconstruct this
+    ledger or deliver a PDF. No supported/native-resource/release claim is made.
+    """
+    result, observation, outcome = _execute_receipted_pdf_generated_source_job(
+        presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256,
+        expected_language=expected_language, namespace_id=namespace_id, job_id=job_id,
+        request_sha256=request_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        receipt_directory=receipt_directory, run_id=run_id,
+        observe_processes=True, observe_raster_children=True,
+    )
+    if observation is None:
+        raise PdfQualificationJobError('pdf_qualification_job_completion_unverified')
+    return result, observation, outcome

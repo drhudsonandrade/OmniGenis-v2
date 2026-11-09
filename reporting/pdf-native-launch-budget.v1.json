@@ -9,6 +9,22 @@
     "The fixed worker and default rendering/QA route are outside this scope. document_plan.py legacy estimates remain unchanged and are distinct from this cumulative attempt ceiling.",
     "No aggregate CPU, RSS, scratch, descriptors, hard wall-time, arbitrary-descendant resource qualification, default activation or release authority is established."
   ],
+  "optional_raster_child_observation": {
+    "arbitrary_descendants_observed": false,
+    "authenticated_worker_execution": false,
+    "default_direct_scope_unchanged": true,
+    "existing_worker_reply_bytes": 4096,
+    "fixed_child_scope": "Exact version probe and each selected page child, associated after enclosing worker reap",
+    "maximum_envelope_bytes": 131072,
+    "maximum_ledger_bytes": 65536,
+    "missing_duplicate_or_foreign_records": "Fail closed before next launch or terminal acceptance",
+    "native_profile_qualified": false,
+    "old_direct_record_unchanged": true,
+    "release_authorized": false,
+    "selection": "Explicit NativeLaunchScope observe_raster_children=True with observe_processes=True only",
+    "timer_helper_processes_added": 0,
+    "worker_mode": "observe-children-v1"
+  },
   "policy": {
     "aggregate_job_resources_qualified": false,
     "at_64_pages": {
@@ -70,13 +86,14 @@
   },
   "schema_version": "1.0.0",
   "source_sha256": {
-    "reporting/_pdf_native_launch_budget.py": "7a1a884e641dbf9a2a1044654b01f55b8011adabac14010db60e9f85b8224dfd",
+    "reporting/_pdf_native_launch_budget.py": "2260127303a9cc07a3c3c6a2757d9205db7a068dfac0550ecc99778472cb9c42",
+    "reporting/_pdf_raster_job_observation.py": "f69628c645a69ff2ac25ad24362ede4c9a29ec472503e1e7e0fb313945f3813e",
     "reporting/_pdf_raster_launch_budget.py": "3cd8cea2696b99e443d558373d05ad8bf72d9e932c8ced68a944516cf23c4367",
     "reporting/_pdf_raster_probe.py": "72fcd2820decd6524c7c5afdefe2bdd04f73876092be7125547f70b7880fd073",
     "reporting/_pdf_raster_window_worker.py": "adfc847cb64818cbaefa32dab4b2edca21902dc53479f7545b8918fc3547104a",
-    "reporting/pdf_native_source_job.py": "d8bddaea99c41613b9849f9c520a663a3c9dd3b0791e5dc86c61a327897eb7e1",
+    "reporting/pdf_native_source_job.py": "f02157ab41532296260e4ae99868d93b8a23fdbe8b6ba62eb1acd47358df9071",
     "reporting/pdf_object_graph.py": "ca478e51cb7ee78ac9066dff923dc188f568671222ee5fd0f81f0414e6c90710",
-    "reporting/pdf_raster_windows.py": "4141ca71b1f0465f3c31be700f23866834104051e6626708b463b7220ad0b757",
+    "reporting/pdf_raster_windows.py": "caeb8c585572e79bbb5e7b32756c2e4affa6d9c2b198367bd9af75fc53ff0eb5",
     "reporting/pdf_text_windows.py": "fc913d4e0275039e27da5c43e543fe9453bbf08bfa09d2470836e76e9ba76697"
   }
 }

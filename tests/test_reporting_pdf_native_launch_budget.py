@@ -568,7 +568,8 @@ class PdfNativeLaunchBudgetTests(unittest.TestCase):
             "reporting/_pdf_native_launch_budget.py", "reporting/pdf_native_source_job.py",
             "reporting/pdf_object_graph.py", "reporting/pdf_text_windows.py",
             "reporting/pdf_raster_windows.py", "reporting/_pdf_raster_launch_budget.py",
-            "reporting/_pdf_raster_probe.py", "reporting/_pdf_raster_window_worker.py"}
+            "reporting/_pdf_raster_probe.py", "reporting/_pdf_raster_window_worker.py",
+            "reporting/_pdf_raster_job_observation.py"}
         self.assertEqual(set(manifest["source_sha256"]), required_sources)
         for path, digest in manifest["source_sha256"].items():
             self.assertEqual(sha256((ROOT / path).read_bytes()).hexdigest(), digest, path)

@@ -251,10 +251,18 @@ def inspect_pdf_raster_window(
     identity = _admit_raster_window(pdf_bytes=pdf_bytes, plan=plan, window_index=window_index,
                                     expected_plan_sha256=expected_plan_sha256)
     try:
-        receipt = _decode(_run_worker(pdf_bytes, identity), identity)
+        from reporting import _pdf_native_launch_budget as job_scope
+        nested = job_scope.raster_child_observation_requested()
+        if nested:
+            data, worker_pid = _run_worker(pdf_bytes, identity, observe_processes=True)
+            receipt, observation = _decode_observed(data, identity, worker_pid)
+        else:
+            receipt = _decode(_run_worker(pdf_bytes, identity), identity)
         plan.__post_init__()
         if plan.plan_sha256 != expected_plan_sha256:
             raise ValueError("raster plan changed")
+        if nested:
+            job_scope.record_raster_child_observation(worker_pid, receipt, observation)
         return receipt
     except Exception:
         raise PdfRasterWindowError("pdf_raster_window_execution_failed") from None

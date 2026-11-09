@@ -372,6 +372,7 @@ class GeneratedSourceJobTests(unittest.TestCase):
             'reporting/pdf_candidate_qa.py', 'reporting/pdf_content.py',
             'reporting/pdf_inspection_job.py', 'reporting/pdf_inspection_bundle.py',
             'reporting/page_checkpoints.py', 'reporting/page_windows.py',
+            'reporting/_pdf_raster_job_observation.py', 'reporting/pdf_qualification_job.py',
         })
         for relative, digest in manifest['reused_source_sha256'].items():
             self.assertEqual(sha256((ROOT / relative).read_bytes()).hexdigest(), digest, relative)
