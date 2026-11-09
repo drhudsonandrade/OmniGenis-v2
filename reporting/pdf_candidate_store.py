@@ -155,6 +155,7 @@ def _write_data(directory_fd: int, name: str, data: bytes, limit: int) -> None:
 def _decode(raw: bytes) -> dict:
     """Reject duplicate fields and noncanonical encodings rather than normalizing."""
     def pairs(items):
+        """Reject duplicate manifest keys without normalizing conflicting values."""
         value = {}
         for key, item in items:
             if key in value:
@@ -162,6 +163,7 @@ def _decode(raw: bytes) -> dict:
             value[key] = item
         return value
     def nonfinite(_value):
+        """Refuse nonfinite JSON scalars before accepting stored metadata."""
         raise ValueError('nonfinite candidate manifest value')
     value = json.loads(raw, object_pairs_hook=pairs, parse_constant=nonfinite)
     if type(value) is not dict or _canonical(value) != raw:

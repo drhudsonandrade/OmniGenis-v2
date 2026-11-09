@@ -309,6 +309,7 @@ class CandidateStoreTests(unittest.TestCase):
         """The existing receipt writer is invoked only after complete exact data."""
         real=receipts.write_job_receipt;checked=[]
         def inspect(directory,run_id,state,digest):
+            """Verify complete synced data before invoking the real commit-marker writer."""
             self.assertEqual(set(p.name for p in directory.iterdir()),{'candidate.pdf','manifest.json'})
             self.assertEqual((directory/'candidate.pdf').read_bytes(),self.candidate().pdf_bytes)
             with self.assertRaises(self.m.PdfCandidateStoreError):self.recover()
@@ -321,6 +322,7 @@ class CandidateStoreTests(unittest.TestCase):
         """A failed file sync leaves inspectable but unreadable partial evidence."""
         real=os.fsync
         def fail_file(fd):
+            """Fail regular-file synchronization while preserving real directory syncs."""
             if stat.S_ISREG(os.fstat(fd).st_mode):raise OSError('synthetic sync failure')
             return real(fd)
         with patch.object(os,'fsync',side_effect=fail_file),self.assertRaises(self.m.PdfCandidateStoreError):self.persist()
@@ -330,7 +332,9 @@ class CandidateStoreTests(unittest.TestCase):
     def test_partial_data_write_and_zero_progress_refuse(self):
         """Short writes are assembled; zero progress is never mistaken for completion."""
         real=os.write;calls=[]
-        def short(fd,data):calls.append(len(data));return real(fd,data[:7])
+        def short(fd,data):
+            """Force short progress through the real filesystem write operation."""
+            calls.append(len(data));return real(fd,data[:7])
         with patch.object(os,'write',side_effect=short):self.persist()
         self.assertGreater(len(calls),2)
         self.assertEqual(self.recover()[0],self.candidate().pdf_bytes)
@@ -348,7 +352,9 @@ class CandidateStoreTests(unittest.TestCase):
     def test_postcommit_interrupt_preserves_recoverable_bundle(self):
         """An interrupted return does not erase a genuinely committed candidate."""
         real=receipts.write_job_receipt
-        def interrupt(*args,**kwargs):real(*args,**kwargs);raise KeyboardInterrupt()
+        def interrupt(*args,**kwargs):
+            """Commit the real receipt before interrupting the public return path."""
+            real(*args,**kwargs);raise KeyboardInterrupt()
         with patch.object(receipts,'write_job_receipt',side_effect=interrupt),self.assertRaises(KeyboardInterrupt):self.persist()
         self.assertEqual(self.recover()[0],self.candidate().pdf_bytes)
 
@@ -356,6 +362,7 @@ class CandidateStoreTests(unittest.TestCase):
         """A late policy change refuses exposure but preserves committed evidence."""
         real=receipts.write_job_receipt
         def disable(*args,**kwargs):
+            """Disable qualification immediately after the real receipt is committed."""
             value=real(*args,**kwargs);os.environ[DISABLE]='1';return value
         with patch.object(receipts,'write_job_receipt',side_effect=disable),self.assertRaises(self.m.PdfCandidateStoreError):self.persist()
         os.environ.pop(DISABLE)
@@ -365,6 +372,7 @@ class CandidateStoreTests(unittest.TestCase):
         """Recheck the in-memory sealed result after I/O; do not silently accept drift."""
         result=self.candidate();old=result.namespace_id;real=receipts.write_job_receipt
         def mutate(*args,**kwargs):
+            """Alter the sealed candidate only after the real commit completes."""
             value=real(*args,**kwargs);object.__setattr__(result,'namespace_id','changed');return value
         try:
             with patch.object(receipts,'write_job_receipt',side_effect=mutate),self.assertRaises(self.m.PdfCandidateStoreError):self.persist()
@@ -374,6 +382,7 @@ class CandidateStoreTests(unittest.TestCase):
         """A descriptor read and final named-file identity must describe the same bytes."""
         self.persist();p=self.directory()/'candidate.pdf';target=p.stat().st_ino;real=os.read;changed=[]
         def mutate(fd,n):
+            """Change the exact open PDF after its first read to test stability checks."""
             value=real(fd,n)
             if not changed and os.fstat(fd).st_ino==target:
                 changed.append(True);p.write_bytes(p.read_bytes()+b'x')
@@ -385,6 +394,7 @@ class CandidateStoreTests(unittest.TestCase):
         """A captured descriptor cannot authorize returning through a replaced path."""
         self.persist();real=self.m._read_data;changed=[]
         def replace(*args,**kwargs):
+            """Move the owned run after a real read to exercise named-path binding."""
             value=real(*args,**kwargs)
             if not changed:
                 changed.append(True);self.directory().rename(self.root/'displaced');self.directory().mkdir(mode=0o700)
@@ -418,6 +428,7 @@ class CandidateStoreTests(unittest.TestCase):
         """One exclusive run wins; a loser may read the exact completed bundle only."""
         candidate=self.candidate();args=self.arguments()
         def call():
+            """Attempt exact persistence while preserving an explicit admission refusal."""
             try:return self.m.persist_qualification_pdf_candidate(candidate=candidate,**args)
             except self.m.PdfCandidateStoreError:return None
         with ThreadPoolExecutor(max_workers=2) as pool:values=list(pool.map(lambda _:call(),range(2)))
@@ -429,6 +440,7 @@ class CandidateStoreTests(unittest.TestCase):
         """Matching content does not excuse a changed named file inside one read."""
         self.persist(); real=self.m._read_data; changed=[]
         def replace(fd,name,limit):
+            """Replace the named PDF with identical bytes after the actual first read."""
             value=real(fd,name,limit)
             if name=='candidate.pdf' and not changed:
                 changed.append(True)
@@ -443,6 +455,7 @@ class CandidateStoreTests(unittest.TestCase):
         """The transaction marker identity must remain stable across the bundle read."""
         self.persist();real=self.m._read_data;changed=[]
         def replace(*args,**kwargs):
+            """Replace the commit marker with identical bytes during bundle recovery."""
             value=real(*args,**kwargs)
             if not changed:
                 changed.append(True);p=self.directory()/(self.run_id+'.json');raw=p.read_bytes()
@@ -455,6 +468,7 @@ class CandidateStoreTests(unittest.TestCase):
         """A policy change during readback cannot leak an otherwise matching bundle."""
         self.persist();before=self.snapshot();real=self.m._read_data
         def disable(*args,**kwargs):
+            """Change policy after an actual data read, without rewriting stored files."""
             value=real(*args,**kwargs);os.environ[DISABLE]='1';return value
         with patch.object(self.m,'_read_data',side_effect=disable),self.assertRaises(self.m.PdfCandidateStoreError):
             self.recover()
@@ -489,6 +503,7 @@ class CandidateStoreTests(unittest.TestCase):
         """Durable data alone does not excuse failure to sync directory entries."""
         real=os.fsync
         def fail(fd):
+            """Reject the run-directory sync once both candidate data files exist."""
             if stat.S_ISDIR(os.fstat(fd).st_mode) and set(os.listdir(fd))=={'candidate.pdf','manifest.json'}:
                 raise OSError('directory sync')
             return real(fd)
@@ -512,6 +527,7 @@ class CandidateStoreTests(unittest.TestCase):
                 try:
                     os.close(r);real=receipts.write_job_receipt
                     def stop(*values,**keywords):
+                        """Expose the selected receipt boundary and wait for the owning parent."""
                         if committed:real(*values,**keywords)
                         os.write(w,b'C');os.close(w)
                         while True:signal.pause()
