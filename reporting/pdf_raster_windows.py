@@ -19,7 +19,8 @@ import sys
 import tempfile
 
 from reporting._pdf_document_byte_budget import require_pdf_document_budget
-from reporting._pdf_native_launch_budget import admit_launch, wait_native_process_group
+from reporting._pdf_raster_child_observation import MODE as OBSERVATION_MODE, validate_observation
+from reporting._pdf_native_launch_budget import admit_launch, wait_native_process_group, require_no_active_scope
 
 from reporting._pdf_bounded_scratch import (
     _open_verified_bounded_child, _require_same_bounded_mount,
@@ -163,8 +164,10 @@ def _wait(process: subprocess.Popen) -> int:
     return wait_native_process_group(process, wall_seconds=WALL_SECONDS)
 
 
-def _run_worker(pdf: bytes, identity: dict) -> bytes:
+def _run_worker(pdf: bytes, identity: dict, *, observe_processes: bool = False) -> bytes | tuple[bytes, int]:
     """Own the exact scratch inode and anonymous request/result files for one invocation."""
+    if type(observe_processes) is not bool:
+        raise ValueError("raster observation flag")
     opted_in = bounded_scratch_requested()
     parent = bounded_scratch_parent()
     with tempfile.TemporaryDirectory(
@@ -191,27 +194,24 @@ def _run_worker(pdf: bytes, identity: dict) -> bytes:
                     raise ValueError("distinct raster protocol required")
                 header = " ".join([str(PROTOCOL_VERSION), *(str(identity[k]) for k in IDENTITY_FIELDS)])
                 source.write(header.encode("ascii") + b"\n"); source.write(pdf); source.flush()
-                process = _start([sys.executable, "-I",
+                command = [sys.executable, "-I",
                     str(Path(__file__).resolve().with_name("_pdf_raster_window_worker.py")),
-                    *(str(fd) for fd in fds), str(os.getpid())], fds, scratch)
+                    *(str(fd) for fd in fds), str(os.getpid())]
+                if observe_processes:
+                    command.append(OBSERVATION_MODE)
+                process = _start(command, fds, scratch)
                 if _wait(process) != 0 or not 0 < os.fstat(result.fileno()).st_size <= RESULT_BYTES:
                     raise ValueError("raster worker failed")
                 result.seek(0)
-                return result.read(RESULT_BYTES + 1)
+                data = result.read(RESULT_BYTES + 1)
+                return (data, process.pid) if observe_processes else data
         finally:
             os.close(scratch_fd)
 
 
-def inspect_pdf_raster_window(
-    *, pdf_bytes: object, plan: PageWindowPlan, window_index: int,
-    expected_plan_sha256: str,
-) -> PdfRasterWindowInspection:
-    """Inspect one native raster interval without modifying default whole-file qualification.
-
-    The optional 512-page class accepts at most four selected pages per call.
-    It checks blank pages, simple geometry and edge-contact risk, not visual
-    semantics, font/color correctness, accessibility, full coverage or release.
-    """
+def _admit_raster_window(*, pdf_bytes: object, plan: PageWindowPlan, window_index: int,
+                         expected_plan_sha256: str) -> dict:
+    """Preserve the existing input, disable, source-digest and exact-plan admission."""
     if (sys.platform != "linux"
             or os.environ.get("OMNIGENIS_PDF_RASTER_WINDOWS_DISABLED") == "1"):
         raise PdfRasterWindowError("pdf_raster_window_execution_unavailable")
@@ -235,6 +235,21 @@ def inspect_pdf_raster_window(
         _validate_identity(identity)
     except Exception:
         raise PdfRasterWindowError("pdf_raster_window_plan_invalid") from None
+    return identity
+
+
+def inspect_pdf_raster_window(
+    *, pdf_bytes: object, plan: PageWindowPlan, window_index: int,
+    expected_plan_sha256: str,
+) -> PdfRasterWindowInspection:
+    """Inspect one native raster interval without modifying default whole-file qualification.
+
+    The optional 512-page class accepts at most four selected pages per call.
+    It checks blank pages, simple geometry and edge-contact risk, not visual
+    semantics, font/color correctness, accessibility, full coverage or release.
+    """
+    identity = _admit_raster_window(pdf_bytes=pdf_bytes, plan=plan, window_index=window_index,
+                                    expected_plan_sha256=expected_plan_sha256)
     try:
         receipt = _decode(_run_worker(pdf_bytes, identity), identity)
         plan.__post_init__()
@@ -243,3 +258,46 @@ def inspect_pdf_raster_window(
         return receipt
     except Exception:
         raise PdfRasterWindowError("pdf_raster_window_execution_failed") from None
+
+
+def _decode_observed(data: bytes, expected: dict, worker_pid: int) -> tuple[PdfRasterWindowInspection, dict]:
+    """Require the original raster receipt plus exact bounded actual-child metadata."""
+    try:
+        if type(data) is not bytes or not 0 < len(data) <= RESULT_BYTES:
+            raise ValueError("raster observed response budget")
+        record = json.loads(data.decode("ascii"), object_pairs_hook=_unique_pairs)
+        if type(record) is not dict or set(record) != {
+            "protocol_version", "profile_id", "identity", "limits", "inspection", "process_observation",
+        } or _canonical(record) != data:
+            raise ValueError("raster observed response shape")
+        base = {key:value for key,value in record.items() if key != "process_observation"}
+        receipt = _decode(_canonical(base), expected)
+        observed = validate_observation(record["process_observation"], expected, record["inspection"], worker_pid)
+        return receipt, observed
+    except Exception:
+        raise PdfRasterWindowError("pdf_raster_window_observation_invalid") from None
+
+
+def inspect_observed_pdf_raster_window(
+    *, pdf_bytes: object, plan: PageWindowPlan, window_index: int,
+    expected_plan_sha256: str,
+) -> tuple[PdfRasterWindowInspection, dict]:
+    """Return unchanged raster geometry and actual probe/page-child observations.
+
+    This explicit standalone operation does not widen existing native job scopes.
+    It observes the fixed one-probe/selected-page sequence, not arbitrary native
+    descendants, authenticated exec, complete-job resources or artifact release.
+    Existing disable rules, request identity, timers and resource limits apply.
+    """
+    identity = _admit_raster_window(pdf_bytes=pdf_bytes, plan=plan, window_index=window_index,
+                                    expected_plan_sha256=expected_plan_sha256)
+    try:
+        require_no_active_scope()
+        data, worker_pid = _run_worker(pdf_bytes, identity, observe_processes=True)
+        receipt, observation = _decode_observed(data, identity, worker_pid)
+        plan.__post_init__()
+        if plan.plan_sha256 != expected_plan_sha256:
+            raise ValueError("raster plan changed")
+        return receipt, observation
+    except Exception:
+        raise PdfRasterWindowError("pdf_raster_window_observed_execution_failed") from None
