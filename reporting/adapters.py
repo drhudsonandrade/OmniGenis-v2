@@ -359,14 +359,14 @@ def _render_pdf(html: str, html_sha256: str) -> bytes:
 
 
 def _semantic_html(presentation_ir: dict) -> tuple[str, str, list[str]]:
-    """Build the unchanged semantic-section HTML from an already captured valid source."""
+    """Build semantic-section HTML with lossless wrapping of long source tokens."""
     locale_id = presentation_ir["locale_id"]
     parts = [
         f'<!doctype html><html lang="{escape(locale_id, quote=True)}"><head><meta charset="utf-8">',
         f"<title>{GENERATED_PDF_PRODUCT}</title>",
         f'<meta name="author" content="{GENERATED_PDF_AUTHOR}">',
         f'<meta name="generator" content="{GENERATED_PDF_PRODUCT}">',
-        "<style>body{font-family:sans-serif}section{margin-block:1rem}pre{white-space:pre-wrap}</style>",
+        "<style>body{font-family:sans-serif}section{margin-block:1rem}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>",
         "</head><body>",
         f"<h1>{escape(presentation_ir['report_id'])}</h1>",
     ]
