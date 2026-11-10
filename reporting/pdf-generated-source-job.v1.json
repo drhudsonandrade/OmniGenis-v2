@@ -104,7 +104,7 @@
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
     "reporting/_pdf_raster_job_observation.py": "f69628c645a69ff2ac25ad24362ede4c9a29ec472503e1e7e0fb313945f3813e",
     "reporting/_pdf_render_worker.py": "0434222edf2b4f1df1f0bdc86e94731a67d09fd242cb36773630c8333cba5e69",
-    "reporting/adapters.py": "c1f762d06dfcc0d8f44eba3249b4d667f3a2e704ef636117bd978a9217a487b6",
+    "reporting/adapters.py": "eaf7db018bc668e2df6dc5f2a365b02571bef75fd47e04986561d9db8a096413",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf-native-source-job.v1.json": "b021747bd5ff47c2c87e987e404c9a5f5681bfa863ccf4a0a24403b3bb3d4797",
