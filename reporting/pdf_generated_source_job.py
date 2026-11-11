@@ -284,7 +284,7 @@ def render_pdf_candidate(html: str, html_sha256: str) -> PdfRenderedCandidate:
 
 
 PROFILE_ID = 'generated-source-pdf-inspection-job-v1'
-NATIVE_SOURCE_PROFILE_SHA256 = 'b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7'
+NATIVE_SOURCE_PROFILE_SHA256 = 'dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c'
 MAX_PAGES = 64
 MAX_PDF_BYTES = 16 * 1024 * 1024
 MAX_RESULT_BYTES = 320 * 1024

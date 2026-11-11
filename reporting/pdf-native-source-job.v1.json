@@ -25,7 +25,7 @@
   "launch_attempt_budget_policy": {
     "path": "reporting/pdf-native-launch-budget.v1.json",
     "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
-    "sha256": "4c95c534dfc6f465c520bc6be9096a04cb18db11904f6b231c13d1d295dc3421"
+    "sha256": "6ee801b9b5f4350fdbf56434ae9112f5f3b1477027b1f168abb55b83a5214f44"
   },
   "parent_pdf_parsing": false,
   "profile": {
@@ -39,7 +39,7 @@
     "max_pages": 64,
     "max_pdf_bytes": 16777216,
     "max_result_bytes": 311296,
-    "native_width_profile_sha256": "c0bef5f8c23b4c40d2ddcf23e485cbfda0653d8ca1c740cc2925b3f0b1434797",
+    "native_width_profile_sha256": "00cddbc4c08dcefc39b27e46fe3ff4198fc4dd32f743c484b534913b6cad6d8e",
     "pdf_version": "1.7",
     "persistent_checkpoints": false,
     "profile_id": "native-source-pdf-inspection-job-v1",
@@ -49,7 +49,7 @@
     "source_capture": "EXISTING_BOUNDED_NATIVE_JSON_SNAPSHOT",
     "structured_source_job_profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
   },
-  "profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
+  "profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
   "release_authorized": false,
   "reused_source_sha256": {
     "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
@@ -57,16 +57,16 @@
     "reporting/_pdf_tounicode_width_coverage_worker.py": "4d0a8efb3506b27cb66bd1da90a928464de480f41ead43b8585b7c1f9166bbb5",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-native-launch-budget.v1.json": "4c95c534dfc6f465c520bc6be9096a04cb18db11904f6b231c13d1d295dc3421",
+    "reporting/pdf-native-launch-budget.v1.json": "6ee801b9b5f4350fdbf56434ae9112f5f3b1477027b1f168abb55b83a5214f44",
     "reporting/pdf-structured-source-job.v1.json": "ef9c89f91f41be596d64fd35044acc72e28b671eadd2327657f33d79c0a94f74",
-    "reporting/pdf-tounicode-width-coverage.v1.json": "109a2246c4c582ef98462493792fac10a89a13a0acfdd1bdc510af9a89d59930",
+    "reporting/pdf-tounicode-width-coverage.v1.json": "579a084359fe7fb3aee1d4c6af91a3693b28349e517089fb7cf2704424d2eeff",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
     "reporting/pdf_inspection_bundle.py": "03d636617653e940cfdcad4951b867d1cadd258bd0bd00cd8c56f4d4a22c0c51",
     "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
     "reporting/pdf_source_inspection_job.py": "835c904d151b9e6f6973b00a01fb2fd0ecd4bb6ee11bf656134d91814afc06a1",
     "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
-    "reporting/pdf_tounicode_width_coverage.py": "fd1b2fd693f3da6381e54ef0adf9f30576bb0eb27796b233fbdcbff99d66956a",
+    "reporting/pdf_tounicode_width_coverage.py": "5ea3bd58089b6c3d944204ea023ca0c425caf67f29a5df0f95f9d79906eb8f69",
     "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
   },
   "schema_version": "1.0.0",

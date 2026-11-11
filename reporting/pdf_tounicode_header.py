@@ -29,7 +29,7 @@ from reporting._pdf_tounicode_header_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_HEADER_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "4aba561c7218d21f40136a14e225d192ed48c6949370956986889280987479a3"
+_FIXED_PARENT_PROFILE_SHA256 = "dbbe4868be75c8dbb06daf12e3806974d858f15de1a4c6cab845fce644f1e509"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -72,7 +72,7 @@ def tounicode_header_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_header_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "9fdd911b498ef76aa9e82962f066dff2eebbc43c44035b09c635644c4fdde68c"
+_FIXED_PROFILE_SHA256 = "029a88bf6c37d243a156589cca44d77d76a64bec5c78867382357935768aebbe"
 
 
 def _profile() -> None:

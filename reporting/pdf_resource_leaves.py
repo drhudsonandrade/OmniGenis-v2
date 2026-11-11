@@ -29,7 +29,7 @@ from reporting._pdf_resource_leaves_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_RESOURCE_LEAVES_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "0f50a0dbda655217f0dcb8a4e7590f4347fe54c6a58632a8efeaffa700fd5b5e"
+_FIXED_PARENT_PROFILE_SHA256 = "befc2bff3bea10962c6f947518cbf42249460f38bef399d595d331c4d6b8940f"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -77,7 +77,7 @@ def resource_leaves_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(resource_leaves_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "83db5ebf1c930a23b61e00e426e77d1689b896094bccfbf6617fe0769727bb2c"
+_FIXED_PROFILE_SHA256 = "b6e7cd92d13e3eb35d35f683ec22b7213201b83e22f1ab0783503dbf95f81ba3"
 
 
 def _profile() -> None:
