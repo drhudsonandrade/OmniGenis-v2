@@ -13,6 +13,7 @@ import tempfile
 import time
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from reporting import _pdf_fixed_inspection_worker as worker
 from reporting.page_checkpoints import _json_bytes
@@ -22,7 +23,8 @@ from tests import test_reporting_pdf_fixed_inspection_worker as prior
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def lifetime_child(request_fd: int, report_fd: int, mode: str, inherited: str) -> int:
+def lifetime_child(request_fd: int, report_fd: int, ready_fd: int,
+                   mode: str, inherited: str) -> int:
     """Exercise the real entrypoint with shortened real syscalls in a disposable child."""
     real_timer = signal.setitimer
     real_gettimer = signal.getitimer
@@ -131,6 +133,8 @@ def lifetime_child(request_fd: int, report_fd: int, mode: str, inherited: str) -
         worker.frame.encode_pdf_inspection_result_frame = encode
         worker.frame.decode_pdf_inspection_result_frame = lambda *args, **kwargs: b'original'
     sys.argv = ['worker', str(request_fd), str(os.getppid())]
+    os.write(ready_fd, b'R')
+    os.close(ready_fd)
     status = worker._entrypoint()
     parent_signal = ctypes.c_int()
     library = ctypes.CDLL(None)
@@ -669,19 +673,29 @@ class FixedWorkerLifetimeTests(unittest.TestCase):
 
 
     def probe(self, mode='read', inherited='default'):
-        """Run the real worker entrypoint, keeping context or output blocked as selected."""
+        """Observe worker lifetime only after bounded, explicit fixture startup readiness."""
         with self.fixture.h.request() as (fd, expected, args, _), \
                 tempfile.TemporaryFile() as observations:
-            code = ('import sys;sys.path.insert(0,' + repr(str(ROOT)) + ');'
-                    'from tests.test_reporting_pdf_fixed_worker_lifetime import lifetime_child;'
-                    'raise SystemExit(lifetime_child(' + repr(fd) + ','
-                    + repr(observations.fileno()) + ',' + repr(mode) + ','
-                    + repr(inherited) + '))')
-            process = subprocess.Popen([sys.executable, '-I', '-B', '-c', code],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                pass_fds=(fd, observations.fileno()), cwd=ROOT, pipesize=4096,
-                env={'PATH': os.defpath, 'LANG': 'C.UTF-8'})
+            ready_read, ready_write = os.pipe()
+            descriptors = [ready_read, ready_write]
+            process = None
             try:
+                code = ('import sys;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+                        'from tests.test_reporting_pdf_fixed_worker_lifetime import lifetime_child;'
+                        'raise SystemExit(lifetime_child(' + repr(fd) + ','
+                        + repr(observations.fileno()) + ',' + repr(ready_write) + ','
+                        + repr(mode) + ',' + repr(inherited) + '))')
+                process = subprocess.Popen([sys.executable, '-I', '-B', '-c', code],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    pass_fds=(fd, observations.fileno(), ready_write), cwd=ROOT, pipesize=4096,
+                    env={'PATH': os.defpath, 'LANG': 'C.UTF-8'})
+                os.close(ready_write)
+                descriptors.remove(ready_write)
+                if (not select.select([ready_read], [], [], 30)[0]
+                        or os.read(ready_read, 2) != b'R'):
+                    raise RuntimeError('test fixture readiness missing')
+                os.close(ready_read)
+                descriptors.remove(ready_read)
                 if mode in ('output', 'cleanup', 'complete'):
                     context = _json_bytes(self.fixture.context(expected, args))
                     process.stdin.write(context)
@@ -696,15 +710,18 @@ class FixedWorkerLifetimeTests(unittest.TestCase):
                 events = [json.loads(line) for line in
                           os.pread(observations.fileno(), 16384, 0).splitlines()]
             finally:
-                if process.poll() is None:
-                    process.kill()
-                process.wait(timeout=3)
-                if not process.stdin.closed:
-                    process.stdin.close()
-                output = process.stdout.read(65537)
-                errors = process.stderr.read(16384)
-                process.stdout.close()
-                process.stderr.close()
+                for descriptor in descriptors:
+                    os.close(descriptor)
+                if process is not None:
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait(timeout=3)
+                    if not process.stdin.closed:
+                        process.stdin.close()
+                    output = process.stdout.read(65537)
+                    errors = process.stderr.read(16384)
+                    process.stdout.close()
+                    process.stderr.close()
             self.assertEqual(errors, b'', errors.decode('utf-8', 'replace'))
             return {'exited': observed_exit, 'returncode': returncode,
                     'events': events, 'output': output}
@@ -753,6 +770,45 @@ class FixedWorkerLifetimeTests(unittest.TestCase):
         self.assertFalse(result['exited'])
         self.assertIsNone(result['returncode'])
         self.assertEqual(result['output'], b'')
+
+    def delayed_startup_probe(self, mode):
+        """Delay only interpreter startup, never the real worker timer or its signals."""
+        original = subprocess.Popen
+        launches = []
+
+        def delayed(command, *args, **kwargs):
+            """Add a controlled import delay before the existing fixture entrypoint."""
+            values = list(command)
+            if (values[:4] == [sys.executable, '-I', '-B', '-c']
+                    and 'lifetime_child(' in values[4]):
+                values[4] = 'import time;time.sleep(3.5);' + values[4]
+                launches.append(True)
+            return original(values, *args, **kwargs)
+
+        with patch.object(subprocess, 'Popen', side_effect=delayed):
+            result = self.probe(mode=mode)
+        self.assertEqual(launches, [True])
+        return result
+
+    def test_slow_startup_does_not_consume_negative_control_observation(self):
+        """Observe the ready stalled worker, not an interpreter still importing modules."""
+        result = self.delayed_startup_probe('negative_control')
+        self.assertIn('context', [item['event'] for item in result['events']])
+        self.assertFalse(result['exited'])
+        self.assertIsNone(result['returncode'])
+        self.assertEqual(result['output'], b'')
+
+    def test_slow_startup_still_requires_real_alarm_termination(self):
+        """Separating startup cannot excuse a missing real worker lifetime signal."""
+        result = self.delayed_startup_probe('read')
+        self.assert_timer_exit(result, 'context')
+        self.assertEqual(result['output'], b'')
+
+    def test_missing_readiness_refuses_instead_of_claiming_a_live_control(self):
+        """A missing startup signal is an explicit fixture error with owned cleanup."""
+        with patch.object(select, 'select', return_value=([], [], [])):
+            with self.assertRaisesRegex(RuntimeError, 'fixture readiness'):
+                self.probe(mode='negative_control')
 
     def test_timer_setup_faults_refuse_before_admission_and_context(self):
         """Each failed timer observation or installation syscall forbids later work."""
