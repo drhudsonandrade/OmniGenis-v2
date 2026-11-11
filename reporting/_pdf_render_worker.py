@@ -25,6 +25,7 @@ NATIVE_PROTOCOL_VERSION = 2
 NATIVE_PROFILE_ID = "generated-native-source-render-v1"
 NATIVE_PDF_BYTES = 16 * 1024 * 1024
 NATIVE_MAX_PAGES = 64
+RASTER_MODE = "native-preloaded-png-v1"
 
 _ALLOWED_ERRORS = frozenset({
     "pdf_engine_unavailable", "pdf_engine_version_mismatch",
@@ -125,7 +126,8 @@ def _write_result(fd: int, record: dict[str, object]) -> None:
     _write_bytes(fd, encoded)
 
 
-def _failure(fd: int, error: str, limits: dict[str, int], *, native_mode: bool = False) -> int:
+def _failure(fd: int, error: str, limits: dict[str, int], *,
+             native_mode: bool = False, raster_mode: bool = False) -> int:
     """Return an allowlisted failure without copying arbitrary exception text."""
     if error not in (_NATIVE_ERRORS if native_mode else _ALLOWED_ERRORS):
         error = "pdf_render_failed"
@@ -134,6 +136,9 @@ def _failure(fd: int, error: str, limits: dict[str, int], *, native_mode: bool =
     if native_mode:
         record.update(protocol_version=NATIVE_PROTOCOL_VERSION, profile_id=NATIVE_PROFILE_ID,
                       profile_sha256=native_render_profile_sha256())
+    if raster_mode:
+        from reporting.pdf_raster_render import PROFILE_ID, profile_sha256
+        record.update(protocol_version=3, profile_id=PROFILE_ID, profile_sha256=profile_sha256())
     _write_result(fd, record)
     return 0
 
@@ -161,7 +166,8 @@ def _read_request(fd: int, *, protocol_version: int = PROTOCOL_VERSION) -> tuple
     return html_bytes.decode("utf-8"), digest
 
 
-def _render(html: str, digest: str, *, max_pdf_bytes: int = PDF_BYTES) -> tuple[bytes | None, str | None]:
+def _render(html: str, digest: str, *, max_pdf_bytes: int = PDF_BYTES,
+            resources: object = None) -> tuple[bytes | None, str | None]:
     """Invoke only the pinned, offline renderer inside the limited worker."""
     if type(max_pdf_bytes) is not int or max_pdf_bytes not in (PDF_BYTES, NATIVE_PDF_BYTES):
         return None, "pdf_render_failed"
@@ -177,11 +183,17 @@ def _render(html: str, digest: str, *, max_pdf_bytes: int = PDF_BYTES) -> tuple[
     except Exception:
         return None, "pdf_engine_unavailable"
     try:
-        fetcher = URLFetcher(allowed_protocols=(), allow_redirects=False,
-                             fail_on_errors=True)
+        if resources is None:
+            fetcher = URLFetcher(allowed_protocols=(), allow_redirects=False,
+                                 fail_on_errors=True)
+        else:
+            from reporting.pdf_raster_resources import make_fetcher
+            fetcher = make_fetcher(resources)
         pdf = HTML(string=html, url_fetcher=fetcher).write_pdf(
             pdf_identifier=bytes.fromhex(digest), pdf_variant="pdf/ua-1",
             pdf_version="1.7")
+        if resources is not None:
+            fetcher.require_complete()
     except Exception:
         return None, "pdf_render_failed"
     if type(pdf) is not bytes or not pdf.startswith(b"%PDF-1.7"):
@@ -216,13 +228,15 @@ def _discover_page_count(pdf: bytes) -> tuple[int | None, str | None]:
 def main(argv: list[str] | None = None) -> int:
     """Render one request through three anonymous descriptors and a parent PID."""
     argv = sys.argv if argv is None else argv
-    native_mode = len(argv) == 6 and argv[5] == NATIVE_MODE
+    raster_mode = len(argv) == 7 and argv[5] == RASTER_MODE
+    native_mode = (len(argv) == 6 and argv[5] == NATIVE_MODE) or raster_mode
     if len(argv) != 5 and not native_mode:
         return 64
     try:
         request_fd, pdf_fd, result_fd, parent_pid = map(int, argv[1:5])
-        fds = (request_fd, pdf_fd, result_fd)
-        if len(set(fds)) != 3 or any(fd < 3 for fd in fds):
+        resource_fd = int(argv[6]) if raster_mode else None
+        fds = (request_fd, pdf_fd, result_fd) + ((resource_fd,) if raster_mode else ())
+        if len(set(fds)) != len(fds) or any(fd < 3 for fd in fds):
             return 64
         for fd in fds:
             info = os.fstat(fd)
@@ -244,22 +258,32 @@ def main(argv: list[str] | None = None) -> int:
             from reporting._pdf_process_sandbox import (
                 enforce_pdf_landlock, enforce_pdf_network_filter,
             )
+        if raster_mode and __name__ == "__main__":
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
         enforce_pdf_landlock(Path(__file__))
         enforce_pdf_network_filter()
     except Exception:
         return 70
+    resources = None
     try:
-        request_options = {"protocol_version": NATIVE_PROTOCOL_VERSION} if native_mode else {}
-        html, digest = _read_request(request_fd, **request_options)
+        if raster_mode:
+            from reporting.pdf_raster_render import read_raster_inputs
+            html, digest, resources = read_raster_inputs(request_fd, resource_fd)
+        else:
+            request_options = {"protocol_version": NATIVE_PROTOCOL_VERSION} if native_mode else {}
+            html, digest = _read_request(request_fd, **request_options)
     except Exception:
-        return _failure(result_fd, "pdf_render_protocol_invalid", limits, native_mode=native_mode)
+        return _failure(result_fd, "pdf_render_protocol_invalid", limits,
+                        native_mode=native_mode, raster_mode=raster_mode)
     os.environ["SOURCE_DATE_EPOCH"] = SOURCE_DATE_EPOCH
+    if raster_mode:
+        render_options["resources"] = resources
     pdf, error = _render(html, digest, **render_options)
     page_count = None
     if error is None and native_mode:
         page_count, error = _discover_page_count(pdf)
     if error is not None:
-        return _failure(result_fd, error, limits, native_mode=native_mode)
+        return _failure(result_fd, error, limits, native_mode=native_mode, raster_mode=raster_mode)
     try:
         _write_bytes(pdf_fd, pdf)
         record = {
@@ -271,6 +295,10 @@ def main(argv: list[str] | None = None) -> int:
             record.update(protocol_version=NATIVE_PROTOCOL_VERSION, profile_id=NATIVE_PROFILE_ID,
                           profile_sha256=native_render_profile_sha256(), html_sha256=digest,
                           page_count=page_count)
+        if raster_mode:
+            from reporting.pdf_raster_render import PROFILE_ID, profile_sha256
+            record.update(protocol_version=3, profile_id=PROFILE_ID, profile_sha256=profile_sha256(),
+                          resources_sha256=resources.bundle_sha256, resource_count=len(resources.assets))
         _write_result(result_fd, record)
     except Exception:
         try:

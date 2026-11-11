@@ -111,26 +111,13 @@ class PngInspectionReceipt:
         }
 
 
-def inspect_staged_png(
-    *, expected_manifest: AssetManifest, resolved_manifest: AssetManifest,
-    png_bytes: bytes,
-) -> PngInspectionReceipt:
-    """Reject malformed and over-budget preloaded PNG without side effects."""
+def _inspect_png_container(png_bytes: bytes, expected_width: int, expected_height: int) -> dict:
+    """Reuse the exact finite PNG grammar without granting staging or render authority."""
     if type(png_bytes) is not bytes or not 8 <= len(png_bytes) <= MAX_ENCODED_BYTES:
         _reject("png_encoded_budget_or_type_invalid")
-    if type(expected_manifest) is not AssetManifest or type(resolved_manifest) is not AssetManifest:
-        _reject("png_typed_manifest_required")
-    try:
-        bind_staged_asset_inventory(
-            expected_manifest=expected_manifest,
-            resolved_manifest=resolved_manifest,
-            supplied_bytes=(png_bytes,),
-        )
-    except AssetRegistryError:
-        _reject("png_source_binding_failed")
-    asset = expected_manifest.assets[0]
-    if asset.role != "dna-illustration" or asset.media_type != "image/png":
-        _reject("png_media_role_not_admitted")
+    if (type(expected_width) is not int or type(expected_height) is not int
+            or not 1 <= expected_width <= 16384 or not 1 <= expected_height <= 16384):
+        _reject("png_declared_geometry_mismatch")
     if not png_bytes.startswith(PNG_SIGNATURE):
         _reject("png_signature_invalid")
 
@@ -165,7 +152,7 @@ def inspect_staged_png(
             if (not 1 <= width <= 16384 or not 1 <= height <= 16384
                     or width * height > MAX_PIXEL_COUNT):
                 _reject("png_dimension_budget_exceeded")
-            if width != asset.declared_width_px or height != asset.declared_height_px:
+            if width != expected_width or height != expected_height:
                 _reject("png_declared_geometry_mismatch")
             scanline_bytes = height * (1 + width * channels)
             if scanline_bytes > MAX_SCANLINE_BYTES:
@@ -200,13 +187,33 @@ def inspect_staged_png(
     stride = 1 + width * channels
     if any(inflated[row * stride] > 4 for row in range(height)):
         _reject("png_scanline_filter_invalid")
+    return dict(encoded_size_bytes=len(png_bytes), width_px=width, height_px=height,
+        pixel_count=width * height, color_type=color_type, channels=channels,
+        scanline_bytes=scanline_bytes, idat_chunk_count=idat_count, chunk_count=chunks)
+
+
+def inspect_staged_png(
+    *, expected_manifest: AssetManifest, resolved_manifest: AssetManifest,
+    png_bytes: bytes,
+) -> PngInspectionReceipt:
+    """Reject malformed and over-budget preloaded PNG without side effects."""
+    if type(png_bytes) is not bytes or not 8 <= len(png_bytes) <= MAX_ENCODED_BYTES:
+        _reject("png_encoded_budget_or_type_invalid")
+    if type(expected_manifest) is not AssetManifest or type(resolved_manifest) is not AssetManifest:
+        _reject("png_typed_manifest_required")
+    try:
+        bind_staged_asset_inventory(
+            expected_manifest=expected_manifest,
+            resolved_manifest=resolved_manifest,
+            supplied_bytes=(png_bytes,),
+        )
+    except AssetRegistryError:
+        _reject("png_source_binding_failed")
+    asset = expected_manifest.assets[0]
+    if asset.role != "dna-illustration" or asset.media_type != "image/png":
+        _reject("png_media_role_not_admitted")
+    metrics = _inspect_png_container(png_bytes, asset.declared_width_px, asset.declared_height_px)
     return PngInspectionReceipt(
-        asset_id=asset.asset_id,
-        asset_manifest_sha256=expected_manifest.manifest_sha256,
-        input_sha256=hashlib.sha256(png_bytes).hexdigest(),
-        encoded_size_bytes=len(png_bytes),
-        width_px=width, height_px=height, pixel_count=width * height,
-        color_type=color_type, channels=channels,
-        scanline_bytes=scanline_bytes, idat_chunk_count=idat_count,
-        chunk_count=chunks,
+        asset_id=asset.asset_id, asset_manifest_sha256=expected_manifest.manifest_sha256,
+        input_sha256=hashlib.sha256(png_bytes).hexdigest(), **metrics,
     )
