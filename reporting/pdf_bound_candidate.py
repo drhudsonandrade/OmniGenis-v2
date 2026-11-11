@@ -15,6 +15,11 @@ separate nested private candidate commit independently. Any failure withholds th
 return value, preserves evidence and requires explicit inspection/recovery, never
 automatic rerendering. Recovery needs independent expected result and PDF digests.
 Hostile same-owner mutation between observed checks remains outside this boundary.
+
+The default source-only-v1 mode retains its original projection and recovery.
+Explicit technical-assembly-v1 adds a bound methodology record for observed
+reporting steps only. Unavailable upstream science/assay/QC remains unavailable.
+Recovery requires the same caller-selected mode; stored data cannot select it.
 """
 from __future__ import annotations
 
@@ -152,9 +157,61 @@ def _source(bound: BoundReportRequest) -> dict:
     return value
 
 
-def _prepare(bound: BoundReportRequest, profile: str) -> tuple[dict, dict]:
+def _technical_methodology(bound: BoundReportRequest, document: dict) -> dict:
+    """Record only request/source/inventory checks already completed by this consumer.
+
+    The source declares VCF provenance and an evidence cutoff, not proof of an
+    upstream assay or executor run. The record is deterministic reporting metadata,
+    not an authenticated upstream execution record or release authorization. Later
+    rendering and persistence are not prematurely labelled completed here.
+    """
+    refs = bound.request.source_binding
+    payload = document['canonical_payload']
+    record = {
+        'schema': 'technical-report-assembly-execution-v1',
+        'conformance_scope': 'OBSERVED_REPORT_BINDING_AND_INVENTORY_VALIDATION_ONLY',
+        'request_sha256': bound.request.request_sha256,
+        'source_binding_sha256': refs.binding_sha256,
+        'input_artifact_sha256': refs.input_artifact.sha256,
+        'canonical_result_sha256': refs.canonical_result.sha256,
+        'evidence_snapshot_sha256': refs.evidence_snapshot.sha256,
+        'reference_bundle_sha256': refs.reference_bundle_sha256,
+        'declared_upstream_input_format': 'VCF',
+        'declared_evidence_cutoff': payload['as_of_date'],
+        'declared_finding_count': len(payload['items']),
+        'completed_reporting_steps': ['REQUEST_SNAPSHOT_BINDING',
+            'CANONICAL_SOURCE_BYTE_INTEGRITY', 'DECLARED_FINDING_INVENTORY_ACCOUNTING'],
+        'scientific_operations_executed_by_report_job': [],
+        'upstream_scientific_execution_verified': False,
+        'release_authorized': False,
+    }
+    for field in ('upstream_execution_record', 'laboratory', 'assay', 'quality',
+                  'callable_scope', 'requested_scientific_capabilities',
+                  'performed_scientific_capabilities'):
+        record[field] = {'availability': 'NOT_AVAILABLE'}
+    return {
+        'title': 'Methodology',
+        'brief': (
+            'The technical reporting job validated the bound request, immutable '
+            'source bytes and complete declared finding inventory. It projects '
+            'supplied canonical interpretations and does not execute sequencing '
+            'or variant analysis. The supplied result declares VCF provenance. '
+            'Laboratory, assay, upstream execution, quality and callable-scope '
+            'records are not available to this reporting boundary. A missing '
+            'reported finding does not establish a negative result. Evidence '
+            'timing and reference identity are preserved from bound source '
+            'metadata without refresh or independent scientific verification.'),
+        'execution_record': record,
+        'execution_record_sha256': sha256(generated._json_bytes(record)).hexdigest(),
+    }
+
+
+def _prepare(bound: BoundReportRequest, profile: str,
+             methodology_profile: str = 'source-only-v1') -> tuple[dict, dict]:
     """Derive exact native arguments and metadata from a revalidated actual request."""
     qualification._require_policy()
+    _require(type(methodology_profile) is str and methodology_profile in (
+        'source-only-v1', 'technical-assembly-v1'))
     _require(type(bound) is BoundReportRequest)
     BoundReportRequest.__post_init__(bound)
     _require(not bound.plan.upstream_exclusions and bound.plan.expected_section_ids == _SECTIONS
@@ -188,6 +245,8 @@ def _prepare(bound: BoundReportRequest, profile: str) -> tuple[dict, dict]:
             'source_envelope': {k: v for k, v in document.items() if k != 'canonical_payload'},
             'source_payload_metadata': {k: v for k, v in payload.items() if k != 'items'},
             'binding_scope': dict(_NONCLAIMS)}}
+    if methodology_profile == 'technical-assembly-v1':
+        assembly['provenance']['methodology'] = _technical_methodology(bound, document)
     compiled = compile_report_pack(report_id=REPORT_ID, **documents, canonical_interpretation=assembly)
     refs = request.source_binding
     view = build_report_view_model_and_release_bundle(compiled_report_pack=compiled,
@@ -232,6 +291,10 @@ def _prepare(bound: BoundReportRequest, profile: str) -> tuple[dict, dict]:
         'locale_pack_sha256': request.locale_pack.sha256, 'ir_sha256': ir_sha256,
         'resource_profile_sha256': profile, 'finding_count': len(payload['items']),
         'declared_source_inventory_accounted': True, **_NONCLAIMS}
+    if methodology_profile == 'technical-assembly-v1':
+        binding.update(schema='bound-qualification-pdf-candidate-v2',
+            methodology_profile=methodology_profile,
+            methodology_record_sha256=assembly['provenance']['methodology']['execution_record_sha256'])
     arguments = dict(presentation_ir=ir, expected_ir_sha256=ir_sha256,
         expected_language=request.locale_id, namespace_id=refs.identity.namespace_id,
         job_id=request.request_id, request_sha256=request.request_sha256,
@@ -239,9 +302,11 @@ def _prepare(bound: BoundReportRequest, profile: str) -> tuple[dict, dict]:
     return arguments, binding
 
 
-def _unchanged(bound: BoundReportRequest, arguments: dict, binding: dict) -> None:
+def _unchanged(bound: BoundReportRequest, arguments: dict, binding: dict,
+               methodology_profile: str = 'source-only-v1') -> None:
     """Rebuild current policy, request and file bindings before a successful return."""
-    current_arguments, current_binding = _prepare(bound, arguments['expected_resource_profile_sha256'])
+    current_arguments, current_binding = _prepare(
+        bound, arguments['expected_resource_profile_sha256'], methodology_profile)
     _require(generated._json_bytes(current_arguments) == generated._json_bytes(arguments)
              and generated._json_bytes(current_binding) == generated._json_bytes(binding))
 
@@ -255,7 +320,7 @@ def _expectations(arguments: dict, result_sha256: str, pdf_sha256: str) -> dict:
 
 def execute_bound_qualification_pdf_candidate(
     bound_request: BoundReportRequest, *, directory: Path, run_id: str,
-    expected_resource_profile_sha256: str,
+    expected_resource_profile_sha256: str, methodology_profile: str = 'source-only-v1',
 ) -> tuple[generated.PdfGeneratedSourceResult, dict, dict, dict]:
     """Generate once and return result, observation, binding and stored manifest.
 
@@ -264,9 +329,12 @@ def execute_bound_qualification_pdf_candidate(
     requires exact readback and current request/policy checks. Observation and
     binding metadata are returned detached; only existing store metadata persists.
     A computation SUCCEEDED receipt alone never establishes candidate persistence.
+    The optional methodology mode records prior reporting checks, not upstream
+    science or future rendering/storage success; its exact record is bound by IR.
     """
     try:
-        arguments, binding = _prepare(bound_request, expected_resource_profile_sha256)
+        arguments, binding = _prepare(
+            bound_request, expected_resource_profile_sha256, methodology_profile)
         captured, source_bytes = qualification._admit(arguments, directory, run_id)
     except Exception:
         raise PdfBoundCandidateError('pdf_bound_candidate_input_invalid') from None
@@ -276,7 +344,7 @@ def execute_bound_qualification_pdf_candidate(
         result_sha = qualification._completed_digest(result, arguments, captured, source_bytes)
         observation_bytes = qualification._observation_bytes(result, observation, observe_raster_children=True)
         expected = _expectations(arguments, result_sha, result.pdf_sha256)
-        _unchanged(bound_request, arguments, binding)
+        _unchanged(bound_request, arguments, binding, methodology_profile)
         with qualification._run_directory(directory, run_id, create=False) as (run, check):
             _require(receipts.read_job_receipt(run, run_id, 'SUCCEEDED', result_sha) == outcome)
             fd = receipts._open_private_directory(run)
@@ -291,7 +359,7 @@ def execute_bound_qualification_pdf_candidate(
                     directory=run / 'candidate', run_id=run_id, **expected)
                 _require(pdf == result.pdf_bytes and recovered == manifest)
                 _require(receipts.read_job_receipt(run, run_id, 'SUCCEEDED', result_sha) == outcome)
-                _unchanged(bound_request, arguments, binding)
+                _unchanged(bound_request, arguments, binding, methodology_profile)
                 _require(qualification._completed_digest(result, arguments, captured, source_bytes) == result_sha
                          and qualification._observation_bytes(result, observation,
                              observe_raster_children=True) == observation_bytes)
@@ -306,22 +374,25 @@ def execute_bound_qualification_pdf_candidate(
 def read_bound_qualification_pdf_candidate(
     bound_request: BoundReportRequest, *, directory: Path, run_id: str,
     expected_result_sha256: str, expected_pdf_sha256: str, expected_resource_profile_sha256: str,
+    methodology_profile: str = 'source-only-v1',
 ) -> tuple[bytes, dict, dict]:
     """Read the exact candidate and rebuild its binding without generating or writing.
 
     Expected digests must come from separately retained evidence. Missing or partial
     storage refuses. This does not reconstruct process observations, authenticate
     source identity or establish historical sync, reboot survival or release.
+    The caller must repeat the original methodology mode; no fallback is inferred.
     """
     try:
-        arguments, binding = _prepare(bound_request, expected_resource_profile_sha256)
+        arguments, binding = _prepare(
+            bound_request, expected_resource_profile_sha256, methodology_profile)
         qualification._admit(arguments, directory, run_id)
         expected = _expectations(arguments, expected_result_sha256, expected_pdf_sha256)
         with qualification._run_directory(directory, run_id, create=False) as (run, check):
             outcome = receipts.read_job_receipt(run, run_id, 'SUCCEEDED', expected_result_sha256)
             pdf, manifest = storage.read_qualification_pdf_candidate(
                 directory=run / 'candidate', run_id=run_id, **expected)
-            _unchanged(bound_request, arguments, binding)
+            _unchanged(bound_request, arguments, binding, methodology_profile)
             _require(receipts.read_job_receipt(run, run_id, 'SUCCEEDED', expected_result_sha256) == outcome)
             check()
             return pdf, deepcopy(manifest), deepcopy(binding)
