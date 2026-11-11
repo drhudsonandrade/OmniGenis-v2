@@ -306,4 +306,68 @@ class RasterProtocolAdversarialTests(unittest.TestCase):
                 self.m.profile_sha256()
 
 
+class RasterFailureProtocolTests(unittest.TestCase):
+    """Denied raster fetches keep their typed failure envelope without broad catches."""
+    setUp = RasterNativeTests.setUp
+    html = RasterNativeTests.html
+
+    def worker_failure(self, uri):
+        """Launch the real guarded worker and inspect only its anonymous response files."""
+        import os
+        import sys
+        import tempfile
+        from pathlib import Path
+        from reporting import adapters, _pdf_render_worker as worker
+        html = self.html(uri=uri).encode('utf-8')
+        with (tempfile.TemporaryFile() as request, tempfile.TemporaryFile() as output,
+              tempfile.TemporaryFile() as response, tempfile.TemporaryFile() as resources):
+            fds = tuple(f.fileno() for f in (request, output, response, resources))
+            header = f'3 {sha256(html).hexdigest()} {self.bundle.bundle_sha256}\n'.encode('ascii')
+            request.write(header + html); request.flush(); request.seek(0)
+            resources.write(self.bundle.to_bytes()); resources.flush(); resources.seek(0)
+            env = {k: os.environ[k] for k in ('PATH', 'HOME', 'LANG', 'LC_ALL', 'LC_CTYPE',
+                'TZ', 'FONTCONFIG_FILE', 'FONTCONFIG_PATH') if k in os.environ}
+            env.update(SOURCE_DATE_EPOCH='0', OMNIGENIS_PDF_QUALIFICATION_RECEIPT_MODE='qualification-only')
+            command = [sys.executable, '-I', '-B', str(Path(worker.__file__).resolve()),
+                *(str(fd) for fd in fds[:3]), str(os.getpid()), self.m.MODE, str(fds[3])]
+            child = adapters._start_pdf_render_worker(command, env=env, pass_fds=fds)
+            code = adapters._wait_pdf_render_worker(child, wall_seconds=worker.WALL_SECONDS)
+            response.seek(0)
+            return code, os.fstat(output.fileno()).st_size, response.read(worker.RESULT_BYTES + 1)
+
+    def test_denied_urls_return_version_three_failure_record_without_pdf(self):
+        """File, network and data URI refusals produce a complete FAIL record and no PDF."""
+        import json
+        from reporting import _pdf_render_worker as worker
+        for uri in ('file:///etc/passwd', 'https://example.invalid/image.png', 'data:image/png;base64,AA=='):
+            with self.subTest(uri=uri):
+                code, output_size, raw = self.worker_failure(uri)
+                self.assertEqual(output_size, 0)
+                self.assertEqual(code, 0, 'denied raster URL escaped without its failure envelope')
+                record = json.loads(raw)
+                self.assertEqual(record, {'protocol_version': 3, 'profile_id': self.m.PROFILE_ID,
+                    'profile_sha256': self.m.profile_sha256(), 'status': 'FAIL', 'error': 'pdf_render_failed',
+                    'limits': {'memory_bytes': worker.MEMORY_BYTES, 'cpu_seconds': worker.CPU_SECONDS,
+                        'file_bytes': worker.NATIVE_PDF_BYTES, 'open_files': worker.OPEN_FILES}})
+
+    def test_legacy_fatal_fetch_propagation_is_preserved(self):
+        """The opt-in failure record fix does not change legacy URL-refusal behavior."""
+        from reporting import _pdf_render_worker as worker
+        from weasyprint.urls import FatalURLFetchingError
+        html = self.html(uri='file:///etc/passwd')
+        with self.assertRaises(FatalURLFetchingError):
+            worker._render(html, sha256(html.encode()).hexdigest())
+
+    def test_process_control_base_exceptions_are_not_swallowed(self):
+        """Only the named fetch failure is handled; interrupts and process exits still escape."""
+        from reporting import _pdf_render_worker as worker
+        from weasyprint import HTML
+        html = self.html()
+        for resources in (None, self.bundle):
+            for exception in (KeyboardInterrupt, SystemExit):
+                with self.subTest(resources=resources is not None, exception=exception.__name__), \
+                        patch.object(HTML, 'write_pdf', side_effect=exception), self.assertRaises(exception):
+                    worker._render(html, sha256(html.encode()).hexdigest(), resources=resources)
+
+
 if __name__ == '__main__': unittest.main()

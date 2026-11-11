@@ -174,7 +174,7 @@ def _render(html: str, digest: str, *, max_pdf_bytes: int = PDF_BYTES,
     try:
         from importlib.metadata import version
         from weasyprint import HTML
-        from weasyprint.urls import URLFetcher
+        from weasyprint.urls import URLFetcher, FatalURLFetchingError
     except (ImportError, OSError):
         return None, "pdf_engine_unavailable"
     try:
@@ -194,6 +194,10 @@ def _render(html: str, digest: str, *, max_pdf_bytes: int = PDF_BYTES,
             pdf_version="1.7")
         if resources is not None:
             fetcher.require_complete()
+    except FatalURLFetchingError:
+        if resources is None:
+            raise
+        return None, "pdf_render_failed"
     except Exception:
         return None, "pdf_render_failed"
     if type(pdf) is not bytes or not pdf.startswith(b"%PDF-1.7"):
