@@ -202,9 +202,30 @@ class QualificationGeneratedJobTests(unittest.TestCase):
         self.assertNotIn(b"PRIVATE_TEST_DETAIL", raw)
         self.assertIsNone(self.recover("FAILED", None)["result_sha256"])
 
-    def test_real_native_refusal_has_failed_outcome(self):
-        """The real generator's inherited one-observation refusal cannot become success."""
-        with self.assertRaises(self.job.PdfQualificationJobError): self.execute(count=1)
+    def test_binary_identifier_candidate_has_exact_durable_outcome(self):
+        """The corrected native admission preserves the original PDF and success digest."""
+        default = existing.adapters.build_html_css_and_pdf_adapter(
+            presentation_ir=existing.source(1))
+        self.assertTrue(default.passed, default.errors)
+        try:
+            result, outcome = self.execute(count=1)
+        except self.job.PdfQualificationJobError as exc:
+            self.fail("valid binary-ID qualification refused: " + str(exc))
+        self.assertEqual(result.pdf_bytes, default.pdf_bytes)
+        self.assertEqual(outcome["state"], "SUCCEEDED")
+        self.assertEqual(outcome["result_sha256"], result.result_sha256)
+        self.assertEqual(self.recover("SUCCEEDED", result.result_sha256), outcome)
+        self.assertIs(outcome["release_authorized"], False)
+
+    def test_native_inspection_failure_keeps_failed_receipt_without_retry(self):
+        """Injected native failure leaves no successful outcome or automatic rerender."""
+        with patch.object(generated, "execute_pdf_native_source_job",
+                          side_effect=generated.native_source.PdfNativeSourceJobError(
+                              "pdf_native_source_job_execution_failed")) as native:
+            with self.assertRaisesRegex(self.job.PdfQualificationJobError,
+                                        "^pdf_qualification_job_execution_failed$"):
+                self.execute(count=1)
+        native.assert_called_once()
         self.assertEqual(self.recover("FAILED", None)["state"], "FAILED")
 
     def test_interrupted_computation_preserves_interrupt_and_failed_record(self):

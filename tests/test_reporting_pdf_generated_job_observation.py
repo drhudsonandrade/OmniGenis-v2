@@ -343,10 +343,36 @@ class GeneratedJobObservationTests(unittest.TestCase):
                          (result.page_count + 3) // 4 + result.page_count)
         self.assertLess(len(result.pdf_bytes), 8 * 1024 * 1024)
 
-    def test_existing_identifier_refusal_is_preserved(self):
-        """The optional observer must not repair or retry an inherited native refusal."""
-        with self.assertRaises(job.PdfGeneratedSourceJobError):
-            self.run_job(count=1)
+    def test_binary_identifier_observation_preserves_exact_candidate(self):
+        """The original binary-ID source is observed once without rewriting its PDF."""
+        arguments = self.arguments(count=1)
+        before = canonical(arguments["presentation_ir"])
+        default = existing.adapters.build_html_css_and_pdf_adapter(
+            presentation_ir=arguments["presentation_ir"])
+        self.assertTrue(default.passed, default.errors)
+        original = job.native_source.execute_observed_pdf_native_source_job
+        with patch.object(job.native_source, "execute_observed_pdf_native_source_job",
+                          wraps=original) as native:
+            try:
+                result, record = job.execute_observed_pdf_generated_source_job(**arguments)
+            except job.PdfGeneratedSourceJobError as exc:
+                self.fail("valid binary-ID observation refused: " + str(exc))
+        native.assert_called_once()
+        self.assertEqual(result.pdf_bytes, default.pdf_bytes)
+        self.assertEqual(record["pdf_sha256"], sha256(default.pdf_bytes).hexdigest())
+        self.assertEqual(record["generated_result_sha256"], result.result_sha256)
+        self.assertEqual(record["declared_retries"], 0)
+        self.assertEqual(canonical(arguments["presentation_ir"]), before)
+
+    def test_native_inspection_failure_is_not_repaired_or_retried(self):
+        """An injected native failure still propagates without a successful pair."""
+        with patch.object(job.native_source, "execute_observed_pdf_native_source_job",
+                          side_effect=job.native_source.PdfNativeSourceJobError(
+                              "pdf_native_source_job_execution_failed")) as native:
+            with self.assertRaisesRegex(job.PdfGeneratedSourceJobError,
+                                        "^pdf_generated_source_job_execution_failed$"):
+                self.run_job(count=1)
+        native.assert_called_once()
 
 
 if __name__ == "__main__":
