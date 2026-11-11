@@ -661,8 +661,8 @@ class BoundRasterStorageTests(unittest.TestCase):
         before = self.snapshot()
         with patch.object(self.m, 'execute_bound_raster_candidate', side_effect=AssertionError('render forbidden')), \
                 patch.object(native, 'execute_pdf_native_source_job', side_effect=AssertionError('inspect forbidden')), \
-                patch.object(self.storage, '_write_data', side_effect=AssertionError('write forbidden')), \
-                patch.object(self.receipts, 'write_job_receipt', side_effect=AssertionError('commit forbidden')):
+                patch.object(self.m, '_write_stored_data', side_effect=AssertionError('write forbidden')), \
+                patch.object(self.m, '_write_stored_receipt', side_effect=AssertionError('commit forbidden')):
             pdf, manifest = self.recover()
             self.assertEqual((pdf, manifest), (expected_pdf, expected_manifest))
             manifest['result']['binding']['finding_count'] = 0
@@ -686,7 +686,7 @@ from reporting import pdf_bound_raster_candidate as m
 from tests.test_reporting_pdf_bound_raster_candidate import long_raster_inputs
 values=json.loads(sys.argv[1])
 arguments,_=long_raster_inputs(m)
-with patch.object(m,'execute_bound_raster_candidate',side_effect=AssertionError('render forbidden')), patch.object(m.native,'execute_pdf_native_source_job',side_effect=AssertionError('inspect forbidden')), patch.object(m.storage,'_write_data',side_effect=AssertionError('write forbidden')), patch.object(m.receipts,'write_job_receipt',side_effect=AssertionError('commit forbidden')):
+with patch.object(m,'execute_bound_raster_candidate',side_effect=AssertionError('render forbidden')), patch.object(m.native,'execute_pdf_native_source_job',side_effect=AssertionError('inspect forbidden')), patch.object(m,'_write_stored_data',side_effect=AssertionError('write forbidden')), patch.object(m,'_write_stored_receipt',side_effect=AssertionError('commit forbidden')):
     pdf,manifest=m.read_stored_bound_raster_candidate(**arguments,directory=Path(values['directory']),run_id=values['run_id'],expected_result_sha256=values['result'],expected_pdf_sha256=values['pdf'],expected_storage_profile_sha256=values['profile'])
 print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256'],'pages':manifest['page_count']}))
 '''
@@ -845,13 +845,13 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
     def test_partial_write_is_preserved_without_commit_or_reexecution(self):
         """An incomplete data file remains evidence and cannot be repaired by retry."""
         pair = self.pair()
-        real = self.storage._write_data
+        real = self.m._write_stored_data
         def partial(fd, name, data, limit):
             """Inject a partial first file before refusing the write."""
             real(fd, name, data[:20], limit)
             raise OSError('private write failure')
         with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
-                patch.object(self.storage, '_write_data', side_effect=partial):
+                patch.object(self.m, '_write_stored_data', side_effect=partial):
             with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
         run = self.root / self.run_id
         self.assertEqual((run / 'candidate.pdf').stat().st_size, 20)
@@ -862,7 +862,7 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
             execute.assert_not_called()
 
     def test_zero_progress_write_cannot_commit(self):
-        """The inherited write loop refuses a zero-byte write instead of spinning."""
+        """The bounded write loop refuses a zero-byte write instead of spinning."""
         pair = self.pair()
         with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
                 patch.object(self.storage.os, 'write', return_value=0):
@@ -901,9 +901,9 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
     def test_receipt_commits_only_after_exact_data_readback(self):
         """The actual receipt writer sees both exact closed data files and no marker."""
         pair = self.pair()
-        real = self.receipts.write_job_receipt
+        real = self.m._write_stored_receipt
         def commit(directory, run_id, state, result_sha256):
-            """Inspect the publication boundary, then use the unchanged real writer."""
+            """Inspect the publication boundary, then use the descriptor-preserving writer."""
             import json
             self.assertEqual(set(p.name for p in directory.iterdir()), {'candidate.pdf', 'manifest.json'})
             self.assertEqual((directory / 'candidate.pdf').read_bytes(), pair[0].pdf_bytes)
@@ -912,7 +912,7 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
             self.assertEqual((run_id, state), (self.run_id, 'SUCCEEDED'))
             return real(directory, run_id, state, result_sha256)
         with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
-                patch.object(self.receipts, 'write_job_receipt', side_effect=commit) as writer:
+                patch.object(self.m, '_write_stored_receipt', side_effect=commit) as writer:
             self.execute()
         self.assertEqual(writer.call_count, 1)
 
@@ -920,7 +920,7 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
         """Complete data without the exact terminal receipt is not an accepted artifact."""
         pair = self.pair()
         with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
-                patch.object(self.receipts, 'write_job_receipt', side_effect=OSError('commit failed')):
+                patch.object(self.m, '_write_stored_receipt', side_effect=OSError('commit failed')):
             with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
         self.assertTrue((self.root / self.run_id / 'manifest.json').exists())
         with self.assertRaises(self.m.PdfBoundRasterError): self.recover()
@@ -928,13 +928,13 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
     def test_postcommit_failure_requires_explicit_exact_recovery(self):
         """An exception after a valid commit returns no success and never repeats native work."""
         pair = self.pair()
-        real = self.receipts.write_job_receipt
+        real = self.m._write_stored_receipt
         def committed(*args):
             """Inject the failure after the real fsynced receipt returns."""
             real(*args)
             raise OSError('postcommit failure')
         with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
-                patch.object(self.receipts, 'write_job_receipt', side_effect=committed):
+                patch.object(self.m, '_write_stored_receipt', side_effect=committed):
             with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
         before = self.snapshot()
         with patch.object(self.m, 'execute_bound_raster_candidate', side_effect=AssertionError('no retry')):
@@ -945,7 +945,7 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
         """A nonordinary interruption preserves the consumed attempt without success."""
         pair = self.pair()
         with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
-                patch.object(self.receipts, 'write_job_receipt', side_effect=KeyboardInterrupt):
+                patch.object(self.m, '_write_stored_receipt', side_effect=KeyboardInterrupt):
             with self.assertRaises(KeyboardInterrupt): self.execute()
         with self.assertRaises(self.m.PdfBoundRasterError): self.recover()
 
@@ -1061,7 +1061,7 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
     def test_resource_drift_during_commit_withholds_success(self):
         """Persisted equality cannot override changed current resource declarations."""
         pair = self.pair()
-        real = self.receipts.write_job_receipt
+        real = self.m._write_stored_receipt
         asset = self.assets.assets[0]
         previous = asset.rights_sha256
         def changed(*args):
@@ -1071,7 +1071,7 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
             return result
         try:
             with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
-                    patch.object(self.receipts, 'write_job_receipt', side_effect=changed):
+                    patch.object(self.m, '_write_stored_receipt', side_effect=changed):
                 with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
         finally: object.__setattr__(asset, 'rights_sha256', previous)
         self.assertEqual(self.recover()[0], pair[0].pdf_bytes)
@@ -1079,13 +1079,13 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
     def test_disable_during_commit_and_recovery_withholds_return(self):
         """Live policy is rechecked after writes and after a full read transaction."""
         pair = self.pair()
-        real_commit = self.receipts.write_job_receipt
+        real_commit = self.m._write_stored_receipt
         def committed(*args):
             """Disable only after the real commit, without deleting the bundle."""
             value = real_commit(*args); os.environ[DISABLE] = '1'; return value
         with patch.dict(os.environ), \
                 patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
-                patch.object(self.receipts, 'write_job_receipt', side_effect=committed):
+                patch.object(self.m, '_write_stored_receipt', side_effect=committed):
             with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
         self.assertEqual(self.recover()[0], pair[0].pdf_bytes)
         real_read = self.storage._read_data
@@ -1122,19 +1122,20 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
     def test_written_pdf_replacement_during_manifest_write_prevents_commit(self):
         """The first data file must retain its identity while the second is written."""
         pair = self.pair()
-        real = self.storage._write_data
+        real = self.m._write_stored_data
         replaced = False
         def write(fd, name, data, limit):
             """Inject a persistent equal-byte substitution after the other file write."""
             nonlocal replaced
-            real(fd, name, data, limit)
+            original = real(fd, name, data, limit)
             if name == 'manifest.json':
                 replaced = True
                 path = self.root / self.run_id / 'candidate.pdf'
                 previous = path.read_bytes()
                 path.unlink(); path.write_bytes(previous); path.chmod(0o600)
+            return original
         with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
-                patch.object(self.storage, '_write_data', side_effect=write):
+                patch.object(self.m, '_write_stored_data', side_effect=write):
             with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
         self.assertTrue(replaced)
         self.assertFalse((self.root / self.run_id / (self.run_id + '.json')).exists())
@@ -1198,6 +1199,45 @@ print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256
                             patch.object(self.m, '_storage_unchanged', side_effect=check):
                         with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
                     self.assertTrue(changed)
+
+
+    def test_equal_bytes_writer_handoff_replacement_is_refused(self):
+        """A writer's closed descriptor must remain the identity anchor for every member."""
+        from pathlib import Path
+        import stat
+        import tempfile
+        pair = self.pair()
+        real_close = os.close
+        for name in ('candidate.pdf', 'manifest.json', self.run_id + '.json'):
+            with tempfile.TemporaryDirectory() as temporary:
+                self.root = Path(temporary)
+                replaced = False
+                def close(fd):
+                    """Substitute equal bytes at the writer-to-caller return boundary."""
+                    nonlocal replaced
+                    info = os.fstat(fd)
+                    run = self.root / self.run_id
+                    target = run / name
+                    replace_now = False
+                    if not replaced and target.exists():
+                        current = target.lstat()
+                        same_file = (info.st_dev, info.st_ino) == (current.st_dev, current.st_ino)
+                        same_run = (name == self.run_id + '.json'
+                            and stat.S_ISDIR(info.st_mode)
+                            and (info.st_dev, info.st_ino) == (run.stat().st_dev, run.stat().st_ino))
+                        replace_now = same_file or same_run
+                    real_close(fd)
+                    if replace_now:
+                        replaced = True
+                        replacement = run / '.writer-handoff-replacement'
+                        replacement.write_bytes(target.read_bytes())
+                        replacement.chmod(0o600)
+                        replacement.replace(target)
+                with self.subTest(name=name), \
+                        patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                        patch.object(os, 'close', side_effect=close):
+                    with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+                self.assertTrue(replaced)
 
     def test_descriptor_balance_after_success_and_refusal(self):
         """Repeated accepted and rejected read transactions close every owned descriptor."""

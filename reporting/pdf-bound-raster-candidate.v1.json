@@ -63,7 +63,7 @@
     "reporting/_pdf_render_worker.py": "0d4a7730ce0b212930b7497f443cb6042f5061a19c4173162b420f93ad8555b1",
     "reporting/adapters.py": "eaf7db018bc668e2df6dc5f2a365b02571bef75fd47e04986561d9db8a096413",
     "reporting/pdf_bound_candidate.py": "84d62e14703c5743066b00b6e1814df7a91975b50ae701fb8a341ac963436381",
-    "reporting/pdf_bound_raster_candidate.py": "e84fd248289d2c38de20a20e394a4caedb483fefe253d9be9f2587b910817e9f",
+    "reporting/pdf_bound_raster_candidate.py": "1a0449a06b36500677e5610c4f1e8efb528c77650b7446ce17a142a454a61ac6",
     "reporting/pdf_candidate_store.py": "a71412523180dc56b2685d4e79102bccd6f76dd76662403a9d7a5a06b2528935",
     "reporting/pdf_generated_source_job.py": "ee2d97aa1d9dd79806ad742b1776ba7417131c08de3b710c74bd3ee814fe1743",
     "reporting/pdf_native_source_job.py": "3feba56b00b80139112fcf4abadc39d6d95554417cc6d89adb8b37eb09bb64b3",

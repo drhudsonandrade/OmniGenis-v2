@@ -20,6 +20,7 @@ from copy import deepcopy
 from hashlib import sha256
 from html import escape
 from pathlib import Path
+from secrets import token_hex
 import os
 import time
 
@@ -406,6 +407,73 @@ def _read_stored(arguments: dict, directory: Path, run_id: str, prepared: bytes,
             os.close(fd)
 
 
+
+def _write_stored_file(directory_fd: int, name: str, data: bytes, limit: int,
+                       *, commit: bool = False) -> tuple[int, ...]:
+    """Retain the synced writer identity; preserve incomplete attempts on failure."""
+    _require(type(data) is bytes and 0 < len(data) <= limit)
+    staged = '.' + name + '.' + token_hex(16) + '.tmp' if commit else name
+    fd = os.open(staged, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+                 | os.O_CLOEXEC, 0o600, dir_fd=directory_fd)
+    try:
+        os.fchmod(fd, 0o600)
+        position = 0
+        while position < len(data):
+            remaining = min(65536, len(data) - position)
+            written = os.write(fd, memoryview(data)[position:position + remaining])
+            _require(type(written) is int and 0 < written <= remaining)
+            position += written
+        os.fsync(fd)
+        original = storage._file_identity(os.fstat(fd), limit)
+        _require(original[6] == len(data)
+            and storage._file_identity(os.stat(staged, dir_fd=directory_fd,
+                follow_symlinks=False), limit) == original)
+        if commit:
+            # Keep the original descriptor open through exclusive receipt publication.
+            os.link(staged, name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd,
+                    follow_symlinks=False)
+            os.fsync(directory_fd)
+            linked = os.fstat(fd)
+            _require(linked.st_nlink == 2
+                and (linked.st_dev, linked.st_ino) == original[:2])
+            for linked_name in (staged, name):
+                current = os.stat(linked_name, dir_fd=directory_fd, follow_symlinks=False)
+                _require(current.st_nlink == 2
+                    and (current.st_dev, current.st_ino) == original[:2])
+            os.unlink(staged, dir_fd=directory_fd)
+            os.fsync(directory_fd)
+        identity = storage._file_identity(os.fstat(fd), limit)
+        # Linking changes ctime; every other admitted field must remain identical.
+        _require((identity[:-1] == original[:-1] if commit else identity == original)
+            and storage._file_identity(os.stat(name, dir_fd=directory_fd,
+                follow_symlinks=False), limit) == identity)
+        return identity
+    finally:
+        os.close(fd)
+
+
+def _write_stored_data(directory_fd: int, name: str, data: bytes,
+                       limit: int) -> tuple[int, ...]:
+    """Create a bounded data member and return its descriptor-derived identity."""
+    _require(name in storage._DATA_NAMES)
+    return _write_stored_file(directory_fd, name, data, limit)
+
+
+def _write_stored_receipt(directory: Path, run_id: str, state: str,
+                          result_sha256: str) -> tuple[int, ...]:
+    """Commit the unchanged canonical receipt and return the original file identity."""
+    data = receipts._receipt_bytes(run_id, state, result_sha256)
+    fd = receipts._open_private_directory(directory)
+    try:
+        directory_identity = receipts._private_directory_identity(fd)
+        identity = _write_stored_file(fd, run_id + '.json', data,
+                                     receipts.MAX_RECEIPT_BYTES, commit=True)
+        _require(receipts._private_directory_identity(fd) == directory_identity)
+        return identity
+    finally:
+        os.close(fd)
+
+
 def execute_stored_bound_raster_candidate(*, bound_request: BoundReportRequest,
         resources: resource_module.RasterBundle, expected_request_sha256: str,
         expected_resources_sha256: str, expected_resource_profile_sha256: str,
@@ -457,11 +525,12 @@ def execute_stored_bound_raster_candidate(*, bound_request: BoundReportRequest,
                     run_id + '.json': receipts.MAX_RECEIPT_BYTES}
                 written_identities = {}
 
-                def pin_written(name: str) -> None:
-                    """Retain each created file once; never adopt a later replacement."""
+                def pin_written(name: str, original: tuple[int, ...]) -> None:
+                    """Require the writer's descriptor identity; never adopt a named replacement."""
                     _require(name in limits and name not in written_identities)
-                    written_identities[name] = storage._file_identity(
-                        os.stat(name, dir_fd=fd, follow_symlinks=False), limits[name])
+                    _require(storage._file_identity(os.stat(name, dir_fd=fd,
+                        follow_symlinks=False), limits[name]) == original)
+                    written_identities[name] = original
 
                 def unchanged() -> None:
                     """Keep both original sealed outputs and current input projection fixed."""
@@ -480,15 +549,15 @@ def execute_stored_bound_raster_candidate(*, bound_request: BoundReportRequest,
                 unchanged()
                 _require(not os.listdir(fd))
                 for name, data in (('candidate.pdf', pdf), ('manifest.json', manifest_raw)):
-                    storage._write_data(fd, name, data, limits[name])
-                    pin_written(name)
+                    original = _write_stored_data(fd, name, data, limits[name])
+                    pin_written(name, original)
                 os.fsync(fd)
                 _require(set(os.listdir(fd)) == storage._DATA_NAMES
                     and storage._read_data(fd, 'candidate.pdf', storage.MAX_PDF_BYTES) == pdf
                     and storage._read_data(fd, 'manifest.json', storage.MAX_MANIFEST_BYTES) == manifest_raw)
                 unchanged()
-                receipts.write_job_receipt(run, run_id, 'SUCCEEDED', result_sha256)
-                pin_written(run_id + '.json')
+                original_receipt = _write_stored_receipt(run, run_id, 'SUCCEEDED', result_sha256)
+                pin_written(run_id + '.json', original_receipt)
                 unchanged()
                 recovered_pdf, recovered_manifest = _read_stored(arguments, directory, run_id,
                     prepared, result_sha256, pdf_sha256, expected_storage_profile_sha256)
