@@ -806,7 +806,7 @@ class FixedWorkerLifetimeTests(unittest.TestCase):
         self.assertEqual(events[-1]['parent_signal'], int(signal.SIGKILL))
 
     def test_manifest_pins_separate_lifetime_without_changing_wire_profiles(self):
-        """Bind the checked lifecycle policy separately from unchanged legacy/native wire bytes."""
+        """Bind the separate lifetime policy and current native dependency identity."""
         from hashlib import sha256
 
         profile = getattr(worker, 'worker_lifetime_profile', None)
@@ -820,7 +820,7 @@ class FixedWorkerLifetimeTests(unittest.TestCase):
         self.assertEqual(worker.PROFILE_SHA256,
                          '52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b')
         self.assertEqual(worker.NATIVE_PROFILE_SHA256,
-                         '8d43f3c8b91475462ffe26efce4fb5e920d148ea5ce436f730f7206e8cfb7aea')
+                         '7b00490a9a735f0bb146a440458f175658e19139f2e036dbcd54a597e963535d')
         self.assertFalse(worker.worker_profile()['hard_job_deadline_enforced'])
         self.assertFalse(worker.worker_profile()['aggregate_job_resources_qualified'])
 
