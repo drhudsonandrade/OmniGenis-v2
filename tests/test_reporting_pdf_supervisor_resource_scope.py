@@ -318,9 +318,9 @@ class SupervisorResourceScopeTests(unittest.TestCase):
         self.assertEqual(supervisor.PROFILE_SHA256,
                          'd020c676e11207bdfd007dcd90488888bcebd6b1ee1285faa514b116d7c41095')
         self.assertEqual(supervisor.NATIVE_PROFILE_SHA256,
-                         '7ac5ff687f95dc3f4b286b8d7b1209bcfc2296f1a7fc0df0cd0d82aef6d82a46')
+                         '87103abeaff9b1720c01ccb713fe503c0b82bd8bd02dbf1ae2a2a67843e6c680')
         self.assertEqual(supervisor.RESOURCE_SCOPE_PROFILE_SHA256,
-                         '850caba50614a648dfeaa0eb6e2511026c1f2d00d90c9bccfb7f76e2cee2b402')
+                         'd3db67b1129da2ebce63afa6a84dce5a7499c54f6c8f571119ac65fb3b3ad310')
         for name in ('continuous_enforcement', 'job_cgroup_exclusivity_verified',
                      'aggregate_job_resources_qualified', 'hard_job_deadline_qualified',
                      'arbitrary_descendant_cleanup_qualified', 'host_authenticated',

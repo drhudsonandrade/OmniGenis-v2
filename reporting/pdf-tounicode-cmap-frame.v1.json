@@ -21,7 +21,7 @@
   "parser_version": "6.19.0",
   "pdf_ua_qualified": false,
   "policy_id": "generated-native-tounicode-bfchar-frame-v1",
-  "previous_tounicode_zlib_profile_sha256": "97c958f48138ac34d327a0b5210fa59e49ee91e075ca9d12d0a039133ff2b878",
+  "previous_tounicode_zlib_profile_sha256": "688cc49703afb7fae20b1b854da97c399abe00880176f9e2c19d69d29ed75d8a",
   "profile_id": "generated-pdf-tounicode-cmap-frame-v1",
   "reading_order_verified": false,
   "release_authorized": false,

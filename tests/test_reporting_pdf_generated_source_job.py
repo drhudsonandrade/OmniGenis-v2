@@ -75,7 +75,7 @@ class GeneratedSourceJobTests(unittest.TestCase):
         return self.m.execute_pdf_generated_source_job(**self.arguments(ir, **changes))
 
     def real_case(self, count=2):
-        """Retain fixed admitted sources; one-observation /ID refusal has a separate test."""
+        """Retain fixed admitted sources; the original binary-ID case has a separate test."""
         if count not in type(self)._cases:
             ir = source(count)
             before = canonical(ir)
@@ -131,22 +131,27 @@ class GeneratedSourceJobTests(unittest.TestCase):
         self.assertEqual(default.pdf_bytes, result.pdf_bytes)
         self.assertEqual(default.html_sha256, result.to_dict()['html_sha256'])
 
-    def test_default_ready_does_not_override_inherited_native_identifier_refusal(self):
-        """The existing native subset can reject a valid in-budget default candidate."""
+    def test_default_ready_binary_identifier_candidate_keeps_exact_bytes(self):
+        """The original valid binary-ID fixture passes without changing source or PDF."""
         from io import BytesIO
         from pypdf import PdfReader
         from pypdf.generic import ByteStringObject, TextStringObject
         ir = source(1)
+        source_before = canonical(ir)
         default = adapters.build_html_css_and_pdf_adapter(presentation_ir=ir)
         self.assertTrue(default.passed, default.errors)
         self.assertEqual(default.pdf_status, 'READY')
         ids = PdfReader(BytesIO(default.pdf_bytes), strict=True).trailer.raw_get('/ID')
         self.assertIs(type(ids[0]), ByteStringObject)
         self.assertIs(type(ids[1]), TextStringObject)
-        self.assertEqual([len(value) for value in ids], [32, 32])
-        with self.assertRaisesRegex(self.m.PdfGeneratedSourceJobError,
-                                    '^pdf_generated_source_job_execution_failed$'):
-            self.run_job(ir)
+        self.assertEqual([len(value.original_bytes) for value in ids], [32, 32])
+        try:
+            result = self.run_job(ir)
+        except self.m.PdfGeneratedSourceJobError as exc:
+            self.fail('valid original binary-ID candidate refused: ' + str(exc))
+        self.assertEqual(result.pdf_bytes, default.pdf_bytes)
+        self.assertEqual(result.pdf_sha256, sha256(default.pdf_bytes).hexdigest())
+        self.assertEqual(canonical(ir), source_before)
 
     def test_no_release_or_complete_qualification_is_added(self):
         """A true native PASS still cannot be presented as FINAL or whole-job qualification."""

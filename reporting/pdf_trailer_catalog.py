@@ -23,7 +23,7 @@ from reporting._pdf_object_graph_worker import (
     PARSER_VERSION, PROTOCOL_VERSION, RESULT_BYTES, _is_digest,
 )
 from reporting._pdf_trailer_catalog_worker import (
-    LANGUAGE, MAX_DOCUMENT_PAGES, POLICY_ID, PROFILE_ID, STATUS,
+    IDENTIFIER_POLICY, LANGUAGE, MAX_DOCUMENT_PAGES, POLICY_ID, PROFILE_ID, STATUS,
     _identity, _identity_from_plan,
 )
 
@@ -52,6 +52,7 @@ def trailer_catalog_profile() -> dict:
         "max_pages": MAX_DOCUMENT_PAGES,
         "max_pdf_bytes": MAX_PDF_BYTES,
         "trailer_keys_policy": "EXACT_ROOT_INFO_ID_SIZE",
+        "file_identifier_policy": IDENTIFIER_POLICY,
         "catalog_reference_policy": "INDEXED_GENERATION_ZERO_ROOT_INFO_PAGES",
         "catalog_page_tree_policy": "FLAT_KIDS_MATCH_PHYSICAL_PAGE_ORDER_AND_PARENT",
         "parser_repair_policy": "NO_XREF_MAP_CHANGES_DURING_CATALOG_RESOLUTION",
@@ -70,7 +71,7 @@ def trailer_catalog_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(trailer_catalog_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "3d3502d1f2ff01f63a4d05195e219b5ae63e21e2c75667df4f2492b3395058ae"
+_FIXED_PROFILE_SHA256 = "46339262c1b2fba8776dffa591bebc3352be3c4db6d85acfb9361e48b3f1dbeb"
 
 
 def _profile() -> None:

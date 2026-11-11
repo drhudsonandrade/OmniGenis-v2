@@ -29,7 +29,7 @@ from reporting._pdf_page_surface_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_PAGE_SURFACE_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "3d3502d1f2ff01f63a4d05195e219b5ae63e21e2c75667df4f2492b3395058ae"
+_FIXED_PARENT_PROFILE_SHA256 = "46339262c1b2fba8776dffa591bebc3352be3c4db6d85acfb9361e48b3f1dbeb"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -75,7 +75,7 @@ def page_surface_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(page_surface_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "0f50a0dbda655217f0dcb8a4e7590f4347fe54c6a58632a8efeaffa700fd5b5e"
+_FIXED_PROFILE_SHA256 = "befc2bff3bea10962c6f947518cbf42249460f38bef399d595d331c4d6b8940f"
 
 
 def _profile() -> None:

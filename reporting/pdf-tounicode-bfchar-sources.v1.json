@@ -23,7 +23,7 @@
   "parser_version": "6.19.0",
   "pdf_ua_qualified": false,
   "policy_id": "generated-native-tounicode-bfchar-source-uniqueness-v1",
-  "previous_tounicode_utf16be_targets_profile_sha256": "becaba64879ed60662de3c4c952c1262720fee0bd09f89241da0a3938511c6f2",
+  "previous_tounicode_utf16be_targets_profile_sha256": "b114df68d374087ac983da6f6771e9e384106f2d07b1b9e5ebad3754797f9054",
   "profile_id": "generated-pdf-tounicode-bfchar-sources-v1",
   "reading_order_verified": false,
   "release_authorized": false,

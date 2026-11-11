@@ -12,7 +12,7 @@
   "parser_version": "6.19.0",
   "pdf_ua_qualified": false,
   "policy_id": "generated-native-tounicode-flate-header-v1",
-  "previous_cid_widths_profile_sha256": "4aba561c7218d21f40136a14e225d192ed48c6949370956986889280987479a3",
+  "previous_cid_widths_profile_sha256": "dbbe4868be75c8dbb06daf12e3806974d858f15de1a4c6cab845fce644f1e509",
   "profile_id": "generated-pdf-tounicode-header-v1",
   "raw_tounicode_header_policy": "NATIVE_FLATE_ZLIB_HEADER_ONLY",
   "reading_order_verified": false,

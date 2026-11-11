@@ -28,6 +28,7 @@ from reporting._pdf_render_worker import _write_bytes
 PROFILE_ID = "generated-pdf-trailer-catalog-v1"
 POLICY_ID = "generated-pdf-exact-xref-trailer-catalog-v1"
 STATUS = "TRAILER_CATALOG_ADMITTED"
+IDENTIFIER_POLICY = "EXACT_TWO_DIRECT_32_BYTE_STRINGS_WITH_ORIGINAL_BYTE_PARITY"
 LANGUAGE = previous.LANGUAGE
 MAX_DOCUMENT_PAGES = previous.MAX_DOCUMENT_PAGES
 _TRAILER_KEYS = frozenset(("/Root", "/Info", "/ID", "/Size"))
@@ -54,6 +55,28 @@ def _reference_id(ref: object, reader: object, indexed: set[int]) -> int:
     return ref.idnum
 
 
+def _identifier_pair(value: object) -> tuple[bytes, bytes]:
+    """Capture two direct 32-byte IDs without treating decoded text as identity.
+
+    The parser may represent arbitrary PDF string bytes as either a byte string
+    or decoded text. Both forms must retain exactly the original byte length;
+    indirect objects, coercible values and non-byte reconstruction are refused.
+    """
+    from pypdf.generic import ArrayObject, ByteStringObject, TextStringObject
+
+    if type(value) is not ArrayObject or len(value) != 2:
+        raise ValueError("generated identifier array out of profile")
+    captured = []
+    for item in value:
+        if type(item) not in (ByteStringObject, TextStringObject):
+            raise ValueError("generated identifier must be a direct string")
+        raw = item.original_bytes
+        if type(raw) not in (bytes, ByteStringObject) or len(raw) != 32:
+            raise ValueError("generated identifier byte length out of profile")
+        captured.append(bytes(raw))
+    return captured[0], captured[1]
+
+
 def _verify_trailer_catalog(
     reader: object, *, expected_pages: int,
     direct_count: int, compressed_count: int,
@@ -61,7 +84,7 @@ def _verify_trailer_catalog(
     """Tie physical XRef trailer references to one native flat catalog tree."""
     from pypdf.generic import (
         ArrayObject, DictionaryObject, IndirectObject, NameObject, NumberObject,
-        StreamObject, TextStringObject,
+        StreamObject,
     )
 
     if (type(expected_pages) is not int
@@ -101,19 +124,15 @@ def _verify_trailer_catalog(
             or _reference_id(xref.raw_get("/Info"), reader, indexed) != info_id):
         raise ValueError("native /Root or /Info reference differs from physical XRef")
 
-    for trailer, physical in (
-        (reader.trailer.raw_get("/Size"), xref.raw_get("/Size")),
-        (reader.trailer.raw_get("/ID"), xref.raw_get("/ID")),
-    ):
-        if type(trailer) is not type(physical) or trailer != physical:
-            raise ValueError("parser trailer scalar differs from XRef stream")
     size_value = reader.trailer.raw_get("/Size")
-    ids = reader.trailer.raw_get("/ID")
+    physical_size = xref.raw_get("/Size")
     if (type(size_value) is not NumberObject or int(size_value) != size
-            or type(ids) is not ArrayObject or len(ids) != 2
-            or any(type(item) is not TextStringObject or len(item) != 32
-                   for item in ids)):
-        raise ValueError("generated /Size or /ID field out of profile")
+            or type(physical_size) is not NumberObject or physical_size != size_value):
+        raise ValueError("generated /Size differs from physical XRef")
+    trailer_ids = _identifier_pair(reader.trailer.raw_get("/ID"))
+    physical_ids = _identifier_pair(xref.raw_get("/ID"))
+    if trailer_ids != physical_ids:
+        raise ValueError("original identifier bytes differ from physical XRef")
 
     root = reader.get_object(root_ref)
     info = reader.get_object(info_ref)

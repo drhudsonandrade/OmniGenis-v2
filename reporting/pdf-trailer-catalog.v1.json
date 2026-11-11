@@ -5,6 +5,7 @@
   "catalog_reference_policy": "INDEXED_GENERATION_ZERO_ROOT_INFO_PAGES",
   "conformance_scope": "GENERATED_PDF_1_7_XREF_TRAILER_AND_CATALOG_PARITY_ONLY",
   "default_pipeline_activated": false,
+  "file_identifier_policy": "EXACT_TWO_DIRECT_32_BYTE_STRINGS_WITH_ORIGINAL_BYTE_PARITY",
   "flat_page_tree_consistent": true,
   "language": "en-US",
   "max_pages": 64,

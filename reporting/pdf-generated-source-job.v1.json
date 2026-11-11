@@ -10,7 +10,7 @@
   ],
   "integration_mode": "OPTIONAL_EXPLICIT_CALL_ONLY",
   "known_issues": [
-    "Default READY and an in-budget semantic source do not guarantee optional native admission. The inherited catalog profile requires both PDF /ID entries to parse as 32-character TextStringObject values; the unchanged renderer's raw HTML SHA-256 identifier can instead parse as ByteStringObject. Such a generated candidate is refused without rewriting the identifier, changing the source or retrying.",
+    "The optional native catalog admits both parser string representations only when each file identifier contains exactly 32 original bytes and trailer/XRef values agree byte-for-byte. Generated PDF bytes are not rewritten; all other catalog, source, resource and release gates remain required.",
     "This is an explicit private candidate entrypoint for the existing semantic-section/en-US source. It does not activate typed PDF, assets, links, a new report family or scientific interpretation.",
     "The default protocol-1 renderer and 32-page/8-MiB candidate-readiness route remain unchanged. Optional protocol 2 admits at most 64 pages and 16 MiB, conditional on every unchanged inner limit.",
     "The same pinned renderer produces the whole PDF; strict physical page discovery occurs in its bounded child without rewriting or padding the PDF. The native source inspector independently rechecks the full artifact and page plan.",
@@ -58,7 +58,7 @@
     "max_pages": 64,
     "max_pdf_bytes": 16777216,
     "max_result_bytes": 327680,
-    "native_source_job_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
+    "native_source_job_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
     "pdf_version": "1.7",
     "persistent_checkpoints": false,
     "physical_pages": "DISCOVERED_IN_GUARDED_RENDER_CHILD_AND_RECHECKED_BY_NATIVE_INSPECTION",
@@ -73,7 +73,7 @@
     "source_json_depth": 64,
     "source_json_nodes": 100000
   },
-  "profile_sha256": "fc780d3fcf78fd55d45a76930c8baea873bc0a1546718bc89ae0dadccb3217fb",
+  "profile_sha256": "9560a6cf2cfe0c3662a826d8804c0e328d2ccf95ae41fd6328a9143905a7d410",
   "release_authorized": false,
   "render_profile": {
     "aggregate_job_resources_qualified": false,
@@ -107,13 +107,13 @@
     "reporting/adapters.py": "eaf7db018bc668e2df6dc5f2a365b02571bef75fd47e04986561d9db8a096413",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-native-source-job.v1.json": "b021747bd5ff47c2c87e987e404c9a5f5681bfa863ccf4a0a24403b3bb3d4797",
+    "reporting/pdf-native-source-job.v1.json": "a8e4ccebbb182fdeb0e54622789cd589674d81b8b766a0a8d6223311e66c8cc1",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
-    "reporting/pdf_generated_source_job.py": "fe8eff1d785eddf550d7ae7d658196c893ffa5f1782abea791ecc96a7f625e5d",
+    "reporting/pdf_generated_source_job.py": "ee2d97aa1d9dd79806ad742b1776ba7417131c08de3b710c74bd3ee814fe1743",
     "reporting/pdf_inspection_bundle.py": "03d636617653e940cfdcad4951b867d1cadd258bd0bd00cd8c56f4d4a22c0c51",
     "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
-    "reporting/pdf_native_source_job.py": "f02157ab41532296260e4ae99868d93b8a23fdbe8b6ba62eb1acd47358df9071",
+    "reporting/pdf_native_source_job.py": "3feba56b00b80139112fcf4abadc39d6d95554417cc6d89adb8b37eb09bb64b3",
     "reporting/pdf_qualification_job.py": "56b86db4efe263ba0491ac20f8d76c3fab3c6ff93a7efc28a50d7f895ad5695c",
     "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
   },

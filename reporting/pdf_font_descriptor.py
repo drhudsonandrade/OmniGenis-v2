@@ -29,7 +29,7 @@ from reporting._pdf_font_descriptor_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_FONT_DESCRIPTOR_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "83db5ebf1c930a23b61e00e426e77d1689b896094bccfbf6617fe0769727bb2c"
+_FIXED_PARENT_PROFILE_SHA256 = "b6e7cd92d13e3eb35d35f683ec22b7213201b83e22f1ab0783503dbf95f81ba3"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -74,7 +74,7 @@ def font_descriptor_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(font_descriptor_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "d2037e921601d15ef10ddd130487ac8cd37e8326cee5f18bc2e7284269491519"
+_FIXED_PROFILE_SHA256 = "995f625b277ada5ce46e4f0fab50180498e39b34de1ed2ccecd105822a5fc8ec"
 
 
 def _profile() -> None:

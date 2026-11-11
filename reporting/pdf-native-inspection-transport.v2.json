@@ -23,7 +23,7 @@
     "descriptor": {
       "profile": {
         "aggregate_job_resources_qualified": false,
-        "codec_profile_sha256": "7ec8c2d0adfb291c6ce548c787badcf367f0e412afaa00f1916ad5837313d4ef",
+        "codec_profile_sha256": "31da55d5c8309a0ac1eb5f63c9171ff55e94a6351e8576376da88f9d0aaf171b",
         "duplicate_revocation_qualified": false,
         "executor_activated": false,
         "file_mode": 384,
@@ -49,14 +49,14 @@
         "source_and_pdf_semantics_validated": false,
         "transport_authenticated": false
       },
-      "profile_sha256": "d88d0dc6aded83dd6afee52afec1228c89c3dc8a8ec70dd3f7b134516f97e61b"
+      "profile_sha256": "bebf1c5b79c668ff91d006eb93e18d5d77e76b88aadc425d11a90a45904331b8"
     },
     "execution": {
       "profile": {
         "aggregate_job_resources_qualified": false,
         "capture": "ONCE_TO_IMMUTABLE_BYTES_THROUGH_EXISTING_SEALED_DESCRIPTOR_READER",
         "default_pipeline_activated": false,
-        "descriptor_profile_sha256": "d88d0dc6aded83dd6afee52afec1228c89c3dc8a8ec70dd3f7b134516f97e61b",
+        "descriptor_profile_sha256": "bebf1c5b79c668ff91d006eb93e18d5d77e76b88aadc425d11a90a45904331b8",
         "duplicate_revocation_qualified": false,
         "hard_job_deadline_enforced": false,
         "language": "en-US",
@@ -69,17 +69,17 @@
         "native_source_job_calls": 1,
         "new_executor_activated": false,
         "profile_id": "sealed-request-pdf-inspection-v2",
-        "protocol_profile_sha256": "7ec8c2d0adfb291c6ce548c787badcf367f0e412afaa00f1916ad5837313d4ef",
+        "protocol_profile_sha256": "31da55d5c8309a0ac1eb5f63c9171ff55e94a6351e8576376da88f9d0aaf171b",
         "release_authorized": false,
-        "resource_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
+        "resource_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
         "result_wrapper_added": false,
         "returned_result_type": "PdfNativeSourceResult",
         "schema_version": "2.0.0",
         "snapshot_job_calls": 1,
-        "source_profile_sha256": "91b9fe74427b003bc4d22ecb1504fcc3de2c1b21f1aa26dbe3f6d3095db948a7",
+        "source_profile_sha256": "1f726c0cb0400cd4ff6c779003d28bc9ebea977821e8731855a4d41e458e973d",
         "transport_authenticated": false
       },
-      "profile_sha256": "e30409c65fe1acf5c569630d32f3bf035a72e11db45ac3efad0bf3b9286d5ec8"
+      "profile_sha256": "7f5c679354e57add89091adc2004258af2787fc19ade4b1af96f7f1b627ba47b"
     },
     "frame": {
       "profile": {
@@ -92,19 +92,19 @@
         "magic": "OGPDFRS2",
         "max_frame_bytes": 311340,
         "max_result_bytes": 311296,
-        "native_width_profile_sha256": "c0bef5f8c23b4c40d2ddcf23e485cbfda0653d8ca1c740cc2925b3f0b1434797",
+        "native_width_profile_sha256": "00cddbc4c08dcefc39b27e46fe3ff4198fc4dd32f743c484b534913b6cad6d8e",
         "new_executor_activated": false,
         "original_result_type": "PdfNativeSourceResult",
         "profile_id": "complete-pdf-inspection-result-frame-v2",
         "reconstructed_typed_result": false,
         "release_authorized": false,
         "result_encoding": "EXACT_ORIGINAL_CANONICAL_JSON_BYTES",
-        "result_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
+        "result_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
         "schema_version": "2.0.0",
         "sender_authenticated": false,
         "structured_source_job_profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
       },
-      "profile_sha256": "d605502daff161d134831c0a769c8b1cfdfa41fae40e12374394e61e98165de0"
+      "profile_sha256": "424737bb7a7b8aca9a342d61117ae1c881e04296766b721f64cf7bee575e8db7"
     },
     "request": {
       "profile": {
@@ -134,7 +134,7 @@
         ],
         "profile_id": "immutable-pdf-inspection-request-v2",
         "release_authorized": false,
-        "resource_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
+        "resource_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
         "schema_version": "2.0.0",
         "segment_order": [
           "metadata",
@@ -142,10 +142,10 @@
           "pdf"
         ],
         "source_and_pdf_semantics_validated": false,
-        "source_profile_sha256": "91b9fe74427b003bc4d22ecb1504fcc3de2c1b21f1aa26dbe3f6d3095db948a7",
+        "source_profile_sha256": "1f726c0cb0400cd4ff6c779003d28bc9ebea977821e8731855a4d41e458e973d",
         "transport_authenticated": false
       },
-      "profile_sha256": "7ec8c2d0adfb291c6ce548c787badcf367f0e412afaa00f1916ad5837313d4ef"
+      "profile_sha256": "31da55d5c8309a0ac1eb5f63c9171ff55e94a6351e8576376da88f9d0aaf171b"
     },
     "snapshot": {
       "profile": {
@@ -156,7 +156,7 @@
         "max_json_depth": 64,
         "max_json_nodes": 100000,
         "max_source_bytes": 8388608,
-        "native_source_job_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
+        "native_source_job_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
         "profile_id": "immutable-presentation-source-v2",
         "release_authorized": false,
         "returned_result_type": "PdfNativeSourceResult",
@@ -165,7 +165,7 @@
         "source_storage_authenticated": false,
         "source_type": "EXACT_IMMUTABLE_BYTES"
       },
-      "profile_sha256": "91b9fe74427b003bc4d22ecb1504fcc3de2c1b21f1aa26dbe3f6d3095db948a7"
+      "profile_sha256": "1f726c0cb0400cd4ff6c779003d28bc9ebea977821e8731855a4d41e458e973d"
     },
     "supervisor": {
       "profile": {
@@ -177,7 +177,7 @@
         "cleanup_seconds": 2,
         "completion": "CONTEXT_SENT_EOF_ZERO_EXIT_REAP_VALID_FRAME",
         "default_pipeline_activated": false,
-        "frame_profile_sha256": "d605502daff161d134831c0a769c8b1cfdfa41fae40e12374394e61e98165de0",
+        "frame_profile_sha256": "424737bb7a7b8aca9a342d61117ae1c881e04296766b721f64cf7bee575e8db7",
         "hard_job_deadline_qualified": false,
         "host_authenticated": false,
         "max_context_bytes": 4096,
@@ -190,9 +190,9 @@
         "service_installed": false,
         "stdout_storage": "BOUNDED_PIPE_FRAME_PLUS_ONE_OVERFLOW_BYTE",
         "unprivileged_caller_required": true,
-        "worker_profile_sha256": "8d43f3c8b91475462ffe26efce4fb5e920d148ea5ce436f730f7206e8cfb7aea"
+        "worker_profile_sha256": "7b00490a9a735f0bb146a440458f175658e19139f2e036dbcd54a597e963535d"
       },
-      "profile_sha256": "7ac5ff687f95dc3f4b286b8d7b1209bcfc2296f1a7fc0df0cd0d82aef6d82a46"
+      "profile_sha256": "87103abeaff9b1720c01ccb713fe503c0b82bd8bd02dbf1ae2a2a67843e6c680"
     },
     "worker": {
       "profile": {
@@ -217,25 +217,25 @@
         ],
         "default_pipeline_activated": false,
         "descendant_cleanup_qualified": false,
-        "descriptor_profile_sha256": "d88d0dc6aded83dd6afee52afec1228c89c3dc8a8ec70dd3f7b134516f97e61b",
+        "descriptor_profile_sha256": "bebf1c5b79c668ff91d006eb93e18d5d77e76b88aadc425d11a90a45904331b8",
         "hard_job_deadline_enforced": false,
         "independent_expectations_required": true,
-        "inspection_profile_sha256": "e30409c65fe1acf5c569630d32f3bf035a72e11db45ac3efad0bf3b9286d5ec8",
+        "inspection_profile_sha256": "7f5c679354e57add89091adc2004258af2787fc19ade4b1af96f7f1b627ba47b",
         "max_context_bytes": 4096,
         "max_result_frame_bytes": 311340,
         "origin_authenticated": false,
         "parent_death_signal_for_this_worker": true,
         "profile_id": "fixed-sealed-request-result-worker-v2",
         "release_authorized": false,
-        "request_profile_sha256": "7ec8c2d0adfb291c6ce548c787badcf367f0e412afaa00f1916ad5837313d4ef",
-        "resource_profile_sha256": "b4a519f30920802ddbe8c90551901253788cefccfb609767bdbcfa5426a3dbb7",
-        "result_frame_profile_sha256": "d605502daff161d134831c0a769c8b1cfdfa41fae40e12374394e61e98165de0",
+        "request_profile_sha256": "31da55d5c8309a0ac1eb5f63c9171ff55e94a6351e8576376da88f9d0aaf171b",
+        "resource_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
+        "result_frame_profile_sha256": "424737bb7a7b8aca9a342d61117ae1c881e04296766b721f64cf7bee575e8db7",
         "schema_version": "2.0.0",
         "service_installed": false,
         "stdin_pipe_required": true,
         "stdout_pipe_required": true
       },
-      "profile_sha256": "8d43f3c8b91475462ffe26efce4fb5e920d148ea5ce436f730f7206e8cfb7aea"
+      "profile_sha256": "7b00490a9a735f0bb146a440458f175658e19139f2e036dbcd54a597e963535d"
     }
   },
   "reused_source_sha256": {
@@ -247,24 +247,24 @@
     "reporting/pdf-fixed-worker-admission.v1.json": "99cb5043c6ca2e67ca44c4fc1fce69c54663e922f34e9de791d843cc60739089",
     "reporting/pdf-inspection-request.v1.json": "97deb65f14032d27b3da2b6f7f024d51c90ff912540ddc39c4459cf15d89e8ff",
     "reporting/pdf-inspection-result-frame.v1.json": "935fa722c72d183b4f3b6bc95b1c9c036116aa1589b1638397e6ebdccdb65c0a",
-    "reporting/pdf-native-source-job.v1.json": "b021747bd5ff47c2c87e987e404c9a5f5681bfa863ccf4a0a24403b3bb3d4797",
+    "reporting/pdf-native-source-job.v1.json": "a8e4ccebbb182fdeb0e54622789cd589674d81b8b766a0a8d6223311e66c8cc1",
     "reporting/pdf-request-descriptor.v1.json": "7af7fbaf6966f567b7329ca6bea5c26e0c13fadd2b5a7e23ddb9f85e686e3c7a",
     "reporting/pdf-sealed-inspection.v1.json": "577d6886c3939ea778a2410123237f2dcb04c5d46b78b7d769223ef6ba5b3c24",
     "reporting/pdf-snapshot-inspection.v1.json": "3ce3d11b0f788038c81a09a0e80b45bfb2031819aa4e1b46d1162a9687cc205b",
     "reporting/pdf-structured-source-job.v1.json": "ef9c89f91f41be596d64fd35044acc72e28b671eadd2327657f33d79c0a94f74",
     "reporting/pdf-supervised-inspection.v1.json": "ef74db3a817f434a23944c6e9eac64f3c11056ade8524250e523ebfdf5c351e4",
-    "reporting/pdf-supervisor-resource-scope.v1.json": "c1ed42bdca5dcd54386b9c4372f45d98b5be8d353abad397cc39e57b8b495cff",
-    "reporting/pdf-tounicode-width-coverage.v1.json": "109a2246c4c582ef98462493792fac10a89a13a0acfdd1bdc510af9a89d59930",
+    "reporting/pdf-supervisor-resource-scope.v1.json": "4c97eec959969e6ab8f01c0182484c2ebd742b7e94ad733da7b4228870554437",
+    "reporting/pdf-tounicode-width-coverage.v1.json": "579a084359fe7fb3aee1d4c6af91a3693b28349e517089fb7cf2704424d2eeff",
     "reporting/pdf_inspection_request.py": "f9e72d162992debe09f081dc945edd1bc6740730682e4de4a5f1c80d43113dd3",
     "reporting/pdf_inspection_result_frame.py": "105d904ef1fa904342fb733a2a64bcdb8028d1a575c0299bd8cf935abf64f95d",
-    "reporting/pdf_native_source_job.py": "f02157ab41532296260e4ae99868d93b8a23fdbe8b6ba62eb1acd47358df9071",
+    "reporting/pdf_native_source_job.py": "3feba56b00b80139112fcf4abadc39d6d95554417cc6d89adb8b37eb09bb64b3",
     "reporting/pdf_request_descriptor.py": "3bc2dcbd6d2b28a3d9a92fefb84568fa45bc1b220f5bbdced4da707eb98e2d5f",
     "reporting/pdf_sealed_inspection.py": "8193ba835f3036104cdcadbf4d16f8b21803e46852935bb20f3af0b4e45ecd2f",
     "reporting/pdf_snapshot_inspection.py": "833069a527d554ce09c1dba165de47cdfda4178b07ce674724c80d5c5e7856b5",
     "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
     "reporting/pdf_supervised_inspection.py": "92157fce0d61ae0baa99f7fc5db9f1424597452075128b6c5d35b848f7d64a41",
     "reporting/pdf_text_windows.py": "fc913d4e0275039e27da5c43e543fe9453bbf08bfa09d2470836e76e9ba76697",
-    "reporting/pdf_tounicode_width_coverage.py": "fd1b2fd693f3da6381e54ef0adf9f30576bb0eb27796b233fbdcbff99d66956a"
+    "reporting/pdf_tounicode_width_coverage.py": "5ea3bd58089b6c3d944204ea023ca0c425caf67f29a5df0f95f9d79906eb8f69"
   },
   "schema_version": "2.0.0"
 }

@@ -28,7 +28,7 @@
     "job_cgroup_exclusivity_verified": false,
     "kernel_observation_policy_sha256": "4684c54f07c27aedd39113323d3fb9e0e8297d5958025f015d04031080006d01",
     "minimum_parent_pid": 1,
-    "native_supervisor_profile_sha256": "7ac5ff687f95dc3f4b286b8d7b1209bcfc2296f1a7fc0df0cd0d82aef6d82a46",
+    "native_supervisor_profile_sha256": "87103abeaff9b1720c01ccb713fe503c0b82bd8bd02dbf1ae2a2a67843e6c680",
     "observation": "SNAPSHOTS_AND_EVENT_COUNTER_CONTINUITY",
     "profile_id": "fixed-pdf-supervisor-resource-scope-v1",
     "rechecks": [
@@ -48,7 +48,7 @@
     "uncertain_cleanup_refuses": true,
     "worker_minimum_parent_pid_unchanged": 2
   },
-  "profile_sha256": "850caba50614a648dfeaa0eb6e2511026c1f2d00d90c9bccfb7f76e2cee2b402",
+  "profile_sha256": "d3db67b1129da2ebce63afa6a84dce5a7499c54f6c8f571119ac65fb3b3ad310",
   "profile_values_are": "EXPLICIT_OPTIONAL_POLICY_NOT_MEASURED_CAPACITY",
   "release_authorized": false,
   "schema_version": "1.0.0",
