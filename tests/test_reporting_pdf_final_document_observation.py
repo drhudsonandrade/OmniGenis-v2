@@ -284,6 +284,27 @@ class FinalProcessBindingTests(Inputs, unittest.TestCase):
 
 
 class FinalObservedFailureTests(Inputs, unittest.TestCase):
+    def test_native_observation_import_refusal_claims_no_run_or_work(self):
+        """A missing optional native dependency refuses before consuming a run."""
+        original_import = builtins.__import__; refusals = []
+        def refuse(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == 'reporting._pdf_raster_job_observation':
+                refusals.append(name)
+                raise ImportError('injected native observation dependency refusal')
+            return original_import(name, globals, locals, fromlist, level)
+        with tempfile.TemporaryDirectory() as directory, \
+                patch('builtins.__import__', side_effect=refuse), \
+                patch.object(final, '_execute_final_document_candidate',
+                             side_effect=AssertionError('execution reached before dependency preflight')) as work:
+            with self.assertRaises(final.PdfFinalDocumentError):
+                final.execute_observed_stored_final_document_candidate(**self.arguments(),
+                    directory=Path(directory), run_id='e'*32,
+                    expected_storage_profile_sha256=final.STORAGE_PROFILE_SHA256)
+            self.assertEqual({'entries':sorted(p.name for p in Path(directory).iterdir()),
+                              'work_calls':work.call_count, 'import_refusals':refusals},
+                             {'entries':[], 'work_calls':0,
+                              'import_refusals':['reporting._pdf_raster_job_observation']})
+
     def test_observation_import_refusal_launches_no_location_child(self):
         pdf = b'%PDF-1.7\n'; children = []; start = final.graph._start
         identity = dict(pdf_sha256=sha256(pdf).hexdigest(), ir_sha256='b'*64,

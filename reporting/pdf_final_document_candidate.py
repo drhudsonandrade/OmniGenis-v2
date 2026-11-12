@@ -697,6 +697,8 @@ def _execute_stored_final_document_candidate(*, bound_request: BoundReportReques
         _require(type(observe_processes) is bool)
         if observe_processes:
             from reporting import _pdf_final_document_observation as observation
+            from reporting._pdf_raster_job_observation import validate_native
+            _require(callable(validate_native))
             started_ns = observation._integer(observation.monotonic_ns())
         prepared = _storage_admit(arguments, directory, run_id, expected_storage_profile_sha256)
         with previous.bound_source.qualification._run_directory(directory, run_id, create=True) as (run, check):
