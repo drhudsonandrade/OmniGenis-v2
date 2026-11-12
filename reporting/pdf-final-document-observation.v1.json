@@ -1,0 +1,41 @@
+{
+  "aggregate_job_resources_qualified": false,
+  "candidate_profile_sha256": "1af6e60d9409bd9c8fb635a01b05e7d60715340f6f421332b3137f841c010dc7",
+  "default_pipeline_activated": false,
+  "dependency_lock_sha256": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f",
+  "disable_environment": "OMNIGENIS_PDF_FINAL_DOCUMENT_DISABLED=1",
+  "entrypoint": "execute_observed_stored_final_document_candidate",
+  "integration_mode": "EXPLICIT_QUALIFICATION_ONLY",
+  "known_limitations": [
+    "Actual owned direct-child capture precedes cleanup/reap. Parent records are unsigned consistency evidence, not authenticated execution or a census of arbitrary descendants.",
+    "Every completed layout pass retains its own HTML/resource/PDF/location identity. Only the converged pass binds to final native inspection and stored bytes.",
+    "The sidecar covers declared render, location, native inspection and fixed nested raster workers. No timer/helper process or worker budget is added.",
+    "Operation timestamps run from before storage admission through exact stored readback. These local observations establish neither kernel event times nor hard deadlines. Sidecar composition and final return are not independent host enforcement.",
+    "Original unobserved APIs, source/result wire and receipt-last stored schema remain unchanged. No sidecar is persisted, recovered, repaired or substituted for a result.",
+    "If optional observation composition fails after commit, the call refuses and the consumed candidate retains explicit recovery requiring independently trusted output digests.",
+    "PID reuse, missing records, foreign parents, reordered clocks or inconclusive source identity refuse completion. Hostile same-owner code and mutate-and-restore between checks remain outside qualification.",
+    "Whole-job resource/lifecycle qualification requires a separately authorized exact-source native executor. No consumed package, FINAL publication, accessibility or scientific behavior is activated."
+  ],
+  "max_layout_processes": 8,
+  "max_observation_bytes": 163840,
+  "max_process_observation_bytes": 2048,
+  "native_observation_ceiling_bytes": 131072,
+  "observation_schema": "stored-final-document-process-observation/v1",
+  "profile_id": "source-bound-final-document-process-observation-v1",
+  "qualification_only": true,
+  "release_authorized": false,
+  "schema_version": "1.0.0",
+  "scientific_activation": false,
+  "source_sha256": {
+    "reporting/_pdf_final_document_observation.py": "d4387fdd2a4ed644e58b8f17312549e7640df810cc204091a69c17100f2e1f6a",
+    "reporting/_pdf_final_locations_worker.py": "90a03a7a8f718654708d1d43e66393df20ca72ed5cf64f1120f12ee5194feaf8",
+    "reporting/_pdf_process_lifecycle.py": "6f7e39dd83d5f1d2f3726527c83d282b11f064222e3d1c46cbf0c369d297f465",
+    "reporting/_pdf_raster_job_observation.py": "f69628c645a69ff2ac25ad24362ede4c9a29ec472503e1e7e0fb313945f3813e",
+    "reporting/pdf_final_document_candidate.py": "a1ade505dbb7c64a57f30cde5883fe454b606e7e388b4fe07ac40eba233222c1",
+    "reporting/pdf_native_source_job.py": "3feba56b00b80139112fcf4abadc39d6d95554417cc6d89adb8b37eb09bb64b3",
+    "reporting/pdf_raster_render.py": "9fd76030b4d120eecf611488b6dcc48f5b442943b54f7dc63edbc423f111337e"
+  },
+  "storage_profile_sha256": "42ade56489d026cd3b87581115dae6da19efb26d6fd0a0a77c6d8748f028b767",
+  "stored_formats_changed": false,
+  "supported_execution": false
+}
