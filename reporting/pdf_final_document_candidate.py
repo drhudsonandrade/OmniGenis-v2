@@ -326,12 +326,16 @@ def _decode_locations(raw: bytes, identity: dict) -> dict:
     return record
 
 
-def _run_locations(pdf: bytes, identity: dict) -> bytes:
+def _run_locations(pdf: bytes, identity: dict, *,
+                   observe_processes: bool = False) -> bytes | tuple[bytes, dict]:
     """Launch one fixed confined stage outside the unchanged native job schedule."""
+    _require(type(observe_processes) is bool)
     generated.require_no_active_scope()
     locations._identity(identity)
     _require(type(pdf) is bytes and 0 < len(pdf) <= locations.MAX_PDF_BYTES
              and sha256(pdf).hexdigest() == identity['pdf_sha256'])
+    if observe_processes:
+        from reporting import _pdf_final_document_observation as observation
     with tempfile.TemporaryFile() as request, tempfile.TemporaryFile() as response:
         fds = request.fileno(), response.fileno()
         infos = [os.fstat(fd) for fd in fds]
@@ -343,12 +347,22 @@ def _run_locations(pdf: bytes, identity: dict) -> bytes:
                            *(str(identity[k]) for k in locations.IDENTITY_FIELDS)])
         request.write(header.encode('ascii') + b'\n'); request.write(pdf); request.flush()
         worker = Path(__file__).resolve().with_name('_pdf_final_locations_worker.py')
-        process = graph._start([sys.executable, '-I', '-B', str(worker),
-                              str(fds[0]), str(fds[1]), str(os.getpid())], fds)
+        command = [sys.executable, '-I', '-B', str(worker),
+                   str(fds[0]), str(fds[1]), str(os.getpid())]
+        process = graph._start(command, fds)
+        observed = None
+        if observe_processes:
+            observed = observation.capture_spawn(process, command, 'locations')
         code = graph._wait(process)
+        if observe_processes:
+            observed = observation.observe_exit(process, observed, code)
         _require(code == 0 and 0 < os.fstat(response.fileno()).st_size <= locations.RESULT_BYTES)
         response.seek(0)
-        return response.read(locations.RESULT_BYTES + 1)
+        raw = response.read(locations.RESULT_BYTES + 1)
+        if observe_processes:
+            observed = observation.locations_record(observed, identity, _decode_locations(raw, identity))
+            return raw, observed
+        return raw
 
 
 def _resolve_locations(ir: dict, found: dict, pages: int) -> dict:
@@ -450,16 +464,18 @@ def _native_record(record: dict, render: dict, composition: dict, source: dict) 
     return raw
 
 
-def execute_final_document_candidate(*, bound_request: BoundReportRequest,
+def _execute_final_document_candidate(*, bound_request: BoundReportRequest,
         resources: resource_module.RasterBundle, expected_request_sha256: str,
-        expected_resources_sha256: str, expected_resource_profile_sha256: str
-) -> tuple[raster.RasterPdfCandidate, native.PdfNativeSourceResult, dict]:
+        expected_resources_sha256: str, expected_resource_profile_sha256: str,
+        observe_processes: bool
+) -> tuple[raster.RasterPdfCandidate, native.PdfNativeSourceResult, dict, dict | None]:
     """Converge within four passes, then inspect and return only the final exact pair."""
     arguments = dict(bound_request=bound_request, resources=resources,
         expected_request_sha256=expected_request_sha256,
         expected_resources_sha256=expected_resources_sha256,
         expected_resource_profile_sha256=expected_resource_profile_sha256)
     try:
+        _require(type(observe_processes) is bool)
         prepared = _prepared_bytes(**arguments); source_data = storage._decode(prepared)
         original, source = source_data['original_ir'], source_data['source_projection']
         started = previous_time = time.monotonic_ns()
@@ -476,19 +492,28 @@ def execute_final_document_candidate(*, bound_request: BoundReportRequest,
         previous_time = now
 
     try:
-        page_map = None; passes = []
+        page_map = None; passes = []; process_rows = []
         for number in range(1, MAX_LAYOUT_PASSES + 1):
             check()
             ir, html, composition = _compose(original, resources, page_map)
             ir_raw = generated._json_bytes(ir)
-            rendered = raster.render_preloaded_raster_pdf(html=html,
-                expected_html_sha256=composition['html_sha256'], resources=resources,
-                expected_resources_sha256=expected_resources_sha256)
+            render_arguments = dict(html=html, expected_html_sha256=composition['html_sha256'],
+                                    resources=resources, expected_resources_sha256=expected_resources_sha256)
+            if observe_processes:
+                rendered, render_observation = raster.render_observed_preloaded_raster_pdf(**render_arguments)
+            else:
+                rendered = raster.render_preloaded_raster_pdf(**render_arguments)
             check(); _require(type(rendered) is raster.RasterPdfCandidate)
             pdf = rendered.pdf_bytes; render = rendered.to_dict(); render_raw = generated._json_bytes(render)
             _render_record(render, composition, source, pdf)
             identity = _location_identity(render, composition, source, number)
-            receipt = _decode_locations(_run_locations(pdf, identity), identity)
+            if observe_processes:
+                location_raw, location_observation = _run_locations(pdf, identity, observe_processes=True)
+                process_rows.append({'pass_number':number,'render':render_observation,
+                                     'locations':location_observation})
+            else:
+                location_raw = _run_locations(pdf, identity)
+            receipt = _decode_locations(location_raw, identity)
             check()
             measured = _resolve_locations(ir, receipt['inspection'], rendered.page_count)
             _map_grammar(measured, original)
@@ -504,12 +529,20 @@ def execute_final_document_candidate(*, bound_request: BoundReportRequest,
                 break
         _require(converged)
         check()
-        inspected = native.execute_pdf_native_source_job(presentation_ir=ir, pdf_bytes=pdf,
+        inspect = (native.execute_raster_observed_pdf_native_source_job if observe_processes
+                   else native.execute_pdf_native_source_job)
+        inspected = inspect(presentation_ir=ir, pdf_bytes=pdf,
             expected_pdf_sha256=render['pdf_sha256'], expected_ir_sha256=composition['ir_sha256'],
             page_count=rendered.page_count, expected_language='en-US',
             namespace_id=source['namespace_id'], job_id=source['job_id'],
             request_sha256=expected_request_sha256,
             expected_resource_profile_sha256=previous.NATIVE_PROFILE_SHA256)
+        native_observation = None
+        if observe_processes:
+            _require(type(inspected) is tuple and len(inspected) == 2)
+            inspected, native_observation = inspected
+            from reporting._pdf_raster_job_observation import validate_native
+            native_observation = validate_native(inspected, native_observation)
         check(); _require(type(inspected) is native.PdfNativeSourceResult)
         native_raw = inspected.to_bytes()
         _require(_native_record(inspected.to_dict(), render, composition, source) == native_raw)
@@ -518,9 +551,23 @@ def execute_final_document_candidate(*, bound_request: BoundReportRequest,
                  and generated._json_bytes(rendered.to_dict()) == render_raw
                  and inspected.to_bytes() == native_raw)
         check()
-        return rendered, inspected, binding
+        observation = ({'layout_processes':process_rows,'native_observation':native_observation}
+                       if observe_processes else None)
+        return rendered, inspected, binding, observation
     except Exception:
         raise PdfFinalDocumentError('pdf_final_document_execution_unverified') from None
+
+
+def execute_final_document_candidate(*, bound_request: BoundReportRequest,
+        resources: resource_module.RasterBundle, expected_request_sha256: str,
+        expected_resources_sha256: str, expected_resource_profile_sha256: str
+) -> tuple[raster.RasterPdfCandidate, native.PdfNativeSourceResult, dict]:
+    """Preserve the original result-only convergence and native inspection contract."""
+    rendered, inspected, binding, _ = _execute_final_document_candidate(bound_request=bound_request,
+        resources=resources, expected_request_sha256=expected_request_sha256,
+        expected_resources_sha256=expected_resources_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256, observe_processes=False)
+    return rendered, inspected, binding
 
 
 def _checked_layout(layout: dict, original: dict, source: dict,
@@ -630,11 +677,12 @@ def _read_stored(arguments: dict, directory: Path, run_id: str, prepared: bytes,
             os.close(fd)
 
 
-def execute_stored_final_document_candidate(*, bound_request: BoundReportRequest,
+def _execute_stored_final_document_candidate(*, bound_request: BoundReportRequest,
         resources: resource_module.RasterBundle, expected_request_sha256: str,
         expected_resources_sha256: str, expected_resource_profile_sha256: str,
-        expected_storage_profile_sha256: str, directory: Path, run_id: str
-) -> tuple[bytes, dict]:
+        expected_storage_profile_sha256: str, directory: Path, run_id: str,
+        observe_processes: bool
+) -> tuple[bytes, dict, dict | None]:
     """Claim once before layout and commit only the converged complete private result.
 
     Each data/receipt handoff retains the writer's original descriptor identity.
@@ -646,13 +694,22 @@ def execute_stored_final_document_candidate(*, bound_request: BoundReportRequest
         expected_resources_sha256=expected_resources_sha256,
         expected_resource_profile_sha256=expected_resource_profile_sha256)
     try:
+        _require(type(observe_processes) is bool)
+        if observe_processes:
+            from reporting import _pdf_final_document_observation as observation
+            started_ns = observation._integer(observation.monotonic_ns())
         prepared = _storage_admit(arguments, directory, run_id, expected_storage_profile_sha256)
         with previous.bound_source.qualification._run_directory(directory, run_id, create=True) as (run, check):
             fd = receipts._open_private_directory(run)
             try:
                 identity = receipts._private_directory_identity(fd)
                 _require(not os.listdir(fd)); check()
-                rendered, inspected, binding = execute_final_document_candidate(**arguments)
+                execution_observation = None
+                if observe_processes:
+                    rendered, inspected, binding, execution_observation = _execute_final_document_candidate(
+                        **arguments, observe_processes=True)
+                else:
+                    rendered, inspected, binding = execute_final_document_candidate(**arguments)
                 _require(type(rendered) is raster.RasterPdfCandidate
                          and type(inspected) is native.PdfNativeSourceResult)
                 pdf = rendered.pdf_bytes
@@ -703,11 +760,58 @@ def execute_stored_final_document_candidate(*, bound_request: BoundReportRequest
                     prepared, result_sha, pdf_sha, expected_storage_profile_sha256)
                 _require(recovered_pdf == pdf and generated._json_bytes(recovered_manifest) == manifest_raw)
                 unchanged()
-                return recovered_pdf, recovered_manifest
+                observed = None
+                if observe_processes:
+                    verified_ns = observation._integer(observation.monotonic_ns())
+                    _require(type(execution_observation) is dict and set(execution_observation) ==
+                             {'layout_processes','native_observation'})
+                    observed = observation.compose_stored_observation(rendered=rendered, inspected=inspected,
+                        binding=binding, **execution_observation, pdf=recovered_pdf, manifest=recovered_manifest,
+                        started_ns=started_ns, verified_ns=verified_ns)
+                    unchanged()
+                return recovered_pdf, recovered_manifest, observed
             finally:
                 os.close(fd)
     except Exception:
         raise PdfFinalDocumentError('pdf_final_document_store_execution_unverified') from None
+
+
+def execute_stored_final_document_candidate(*, bound_request: BoundReportRequest,
+        resources: resource_module.RasterBundle, expected_request_sha256: str,
+        expected_resources_sha256: str, expected_resource_profile_sha256: str,
+        expected_storage_profile_sha256: str, directory: Path, run_id: str
+) -> tuple[bytes, dict]:
+    """Preserve the original private pair, public execution seam and stored schema."""
+    pdf, manifest, _ = _execute_stored_final_document_candidate(bound_request=bound_request,
+        resources=resources, expected_request_sha256=expected_request_sha256,
+        expected_resources_sha256=expected_resources_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        expected_storage_profile_sha256=expected_storage_profile_sha256,
+        directory=directory, run_id=run_id, observe_processes=False)
+    return pdf, manifest
+
+
+def execute_observed_stored_final_document_candidate(*, bound_request: BoundReportRequest,
+        resources: resource_module.RasterBundle, expected_request_sha256: str,
+        expected_resources_sha256: str, expected_resource_profile_sha256: str,
+        expected_storage_profile_sha256: str, directory: Path, run_id: str
+) -> tuple[bytes, dict, dict]:
+    """Observe all declared layout/native children through the same complete store.
+
+    Only successful exact storage/readback returns a PDF, unchanged manifest
+    and bounded unsigned sidecar. Failed optional composition returns no triple;
+    already committed bytes retain the original explicit recovery contract.
+    No aggregate enforcement, authenticated execution, arbitrary descendants,
+    durable sidecar, supported profile or FINAL publication is established.
+    """
+    pdf, manifest, observed = _execute_stored_final_document_candidate(bound_request=bound_request,
+        resources=resources, expected_request_sha256=expected_request_sha256,
+        expected_resources_sha256=expected_resources_sha256,
+        expected_resource_profile_sha256=expected_resource_profile_sha256,
+        expected_storage_profile_sha256=expected_storage_profile_sha256,
+        directory=directory, run_id=run_id, observe_processes=True)
+    _require(type(observed) is dict)
+    return pdf, manifest, observed
 
 
 def read_stored_final_document_candidate(*, bound_request: BoundReportRequest,

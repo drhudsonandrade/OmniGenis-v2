@@ -68,7 +68,7 @@
     "reporting/pdf_generated_source_job.py": "ee2d97aa1d9dd79806ad742b1776ba7417131c08de3b710c74bd3ee814fe1743",
     "reporting/pdf_native_source_job.py": "3feba56b00b80139112fcf4abadc39d6d95554417cc6d89adb8b37eb09bb64b3",
     "reporting/pdf_qualification_job.py": "56b86db4efe263ba0491ac20f8d76c3fab3c6ff93a7efc28a50d7f895ad5695c",
-    "reporting/pdf_raster_render.py": "74bba585a33bcb5591bfd10a1e36a999fe6ae0838c82a95d5fa348c3a508bec7",
+    "reporting/pdf_raster_render.py": "9fd76030b4d120eecf611488b6dcc48f5b442943b54f7dc63edbc423f111337e",
     "reporting/pdf_raster_resources.py": "8356b76112ddbe49ab4f61884b1dcd779157cb527ecf528106999dcc65381caf",
     "reporting/png_inspection.py": "189e1e1d77eabaaf829915cd6fcb21611831bb7c3af577e00e423a1b40f5bcec",
     "reporting/requests.py": "fb02deca6ace8041af3ecb4bb8241ef51b0c6b6bae52d4eee9a5f857061a9db5"

@@ -179,8 +179,9 @@ def _decode(data: bytes, fd: int, html_sha: str, resources_sha: str, count: int)
     return RasterPdfCandidate(raw, html_sha, resources_sha, record['page_count'], count)
 
 
-def render_preloaded_raster_pdf(*, html: str, expected_html_sha256: str,
-                               resources: RasterBundle, expected_resources_sha256: str) -> RasterPdfCandidate:
+def _render_preloaded_raster_pdf(*, html: str, expected_html_sha256: str,
+        resources: RasterBundle, expected_resources_sha256: str,
+        observe_processes: bool) -> tuple[RasterPdfCandidate, dict | None]:
     """Render once in the fixed child with finite descriptors and no external resources.
 
     HTML is a trusted compiler output, not an arbitrary user document. Digest
@@ -188,12 +189,15 @@ def render_preloaded_raster_pdf(*, html: str, expected_html_sha256: str,
     and whole-job accounting remain separate from this render-only operation.
     """
     try:
+        _require(type(observe_processes) is bool)
         _require_policy(); _digest(expected_html_sha256); _digest(expected_resources_sha256)
         _require(type(html) is str and 0 < len(html) <= worker.HTML_BYTES and type(resources) is RasterBundle)
         encoded = html.encode('utf-8')
         _require(len(encoded) <= worker.HTML_BYTES and sha256(encoded).hexdigest() == expected_html_sha256)
         payload = resources.to_bytes(); _require(sha256(payload).hexdigest() == expected_resources_sha256)
         from reporting import adapters
+        if observe_processes:
+            from reporting import _pdf_final_document_observation as observation
         with (adapters._PDF_RENDER_ENV_LOCK, tempfile.TemporaryFile() as request,
               tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as response,
               tempfile.TemporaryFile() as resource_file):
@@ -209,12 +213,41 @@ def render_preloaded_raster_pdf(*, html: str, expected_html_sha256: str,
             command = [sys.executable, '-I', '-B', str(Path(__file__).with_name('_pdf_render_worker.py')),
                        *(str(fd) for fd in fds[:3]), str(os.getpid()), MODE, str(fds[3])]
             process = adapters._start_pdf_render_worker(command, env=env, pass_fds=fds)
+            observed = None
+            if observe_processes:
+                observed = observation.capture_spawn(process, command, 'render')
             code = adapters._wait_pdf_render_worker(process, wall_seconds=worker.WALL_SECONDS)
+            if observe_processes:
+                observed = observation.observe_exit(process, observed, code)
             _require(code == 0 and os.fstat(response.fileno()).st_size <= worker.RESULT_BYTES)
             response.seek(0)
             result = _decode(response.read(worker.RESULT_BYTES + 1), output.fileno(),
                 expected_html_sha256, expected_resources_sha256, len(resources.assets))
             _require_policy(); _require(resources.bundle_sha256 == expected_resources_sha256)
-            return result
+            if observe_processes:
+                observed = observation.render_record(observed, result)
+            return result, observed
     except Exception:
         raise RasterRenderError('preloaded_raster_render_failed') from None
+
+
+def render_preloaded_raster_pdf(*, html: str, expected_html_sha256: str,
+        resources: RasterBundle, expected_resources_sha256: str) -> RasterPdfCandidate:
+    """Keep the original result-only rendering contract and default behavior."""
+    result, _ = _render_preloaded_raster_pdf(html=html, expected_html_sha256=expected_html_sha256,
+        resources=resources, expected_resources_sha256=expected_resources_sha256, observe_processes=False)
+    return result
+
+
+def render_observed_preloaded_raster_pdf(*, html: str, expected_html_sha256: str,
+        resources: RasterBundle, expected_resources_sha256: str) -> tuple[RasterPdfCandidate, dict]:
+    """Observe the same fixed owned child without changing its wire or budgets.
+
+    The detached unsigned record describes only this direct worker. It does not
+    authenticate execution, qualify descendants/resources or authorize release.
+    Observation failure preserves owned-child cleanup and returns no candidate.
+    """
+    result, observed = _render_preloaded_raster_pdf(html=html, expected_html_sha256=expected_html_sha256,
+        resources=resources, expected_resources_sha256=expected_resources_sha256, observe_processes=True)
+    _require(type(observed) is dict)
+    return result, observed
