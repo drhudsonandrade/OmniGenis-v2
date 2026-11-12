@@ -235,6 +235,45 @@ class BoundRasterFailureTests(unittest.TestCase):
         inspect.assert_not_called()
 
 
+def long_raster_inputs(module):
+    """Build owned synthetic long input data without any rendering or persistence."""
+    from copy import deepcopy
+    from hashlib import shake_256
+    import struct
+    import zlib
+    document, _ = source()
+    template = document['canonical_payload']['items'][0]
+    items = []
+    for i in range(96):
+        item = deepcopy(template)
+        item['canonical_variant_id'] = 'omnigenis:small-variant:v1:sha256:' + sha256(
+            ('owned-synthetic-bound-raster-finding-' + str(i)).encode()).hexdigest()
+        items.append(item)
+    document['canonical_payload']['items'] = items
+    document['canonical_payload']['interpretation_item_count'] = len(items)
+    document['raw_artifact_refs'] = [item['evidence_sha256'] for item in items]
+    document['limitations'].append('Synthetic reporting qualification only; no real person or clinical use.')
+    bound = bound_request(document, finding_ids=tuple(item['canonical_variant_id'] for item in items))
+    assets = []
+    def chunk(kind, data):
+        """Encode an independently generated PNG chunk and CRC."""
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
+    for i in range(3):
+        spec = ('owned-synthetic-bound-raster-resource-v1:' + str(i)).encode()
+        pixels = shake_256(spec).digest(1024 * 1024 * 3)
+        scanlines = b''.join(b'\0' + pixels[y * 3072:(y + 1) * 3072] for y in range(1024))
+        raw = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', 1024, 1024, 8, 2, 0, 0, 0))
+               + chunk(b'IDAT', zlib.compress(scanlines)) + chunk(b'IEND', b''))
+        assets.append(resources.RasterAsset('synthetic-long-' + str(i), raw, sha256(raw).hexdigest(),
+            1024, 1024, sha256(spec).hexdigest(), sha256(b'OWNED_SYNTHETIC_DECORATIVE_TEST_DATA').hexdigest()))
+    resource_set = resources.RasterBundle(tuple(assets))
+    arguments = dict(bound_request=bound, resources=resource_set,
+        expected_request_sha256=bound.request.request_sha256,
+        expected_resources_sha256=resource_set.bundle_sha256,
+        expected_resource_profile_sha256=module.PROFILE_SHA256)
+    return arguments, document
+
+
 class BoundRasterNativeTests(unittest.TestCase):
     """One genuine source-bound complete candidate supplies positive native evidence."""
     actual_result = None
@@ -245,43 +284,11 @@ class BoundRasterNativeTests(unittest.TestCase):
 
     def actual(self):
         """Generate one known synthetic many-item source; never rerun a failed fixture."""
-        from copy import deepcopy
-        from hashlib import shake_256
-        import struct
-        import zlib
         if type(self).actual_failure is not None:
             self.fail('genuine fixture previously failed: ' + type(self).actual_failure)
         if type(self).actual_result is None:
-            document, _ = source()
-            template = document['canonical_payload']['items'][0]
-            items = []
-            for i in range(96):
-                item = deepcopy(template)
-                item['canonical_variant_id'] = 'omnigenis:small-variant:v1:sha256:' + sha256(
-                    ('owned-synthetic-bound-raster-finding-' + str(i)).encode()).hexdigest()
-                items.append(item)
-            document['canonical_payload']['items'] = items
-            document['canonical_payload']['interpretation_item_count'] = len(items)
-            document['raw_artifact_refs'] = [item['evidence_sha256'] for item in items]
-            document['limitations'].append('Synthetic reporting qualification only; no real person or clinical use.')
-            bound = bound_request(document, finding_ids=tuple(item['canonical_variant_id'] for item in items))
-            assets = []
-            def chunk(kind, data):
-                """Encode an independently generated PNG chunk and CRC."""
-                return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
-            for i in range(3):
-                spec = ('owned-synthetic-bound-raster-resource-v1:' + str(i)).encode()
-                pixels = shake_256(spec).digest(1024 * 1024 * 3)
-                scanlines = b''.join(b'\0' + pixels[y * 3072:(y + 1) * 3072] for y in range(1024))
-                raw = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', 1024, 1024, 8, 2, 0, 0, 0))
-                       + chunk(b'IDAT', zlib.compress(scanlines)) + chunk(b'IEND', b''))
-                assets.append(resources.RasterAsset('synthetic-long-' + str(i), raw, sha256(raw).hexdigest(),
-                    1024, 1024, sha256(spec).hexdigest(), sha256(b'OWNED_SYNTHETIC_DECORATIVE_TEST_DATA').hexdigest()))
-            resource_set = resources.RasterBundle(tuple(assets))
-            arguments = dict(bound_request=bound, resources=resource_set,
-                expected_request_sha256=bound.request.request_sha256,
-                expected_resources_sha256=resource_set.bundle_sha256,
-                expected_resource_profile_sha256=self.m.PROFILE_SHA256)
+            arguments, document = long_raster_inputs(self.m)
+            bound = arguments['bound_request']
             source_before = bound.sources.canonical_result_bytes
             try:
                 result = self.m.execute_bound_raster_candidate(**arguments)
@@ -507,6 +514,756 @@ class BoundRasterManifestTests(unittest.TestCase):
         self.assertEqual(manifest['family'], 'e1a-small-variant-report')
         self.assertEqual(manifest['integration_mode'], 'EXPLICIT_QUALIFICATION_ONLY')
         self.assertTrue(manifest['known_limitations'])
+
+
+
+class BoundRasterStorageTests(unittest.TestCase):
+    """Private roundtrip behavior; injected faults do not establish native qualification."""
+    stored_result = None
+    stored_failure = None
+    arguments = BoundRasterProjectionTests.arguments
+
+    def setUp(self):
+        """Require the new behavior before any fixture can execute or claim storage."""
+        from pathlib import Path
+        import tempfile
+        BoundRasterProjectionTests.setUp(self)
+        self.assertTrue(callable(getattr(self.m, 'execute_stored_bound_raster_candidate', None)),
+                        'source-bound raster private roundtrip is missing')
+        self.assertTrue(callable(getattr(self.m, 'read_stored_bound_raster_candidate', None)),
+                        'source-bound raster explicit recovery is missing')
+        self.storage = import_module('reporting.pdf_candidate_store')
+        self.receipts = import_module('reporting._pdf_job_durable_receipt')
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.run_id = '7' * 32
+
+    def execute(self, **changes):
+        """Call the complete consumer with independent input and profile expectations."""
+        values = dict(**self.arguments(), directory=self.root, run_id=self.run_id,
+                      expected_storage_profile_sha256=self.m.STORAGE_PROFILE_SHA256)
+        values.update(changes)
+        return self.m.execute_stored_bound_raster_candidate(**values)
+
+    def recover(self, **changes):
+        """Retain output expectations separately from the files being recovered."""
+        values = dict(**self.arguments(), directory=self.root, run_id=self.run_id,
+                      expected_storage_profile_sha256=self.m.STORAGE_PROFILE_SHA256,
+                      expected_result_sha256=self.expected_result,
+                      expected_pdf_sha256=self.expected_pdf)
+        values.update(changes)
+        return self.m.read_stored_bound_raster_candidate(**values)
+
+    def pair(self):
+        """Reuse genuine native output solely for fast storage fault injection."""
+        from dataclasses import replace
+        helper = BoundRasterNativeTests('test_real_source_bound_long_pdf_is_complete_and_same_artifact_inspected')
+        helper.m = self.m
+        pair, arguments, _ = helper.actual()
+        self.bound = replace(arguments['bound_request'])
+        self.assets = resources.RasterBundle(tuple(replace(a) for a in arguments['resources'].assets))
+        self.expected_pdf = pair[0].pdf_sha256
+        self.expected_result = sha256(canonical({
+            'render_result': pair[0].to_dict(), 'native_inspection': pair[1].to_dict(),
+            'binding': pair[2]})).hexdigest()
+        return pair
+
+    def genuine(self):
+        """Execute one complete real long roundtrip; a failed fixture is never retried."""
+        from pathlib import Path
+        import tempfile
+        if type(self).stored_failure is not None:
+            self.fail('genuine stored fixture previously failed: ' + type(self).stored_failure)
+        if type(self).stored_result is None:
+            temporary = tempfile.TemporaryDirectory()
+            type(self).addClassCleanup(temporary.cleanup)
+            directory = Path(temporary.name)
+            arguments, document = long_raster_inputs(self.m)
+            before = arguments['bound_request'].sources.canonical_result_bytes
+            try:
+                pdf, manifest = self.m.execute_stored_bound_raster_candidate(
+                    **arguments, directory=directory, run_id=self.run_id,
+                    expected_storage_profile_sha256=self.m.STORAGE_PROFILE_SHA256)
+                self.assertEqual(arguments['bound_request'].sources.canonical_result_bytes, before)
+                type(self).stored_result = pdf, manifest, directory, arguments, document
+            except Exception as failure:
+                type(self).stored_failure = type(failure).__name__ + ': ' + str(failure)
+                raise
+        return type(self).stored_result
+
+    def stage(self):
+        """Copy one actual committed synthetic bundle into a fresh private fault fixture."""
+        from pathlib import Path
+        from dataclasses import replace
+        import tempfile
+        import shutil
+        pdf, manifest, source_root, arguments, _ = self.genuine()
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        shutil.copytree(source_root / self.run_id, self.root / self.run_id)
+        self.bound = replace(arguments['bound_request'])
+        self.assets = resources.RasterBundle(tuple(replace(a) for a in arguments['resources'].assets))
+        self.expected_result = manifest['result_sha256']
+        self.expected_pdf = manifest['pdf_sha256']
+        return pdf, manifest
+
+    def snapshot(self):
+        """Compare content, inode, permissions and write times without changing files."""
+        result = {}
+        for path in sorted(self.root.rglob('*')):
+            info = path.lstat()
+            result[str(path.relative_to(self.root))] = (
+                info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns,
+                sha256(path.read_bytes()).hexdigest() if path.is_file() else None)
+        return result
+
+    def test_genuine_long_roundtrip_preserves_complete_bound_candidate(self):
+        """The public consumer actually renders, inspects, persists and reads the same PDF."""
+        import json
+        pdf, manifest, directory, arguments, document = self.genuine()
+        result = manifest['result']
+        binding = result['binding']
+        self.assertGreater(manifest['page_count'], 32)
+        self.assertLessEqual(manifest['page_count'], 64)
+        self.assertGreater(len(pdf), 8 * 1024 * 1024)
+        self.assertLessEqual(len(pdf), 16 * 1024 * 1024)
+        self.assertEqual(manifest['pdf_sha256'], sha256(pdf).hexdigest())
+        self.assertEqual(manifest['pdf_bytes'], len(pdf))
+        self.assertEqual(manifest['result_sha256'], sha256(canonical(result)).hexdigest())
+        self.assertEqual((binding['finding_count'], binding['resource_count']), (96, 3))
+        self.assertEqual(binding['request_sha256'], arguments['expected_request_sha256'])
+        self.assertEqual(binding['resources_sha256'], arguments['expected_resources_sha256'])
+        self.assertEqual(result['native_inspection']['pdf_sha256'], manifest['pdf_sha256'])
+        self.assertTrue(result['native_inspection']['normalized_text_equivalence_verified'])
+        ir, _, _ = self.m.prepare_bound_raster_candidate(**arguments)
+        self.assertEqual(ir['components'][1]['content']['canonical_interpretation.items'],
+                         document['canonical_payload']['items'])
+        run = directory / self.run_id
+        self.assertEqual((run / 'candidate.pdf').read_bytes(), pdf)
+        self.assertEqual((run / 'manifest.json').read_bytes(), canonical(manifest))
+        self.assertEqual(set(p.name for p in run.iterdir()),
+                         {'candidate.pdf', 'manifest.json', self.run_id + '.json'})
+        for path in run.iterdir():
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(run.stat().st_mode & 0o777, 0o700)
+        for key in ('release_authorized', 'supported_execution', 'default_pipeline_activated'):
+            self.assertIs(manifest[key], False)
+        print(json.dumps({'stored_bound_pages': manifest['page_count'], 'pdf_bytes': len(pdf),
+            'pdf_sha256': manifest['pdf_sha256'], 'result_sha256': manifest['result_sha256'],
+            'findings': 96, 'resources': 3, 'real_roundtrip': True,
+            'pdf_rewritten': False, 'release_authorized': False}), flush=True)
+
+    def test_recovery_is_exact_detached_and_performs_no_work_or_writes(self):
+        """Explicit repeated reads preserve all original filesystem identities."""
+        expected_pdf, expected_manifest = self.stage()
+        before = self.snapshot()
+        with patch.object(self.m, 'execute_bound_raster_candidate', side_effect=AssertionError('render forbidden')), \
+                patch.object(native, 'execute_pdf_native_source_job', side_effect=AssertionError('inspect forbidden')), \
+                patch.object(self.m, '_write_stored_data', side_effect=AssertionError('write forbidden')), \
+                patch.object(self.m, '_write_stored_receipt', side_effect=AssertionError('commit forbidden')):
+            pdf, manifest = self.recover()
+            self.assertEqual((pdf, manifest), (expected_pdf, expected_manifest))
+            manifest['result']['binding']['finding_count'] = 0
+            self.assertEqual(self.recover(), (expected_pdf, expected_manifest))
+        self.assertEqual(self.snapshot(), before)
+
+    def test_fresh_process_recovers_with_independent_expectations_without_execution(self):
+        """A new interpreter rebuilds the original inputs and only reads the committed bytes."""
+        from pathlib import Path
+        import json
+        import subprocess
+        import sys
+        expected_pdf, _ = self.stage()
+        before = self.snapshot()
+        program = '''
+import json,sys
+from pathlib import Path
+from hashlib import sha256
+from unittest.mock import patch
+from reporting import pdf_bound_raster_candidate as m
+from tests.test_reporting_pdf_bound_raster_candidate import long_raster_inputs
+values=json.loads(sys.argv[1])
+arguments,_=long_raster_inputs(m)
+with patch.object(m,'execute_bound_raster_candidate',side_effect=AssertionError('render forbidden')), patch.object(m.native,'execute_pdf_native_source_job',side_effect=AssertionError('inspect forbidden')), patch.object(m,'_write_stored_data',side_effect=AssertionError('write forbidden')), patch.object(m,'_write_stored_receipt',side_effect=AssertionError('commit forbidden')):
+    pdf,manifest=m.read_stored_bound_raster_candidate(**arguments,directory=Path(values['directory']),run_id=values['run_id'],expected_result_sha256=values['result'],expected_pdf_sha256=values['pdf'],expected_storage_profile_sha256=values['profile'])
+print(json.dumps({'pdf':sha256(pdf).hexdigest(),'result':manifest['result_sha256'],'pages':manifest['page_count']}))
+'''
+        result = subprocess.run([sys.executable, '-B', '-c', program, json.dumps({
+            'directory': str(self.root), 'run_id': self.run_id, 'result': self.expected_result,
+            'pdf': self.expected_pdf, 'profile': self.m.STORAGE_PROFILE_SHA256})],
+            cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True,
+            timeout=45, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['pdf'], sha256(expected_pdf).hexdigest())
+        self.assertEqual(json.loads(result.stdout)['result'], self.expected_result)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_wrong_inputs_and_profiles_refuse_before_claim_or_render(self):
+        """Foreign source expectations cannot create an attempt or invoke native work."""
+        changes = ({'expected_request_sha256': '0' * 64},
+                   {'expected_resources_sha256': '0' * 64},
+                   {'expected_resource_profile_sha256': generated.PROFILE_SHA256},
+                   {'expected_storage_profile_sha256': self.m.PROFILE_SHA256},
+                   {'expected_storage_profile_sha256': True})
+        with patch.object(self.m, 'execute_bound_raster_candidate') as execute:
+            for values in changes:
+                with self.subTest(values=values), self.assertRaises(self.m.PdfBoundRasterError):
+                    self.execute(**values)
+            execute.assert_not_called()
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_invalid_run_and_storage_root_refuse_before_render(self):
+        """Malformed identifiers and nonprivate directories cannot admit execution."""
+        from pathlib import Path
+        with patch.object(self.m, 'execute_bound_raster_candidate') as execute:
+            for value in ('../run', 'a' * 31, 'A' * 32, True, None):
+                with self.subTest(run=value), self.assertRaises(self.m.PdfBoundRasterError):
+                    self.execute(run_id=value)
+            for value in (str(self.root), Path('relative'), None):
+                with self.subTest(root=value), self.assertRaises(self.m.PdfBoundRasterError):
+                    self.execute(directory=value)
+            self.root.chmod(0o755)
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+            execute.assert_not_called()
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_default_and_inherited_disable_refuse_before_storage(self):
+        """The optional store cannot enable its candidate or receipt prerequisites."""
+        with patch.object(self.m, 'execute_bound_raster_candidate') as execute:
+            for key in (DISABLE, 'OMNIGENIS_PDF_QUALIFICATION_RECEIPT_DISABLED',
+                        'OMNIGENIS_PDF_PRELOADED_RASTER_DISABLED'):
+                with patch.dict(os.environ, {key: '1'}), self.assertRaises(self.m.PdfBoundRasterError):
+                    self.execute()
+            with patch.dict(os.environ):
+                os.environ.pop(MODE, None)
+                with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+            execute.assert_not_called()
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_consumed_empty_and_completed_runs_never_render_again(self):
+        """Only the explicit recovery API may return a previously committed candidate."""
+        (self.root / self.run_id).mkdir(mode=0o700)
+        with patch.object(self.m, 'execute_bound_raster_candidate') as execute:
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+            execute.assert_not_called()
+        self.stage()
+        before = self.snapshot()
+        with patch.object(self.m, 'execute_bound_raster_candidate') as execute:
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+            execute.assert_not_called()
+        self.assertEqual(self.snapshot(), before)
+
+    def test_generation_failure_consumes_once_and_returns_fixed_refusal(self):
+        """A failed render attempt is neither deleted nor automatically reexecuted."""
+        with patch.object(self.m, 'execute_bound_raster_candidate', side_effect=ValueError('PRIVATE-CONTENT')) as execute:
+            with self.assertRaises(self.m.PdfBoundRasterError) as error: self.execute()
+            self.assertEqual(str(error.exception), 'pdf_bound_raster_store_execution_unverified')
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertEqual(execute.call_count, 1)
+        self.assertTrue((self.root / self.run_id).is_dir())
+        self.assertFalse((self.root / self.run_id / (self.run_id + '.json')).exists())
+
+    def test_concurrent_same_run_admits_one_generator(self):
+        """Contending requests cannot execute or overwrite the same private attempt twice."""
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
+        pair = self.pair()
+        entered = threading.Event()
+        release = threading.Event()
+        def generator(**_values):
+            """Hold the one admitted attempt while a contender encounters its directory."""
+            entered.set()
+            if not release.wait(10): raise AssertionError('test contender did not finish')
+            return pair
+        def attempt():
+            """Return a simple outcome while retaining exceptions for assertions."""
+            try: return self.execute()
+            except self.m.PdfBoundRasterError: return None
+        with patch.object(self.m, 'execute_bound_raster_candidate', side_effect=generator) as execute:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                first = pool.submit(attempt)
+                self.assertTrue(entered.wait(10))
+                second = pool.submit(attempt)
+                try: self.assertIsNone(second.result(timeout=10))
+                finally: release.set()
+                self.assertIsNotNone(first.result(timeout=20))
+            self.assertEqual(execute.call_count, 1)
+
+    def test_foreign_binding_and_promoted_scope_refuse_before_commit(self):
+        """No missing, extra or substituted source/output binding can be committed."""
+        from copy import deepcopy
+        from pathlib import Path
+        import tempfile
+        pair = self.pair()
+        changes = [('request_sha256', '0' * 64), ('namespace_id', 'FOREIGN'),
+                   ('job_id', 'FOREIGN'), ('ir_sha256', '0' * 64),
+                   ('resources_sha256', '0' * 64), ('page_count', 1),
+                   ('native_inspection_sha256', '0' * 64),
+                   ('original_source_components_preserved', False), ('release_authorized', True),
+                   ('unrecognized', 'extra')]
+        for key, value in changes:
+            with tempfile.TemporaryDirectory() as temporary:
+                changed = deepcopy(pair[2]); changed[key] = value
+                with self.subTest(field=key), \
+                        patch.object(self.m, 'execute_bound_raster_candidate', return_value=(*pair[:2], changed)), \
+                        self.assertRaises(self.m.PdfBoundRasterError):
+                    self.execute(directory=Path(temporary))
+                self.assertFalse((Path(temporary) / self.run_id / (self.run_id + '.json')).exists())
+
+    def test_foreign_rendered_pdf_or_resource_binding_refuses(self):
+        """A sealed object from another rendering cannot inherit this native result."""
+        from pathlib import Path
+        import tempfile
+        pair = self.pair()
+        for item in (raster.RasterPdfCandidate(pair[0].pdf_bytes + b'\nchanged',
+                         pair[0].html_sha256, pair[0].resources_sha256, pair[0].page_count, 3),
+                     raster.RasterPdfCandidate(pair[0].pdf_bytes, '0' * 64,
+                         pair[0].resources_sha256, pair[0].page_count, 3)):
+            with tempfile.TemporaryDirectory() as temporary, \
+                    patch.object(self.m, 'execute_bound_raster_candidate', return_value=(item, pair[1], pair[2])), \
+                    self.assertRaises(self.m.PdfBoundRasterError):
+                self.execute(directory=Path(temporary))
+
+    def test_changed_native_context_or_scope_is_not_stored(self):
+        """The consumer validates native metadata even when a fault bypasses its seal."""
+        from copy import deepcopy
+        from pathlib import Path
+        import tempfile
+        pair = self.pair()
+        for key, value in (('request_sha256', '0' * 64), ('page_count', 1),
+                           ('resource_profile_sha256', generated.PROFILE_SHA256),
+                           ('normalized_text_equivalence_verified', False), ('release_authorized', True)):
+            data = deepcopy(pair[1].to_dict()); data[key] = value
+            with tempfile.TemporaryDirectory() as temporary, \
+                    patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                    patch.object(native.PdfNativeSourceResult, 'to_bytes', return_value=canonical(data)), \
+                    self.subTest(field=key), self.assertRaises(self.m.PdfBoundRasterError):
+                self.execute(directory=Path(temporary))
+
+    def test_partial_write_is_preserved_without_commit_or_reexecution(self):
+        """An incomplete data file remains evidence and cannot be repaired by retry."""
+        pair = self.pair()
+        real = self.m._write_stored_data
+        def partial(fd, name, data, limit):
+            """Inject a partial first file before refusing the write."""
+            real(fd, name, data[:20], limit)
+            raise OSError('private write failure')
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.m, '_write_stored_data', side_effect=partial):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        run = self.root / self.run_id
+        self.assertEqual((run / 'candidate.pdf').stat().st_size, 20)
+        self.assertFalse((run / (self.run_id + '.json')).exists())
+        with self.assertRaises(self.m.PdfBoundRasterError): self.recover()
+        with patch.object(self.m, 'execute_bound_raster_candidate') as execute:
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+            execute.assert_not_called()
+
+    def test_zero_progress_write_cannot_commit(self):
+        """The bounded write loop refuses a zero-byte write instead of spinning."""
+        pair = self.pair()
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.storage.os, 'write', return_value=0):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertFalse((self.root / self.run_id / (self.run_id + '.json')).exists())
+
+    def test_file_sync_failure_cannot_commit(self):
+        """Data must be synced before the success marker can exist."""
+        import stat
+        pair = self.pair()
+        real = os.fsync
+        def fail(fd):
+            """Fail only a regular data file, after the run directory was claimed."""
+            if stat.S_ISREG(os.fstat(fd).st_mode): raise OSError('file sync refused')
+            return real(fd)
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(os, 'fsync', side_effect=fail):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertFalse((self.root / self.run_id / (self.run_id + '.json')).exists())
+
+    def test_data_directory_sync_failure_cannot_commit(self):
+        """Synced data file contents alone do not establish a committed bundle."""
+        import stat
+        pair = self.pair()
+        real = os.fsync
+        def fail(fd):
+            """Target the directory sync after both data files have been written."""
+            if stat.S_ISDIR(os.fstat(fd).st_mode) and set(os.listdir(fd)) == {'candidate.pdf', 'manifest.json'}:
+                raise OSError('data directory sync refused')
+            return real(fd)
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(os, 'fsync', side_effect=fail):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertFalse((self.root / self.run_id / (self.run_id + '.json')).exists())
+
+    def test_receipt_commits_only_after_exact_data_readback(self):
+        """The actual receipt writer sees both exact closed data files and no marker."""
+        pair = self.pair()
+        real = self.m._write_stored_receipt
+        def commit(directory, run_id, state, result_sha256):
+            """Inspect the publication boundary, then use the descriptor-preserving writer."""
+            import json
+            self.assertEqual(set(p.name for p in directory.iterdir()), {'candidate.pdf', 'manifest.json'})
+            self.assertEqual((directory / 'candidate.pdf').read_bytes(), pair[0].pdf_bytes)
+            manifest = json.loads((directory / 'manifest.json').read_bytes())
+            self.assertEqual(result_sha256, sha256(canonical(manifest['result'])).hexdigest())
+            self.assertEqual((run_id, state), (self.run_id, 'SUCCEEDED'))
+            return real(directory, run_id, state, result_sha256)
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.m, '_write_stored_receipt', side_effect=commit) as writer:
+            self.execute()
+        self.assertEqual(writer.call_count, 1)
+
+    def test_precommit_failure_is_not_recoverable(self):
+        """Complete data without the exact terminal receipt is not an accepted artifact."""
+        pair = self.pair()
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.m, '_write_stored_receipt', side_effect=OSError('commit failed')):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertTrue((self.root / self.run_id / 'manifest.json').exists())
+        with self.assertRaises(self.m.PdfBoundRasterError): self.recover()
+
+    def test_postcommit_failure_requires_explicit_exact_recovery(self):
+        """An exception after a valid commit returns no success and never repeats native work."""
+        pair = self.pair()
+        real = self.m._write_stored_receipt
+        def committed(*args):
+            """Inject the failure after the real fsynced receipt returns."""
+            real(*args)
+            raise OSError('postcommit failure')
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.m, '_write_stored_receipt', side_effect=committed):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        before = self.snapshot()
+        with patch.object(self.m, 'execute_bound_raster_candidate', side_effect=AssertionError('no retry')):
+            self.assertEqual(self.recover()[0], pair[0].pdf_bytes)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_interrupt_before_commit_leaves_no_accepted_bundle(self):
+        """A nonordinary interruption preserves the consumed attempt without success."""
+        pair = self.pair()
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.m, '_write_stored_receipt', side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt): self.execute()
+        with self.assertRaises(self.m.PdfBoundRasterError): self.recover()
+
+    def test_corrupt_pdf_manifest_or_receipt_is_never_repaired(self):
+        """Independent original digests reject corruption in every stored component."""
+        for name in ('candidate.pdf', 'manifest.json', self.run_id + '.json'):
+            self.stage()
+            path = self.root / self.run_id / name
+            path.write_bytes(path.read_bytes() + b'changed')
+            before = self.snapshot()
+            with self.subTest(name=name), self.assertRaises(self.m.PdfBoundRasterError): self.recover()
+            self.assertEqual(self.snapshot(), before)
+
+    def test_missing_or_extra_files_refuse_as_incomplete(self):
+        """A valid receipt alone cannot turn a partial or foreign directory into a bundle."""
+        for name in ('candidate.pdf', 'manifest.json', self.run_id + '.json', 'extra'):
+            self.stage()
+            path = self.root / self.run_id / name
+            if name == 'extra': path.write_bytes(b'foreign')
+            else: path.unlink()
+            with self.subTest(name=name), self.assertRaises(self.m.PdfBoundRasterError): self.recover()
+
+    def test_unknown_missing_and_promoted_manifest_fields_refuse(self):
+        """The persisted manifest is a closed protocol rather than extensible caller metadata."""
+        from copy import deepcopy
+        for change in ('unknown', 'missing', 'release', 'page', 'result-extra'):
+            _, original = self.stage()
+            manifest = deepcopy(original)
+            if change == 'unknown': manifest['unknown'] = 1
+            elif change == 'missing': del manifest['pdf_bytes']
+            elif change == 'release': manifest['release_authorized'] = True
+            elif change == 'page': manifest['page_count'] = 1
+            else: manifest['result']['extra'] = 'unsupported'
+            (self.root / self.run_id / 'manifest.json').write_bytes(canonical(manifest))
+            with self.subTest(change=change), self.assertRaises(self.m.PdfBoundRasterError): self.recover()
+
+    def test_duplicate_and_noncanonical_manifest_encoding_refuses(self):
+        """Recovery never normalizes ambiguous fields into an apparently valid result."""
+        for change in ('duplicate', 'whitespace', 'nonfinite'):
+            self.stage()
+            path = self.root / self.run_id / 'manifest.json'
+            raw = path.read_bytes()
+            if change == 'duplicate': raw = b'{"schema":"foreign",' + raw[1:]
+            elif change == 'whitespace': raw += b'\n'
+            else: raw = raw.replace(b'"pdf_bytes":', b'"pdf_bytes":NaN,"duplicate_pdf_bytes":', 1)
+            path.write_bytes(raw)
+            with self.subTest(change=change), self.assertRaises(self.m.PdfBoundRasterError): self.recover()
+
+    def test_wrong_recovery_expectations_are_read_only_refusals(self):
+        """Stored metadata never supplies its own supposedly independent output expectation."""
+        self.stage()
+        before = self.snapshot()
+        for values in ({'expected_pdf_sha256': '0' * 64},
+                       {'expected_result_sha256': '0' * 64},
+                       {'expected_request_sha256': '0' * 64},
+                       {'expected_resources_sha256': '0' * 64},
+                       {'expected_storage_profile_sha256': self.m.PROFILE_SHA256}):
+            with self.subTest(values=values), self.assertRaises(self.m.PdfBoundRasterError):
+                self.recover(**values)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_symlink_and_hardlink_files_are_refused(self):
+        """Neither a target substitution nor an aliased inode is a private committed file."""
+        for kind in ('symlink', 'hardlink'):
+            self.stage()
+            path = self.root / self.run_id / 'candidate.pdf'
+            other = self.root / 'outside.pdf'
+            if kind == 'symlink':
+                path.rename(other); path.symlink_to(other)
+            else: os.link(path, other)
+            with self.subTest(kind=kind), self.assertRaises(self.m.PdfBoundRasterError): self.recover()
+
+    def test_symlink_root_and_run_refuse_before_native_work(self):
+        """The current path must resolve through owned directories without following links."""
+        root_link = self.root / 'alias'
+        root_link.symlink_to(self.root, target_is_directory=True)
+        with patch.object(self.m, 'execute_bound_raster_candidate') as execute:
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute(directory=root_link)
+            (self.root / self.run_id).symlink_to(self.root, target_is_directory=True)
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+            execute.assert_not_called()
+
+    def test_same_bytes_inode_replacement_during_read_refuses(self):
+        """Rechecking content alone cannot accept a replaced file in the read transaction."""
+        self.stage()
+        real = self.storage._read_data
+        replaced = False
+        def read(fd, name, limit):
+            """Replace the manifest after its first successful anchored read."""
+            nonlocal replaced
+            data = real(fd, name, limit)
+            if name == 'manifest.json' and not replaced:
+                replaced = True
+                path = self.root / self.run_id / name
+                path.unlink(); path.write_bytes(data); path.chmod(0o600)
+            return data
+        with patch.object(self.storage, '_read_data', side_effect=read), self.assertRaises(self.m.PdfBoundRasterError):
+            self.recover()
+        self.assertTrue(replaced)
+
+    def test_source_drift_after_generation_prevents_commit(self):
+        """A once-valid native output cannot bypass a changed retained request."""
+        from dataclasses import replace
+        pair = self.pair()
+        def changed(**_values):
+            """Change only this fixture's retained request after the native stage."""
+            object.__setattr__(self.bound, 'request', replace(self.bound.request, request_id='FOREIGN'))
+            return pair
+        with patch.object(self.m, 'execute_bound_raster_candidate', side_effect=changed):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertFalse((self.root / self.run_id / (self.run_id + '.json')).exists())
+
+    def test_resource_drift_during_commit_withholds_success(self):
+        """Persisted equality cannot override changed current resource declarations."""
+        pair = self.pair()
+        real = self.m._write_stored_receipt
+        asset = self.assets.assets[0]
+        previous = asset.rights_sha256
+        def changed(*args):
+            """Mutate an independently cloned asset after the commit completes."""
+            result = real(*args)
+            object.__setattr__(asset, 'rights_sha256', '0' * 64)
+            return result
+        try:
+            with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                    patch.object(self.m, '_write_stored_receipt', side_effect=changed):
+                with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        finally: object.__setattr__(asset, 'rights_sha256', previous)
+        self.assertEqual(self.recover()[0], pair[0].pdf_bytes)
+
+    def test_disable_during_commit_and_recovery_withholds_return(self):
+        """Live policy is rechecked after writes and after a full read transaction."""
+        pair = self.pair()
+        real_commit = self.m._write_stored_receipt
+        def committed(*args):
+            """Disable only after the real commit, without deleting the bundle."""
+            value = real_commit(*args); os.environ[DISABLE] = '1'; return value
+        with patch.dict(os.environ), \
+                patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.m, '_write_stored_receipt', side_effect=committed):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertEqual(self.recover()[0], pair[0].pdf_bytes)
+        real_read = self.storage._read_data
+        def read(*args):
+            """Disable after a data read to exercise the final policy check."""
+            value = real_read(*args); os.environ[DISABLE] = '1'; return value
+        before = self.snapshot()
+        with patch.dict(os.environ), patch.object(self.storage, '_read_data', side_effect=read), \
+                self.assertRaises(self.m.PdfBoundRasterError):
+            self.recover()
+        self.assertEqual(self.snapshot(), before)
+
+
+    def test_file_replacement_during_final_source_check_is_refused(self):
+        """A late persistent replacement remains detectable through the final source check."""
+        self.stage()
+        real = self.m._storage_unchanged
+        replaced = False
+        def check(*args):
+            """Replace a file with equal bytes after the current source has been checked."""
+            nonlocal replaced
+            real(*args)
+            if not replaced:
+                replaced = True
+                path = self.root / self.run_id / 'manifest.json'
+                data = path.read_bytes()
+                path.unlink(); path.write_bytes(data); path.chmod(0o600)
+        with patch.object(self.m, '_storage_unchanged', side_effect=check), \
+                self.assertRaises(self.m.PdfBoundRasterError):
+            self.recover()
+        self.assertTrue(replaced)
+
+
+    def test_written_pdf_replacement_during_manifest_write_prevents_commit(self):
+        """The first data file must retain its identity while the second is written."""
+        pair = self.pair()
+        real = self.m._write_stored_data
+        replaced = False
+        def write(fd, name, data, limit):
+            """Inject a persistent equal-byte substitution after the other file write."""
+            nonlocal replaced
+            original = real(fd, name, data, limit)
+            if name == 'manifest.json':
+                replaced = True
+                path = self.root / self.run_id / 'candidate.pdf'
+                previous = path.read_bytes()
+                path.unlink(); path.write_bytes(previous); path.chmod(0o600)
+            return original
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.m, '_write_stored_data', side_effect=write):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertTrue(replaced)
+        self.assertFalse((self.root / self.run_id / (self.run_id + '.json')).exists())
+
+    def test_precommit_source_check_cannot_replace_written_manifest(self):
+        """The successful receipt must bind the originally written and synced data files."""
+        pair = self.pair()
+        real = self.m._storage_unchanged
+        replaced = False
+        def check(*args):
+            """Replace equal manifest bytes during the source check preceding commit."""
+            nonlocal replaced
+            real(*args)
+            run = self.root / self.run_id
+            path = run / 'manifest.json'
+            if path.exists() and not (run / (self.run_id + '.json')).exists() and not replaced:
+                replaced = True
+                previous = path.read_bytes()
+                path.unlink(); path.write_bytes(previous); path.chmod(0o600)
+        with patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                patch.object(self.m, '_storage_unchanged', side_effect=check):
+            with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+        self.assertTrue(replaced)
+        self.assertFalse((self.root / self.run_id / (self.run_id + '.json')).exists())
+
+    def test_final_execution_source_check_preserves_every_committed_member(self):
+        """No late replacement, deletion or corruption can escape after committed readback."""
+        from pathlib import Path
+        import tempfile
+        pair = self.pair()
+        real_read = self.m._read_stored
+        real_check = self.m._storage_unchanged
+        for name in ('candidate.pdf', 'manifest.json', self.run_id + '.json'):
+            for mutation in ('replace-equal', 'delete', 'change'):
+                with tempfile.TemporaryDirectory() as temporary:
+                    self.root = Path(temporary)
+                    read_completed = False
+                    changed = False
+                    def read(*args):
+                        """Identify completion of the actual full committed read transaction."""
+                        nonlocal read_completed
+                        value = real_read(*args)
+                        read_completed = True
+                        return value
+                    def check(*args):
+                        """Change a named member during execution's remaining source validation."""
+                        nonlocal changed
+                        real_check(*args)
+                        if read_completed and not changed:
+                            changed = True
+                            path = self.root / self.run_id / name
+                            previous = path.read_bytes()
+                            if mutation == 'change': path.write_bytes(previous + b'changed')
+                            else:
+                                path.unlink()
+                                if mutation == 'replace-equal':
+                                    path.write_bytes(previous); path.chmod(0o600)
+                    with self.subTest(name=name, mutation=mutation), \
+                            patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                            patch.object(self.m, '_read_stored', side_effect=read), \
+                            patch.object(self.m, '_storage_unchanged', side_effect=check):
+                        with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+                    self.assertTrue(changed)
+
+
+    def test_equal_bytes_writer_handoff_replacement_is_refused(self):
+        """A writer's closed descriptor must remain the identity anchor for every member."""
+        from pathlib import Path
+        import stat
+        import tempfile
+        pair = self.pair()
+        real_close = os.close
+        for name in ('candidate.pdf', 'manifest.json', self.run_id + '.json'):
+            with tempfile.TemporaryDirectory() as temporary:
+                self.root = Path(temporary)
+                replaced = False
+                def close(fd):
+                    """Substitute equal bytes at the writer-to-caller return boundary."""
+                    nonlocal replaced
+                    info = os.fstat(fd)
+                    run = self.root / self.run_id
+                    target = run / name
+                    replace_now = False
+                    if not replaced and target.exists():
+                        current = target.lstat()
+                        same_file = (info.st_dev, info.st_ino) == (current.st_dev, current.st_ino)
+                        same_run = (name == self.run_id + '.json'
+                            and stat.S_ISDIR(info.st_mode)
+                            and (info.st_dev, info.st_ino) == (run.stat().st_dev, run.stat().st_ino))
+                        replace_now = same_file or same_run
+                    real_close(fd)
+                    if replace_now:
+                        replaced = True
+                        replacement = run / '.writer-handoff-replacement'
+                        replacement.write_bytes(target.read_bytes())
+                        replacement.chmod(0o600)
+                        replacement.replace(target)
+                with self.subTest(name=name), \
+                        patch.object(self.m, 'execute_bound_raster_candidate', return_value=pair), \
+                        patch.object(os, 'close', side_effect=close):
+                    with self.assertRaises(self.m.PdfBoundRasterError): self.execute()
+                self.assertTrue(replaced)
+
+    def test_descriptor_balance_after_success_and_refusal(self):
+        """Repeated accepted and rejected read transactions close every owned descriptor."""
+        from pathlib import Path
+        self.stage()
+        before = len(list(Path('/proc/self/fd').iterdir()))
+        for _ in range(3):
+            self.recover()
+            with self.assertRaises(self.m.PdfBoundRasterError):
+                self.recover(expected_pdf_sha256='0' * 64)
+        self.assertEqual(len(list(Path('/proc/self/fd').iterdir())), before)
+
+    def test_storage_profile_retains_original_envelopes_and_manifest_pins(self):
+        """The storage extension cannot silently change rendering or file admission limits."""
+        from reporting import pdf_candidate_store as storage
+        manifest = BoundRasterManifestTests().manifest()
+        profile = self.m.bound_raster_storage_profile()
+        self.assertEqual(manifest['storage_profile'], profile)
+        self.assertEqual(manifest['storage_profile_sha256'], self.m.STORAGE_PROFILE_SHA256)
+        self.assertEqual(sha256(canonical(profile)).hexdigest(), self.m.STORAGE_PROFILE_SHA256)
+        self.assertEqual(profile['candidate_profile_sha256'], self.m.PROFILE_SHA256)
+        self.assertEqual((profile['max_pdf_bytes'], profile['max_manifest_bytes']),
+                         (storage.MAX_PDF_BYTES, storage.MAX_MANIFEST_BYTES))
+        self.assertFalse(profile['release_authorized'])
+        self.assertFalse(profile['aggregate_job_resources_qualified'])
+        self.assertFalse(profile['power_loss_durability_qualified'])
 
 
 if __name__ == '__main__': unittest.main()
