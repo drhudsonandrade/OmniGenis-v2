@@ -156,7 +156,7 @@ class RendererEnvelopeTests(unittest.TestCase):
     def test_worker_applies_limits_and_preserves_deterministic_pdf(self):
         """Two real native renders keep exact PDF bytes and enforced limits."""
         from reporting import _pdf_render_worker as worker
-        html = "<!doctype html><html><body><p>bounded-render</p></body></html>"
+        html = "<!doctype html><html><head><style>body{font-family:Lato}</style></head><body><p>bounded-render</p></body></html>"
         digest = hashlib.sha256(html.encode()).hexdigest()
         outputs = []
         for _ in range(2):
@@ -363,7 +363,7 @@ class RendererEnvelopeTests(unittest.TestCase):
             if name == "weasyprint" or name.startswith("weasyprint."):
                 raise AssertionError("parent loaded native renderer")
             return original(name, *args, **kwargs)
-        html = "<!doctype html><html><body>isolated fixture</body></html>"
+        html = "<!doctype html><html><head><style>body{font-family:Lato}</style></head><body>isolated fixture</body></html>"
         with patch("builtins.__import__", side_effect=guard):
             pdf = adapters._render_pdf(html, hashlib.sha256(html.encode()).hexdigest())
         self.assertTrue(pdf.startswith(b"%PDF-1.7"))
@@ -411,7 +411,7 @@ class RendererEnvelopeTests(unittest.TestCase):
             for fd in pass_fds:
                 self.assertEqual(os.fstat(fd).st_nlink, 0)
             return original(command, env=env, pass_fds=pass_fds)
-        html = "<html><body>anonymous fixture</body></html>"
+        html = "<html><head><style>body{font-family:Lato}</style></head><body>anonymous fixture</body></html>"
         with patch.object(adapters, "_start_pdf_render_worker", side_effect=observe):
             pdf = adapters._render_pdf(html, hashlib.sha256(html.encode()).hexdigest())
         self.assertTrue(observed)

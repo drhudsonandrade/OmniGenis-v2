@@ -159,18 +159,18 @@ class RasterProcessTests(Inputs, unittest.TestCase):
 class FinalProcessBindingTests(Inputs, unittest.TestCase):
     def test_real_long_roundtrip_accounts_for_all_declared_children(self):
         data = self.actual(); observed = data['observed']; manifest = data['manifest']
-        self.assertEqual((len(data['pdf']), manifest['page_count']), (9613905, 53))
+        self.assertEqual((len(data['pdf']), manifest['page_count']), (9632150, 56))
         self.assertEqual(manifest['result']['binding']['finding_count'], 96)
         self.assertEqual(len(observed['layout_processes']), 3)
         self.assertEqual((observed['observed_direct_spawns'], observed['observed_direct_exits']), (45,45))
-        self.assertEqual((observed['observed_nested_spawns'], observed['observed_nested_exits']), (67,67))
-        self.assertEqual((observed['observed_total_spawns'], observed['observed_total_exits']), (112,112))
+        self.assertEqual((observed['observed_nested_spawns'], observed['observed_nested_exits']), (70,70))
+        self.assertEqual((observed['observed_total_spawns'], observed['observed_total_exits']), (115,115))
         self.assertEqual(observed['declared_retries'], 0)
         self.assertEqual(observed['pdf_sha256'], sha256(data['pdf']).hexdigest())
         self.assertEqual(observed['manifest_sha256'], sha256(canonical(manifest)).hexdigest())
         self.assertEqual(observed['result_sha256'], manifest['result_sha256'])
         self.assertEqual(observed['run_id'], 'c'*32)
-        self.assertEqual(observed['native_observation']['observed_total_spawns'], 106)
+        self.assertEqual(observed['native_observation']['observed_total_spawns'], 109)
         self.assertLessEqual(len(canonical(observed)), 160*1024)
         self.assertEqual(observed['observation_sha256'], sha256(canonical(
             {k:v for k,v in observed.items() if k!='observation_sha256'})).hexdigest())

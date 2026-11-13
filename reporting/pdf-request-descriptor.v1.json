@@ -12,7 +12,7 @@
     "Receiver reads use a close-on-exec duplicate and preserve borrowed offsets. Independently copied or explicitly inherited descriptors persist until their owners close them; context exit is not revocation.",
     "Finite packet and chunk bounds do not qualify aggregate memory, CPU, deadline or descendant supervision. No service, process launcher, filesystem path or socket endpoint is introduced.",
     "The original codec and snapshot job still own complete request and source/PDF validation. A sealed request can contain opaque invalid source that the original inspection must reject.",
-    "The default 32-page/8-MiB renderer is unchanged. Optional inspection uses the selected 64-page/16-MiB profiles. No scientific, accessibility or long-report release claim is added."
+    "The default 32-page/8-MiB renderer limits are unchanged. Optional inspection uses the selected 64-page/16-MiB profiles. No scientific, accessibility or long-report release claim is added."
   ],
   "profile": {
     "aggregate_job_resources_qualified": false,
@@ -49,9 +49,9 @@
     "THIRD-PARTY-NOTICES.txt": "d08cd95ba4f026b427deb502a284aee6ba2159c0e372674bf5e1e384afa80788",
     "reporting/bindings.py": "bdbc232cb0cfd507001731075ea9856cd421b60202f2871511d406aead09eb38",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
-    "reporting/pdf-inspection-request.v1.json": "b7fa9ff5cf8b3a8dae089cecbf87826f89ee8758ea7a7e5609dd72db3f1f8664",
-    "reporting/pdf-snapshot-inspection.v1.json": "264d61d234e8c5da8a81006e4d208a2133af29f98275b29d2376073091111261",
-    "reporting/pdf-structured-source-job.v1.json": "252d3de39621125e8e3d8798cc082cd8029cf137bda6e1cecadf4719540bb02b",
+    "reporting/pdf-inspection-request.v1.json": "ac74adddf763054e344ca4b187021c68fe80bedb7f9306b73e409372887568bc",
+    "reporting/pdf-snapshot-inspection.v1.json": "44a8de670fe1eacdb63c04f7473f9d09dee104b13ab10e9440c9848d7043c3cc",
+    "reporting/pdf-structured-source-job.v1.json": "bd7d4820102befdb9aa2afa81ab75c073ee6f12f40c40d60e5626efe4aa304d1",
     "reporting/pdf_inspection_request.py": "f9e72d162992debe09f081dc945edd1bc6740730682e4de4a5f1c80d43113dd3",
     "reporting/pdf_snapshot_inspection.py": "833069a527d554ce09c1dba165de47cdfda4178b07ce674724c80d5c5e7856b5",
     "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",

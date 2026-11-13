@@ -58,8 +58,8 @@
     "THIRD-PARTY-NOTICES.txt": "d08cd95ba4f026b427deb502a284aee6ba2159c0e372674bf5e1e384afa80788",
     "reporting/bindings.py": "bdbc232cb0cfd507001731075ea9856cd421b60202f2871511d406aead09eb38",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
-    "reporting/pdf-snapshot-inspection.v1.json": "264d61d234e8c5da8a81006e4d208a2133af29f98275b29d2376073091111261",
-    "reporting/pdf-structured-source-job.v1.json": "252d3de39621125e8e3d8798cc082cd8029cf137bda6e1cecadf4719540bb02b",
+    "reporting/pdf-snapshot-inspection.v1.json": "44a8de670fe1eacdb63c04f7473f9d09dee104b13ab10e9440c9848d7043c3cc",
+    "reporting/pdf-structured-source-job.v1.json": "bd7d4820102befdb9aa2afa81ab75c073ee6f12f40c40d60e5626efe4aa304d1",
     "reporting/pdf_snapshot_inspection.py": "833069a527d554ce09c1dba165de47cdfda4178b07ce674724c80d5c5e7856b5",
     "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
     "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"

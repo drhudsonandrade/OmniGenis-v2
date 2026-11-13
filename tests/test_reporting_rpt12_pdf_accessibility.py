@@ -39,7 +39,7 @@ def synthetic_tagged_pdf(
 class Rpt12PdfAccessibilityTests(unittest.TestCase):
     def test_renderer_emits_tagged_pdf_prerequisites(self):
         """The pinned renderer emits PDF/UA-1 structural prerequisites."""
-        html='<!doctype html><html lang="en-US"><head><meta charset="utf-8"><title>Synthetic</title></head><body><h1>Synthetic</h1><p>Body</p></body></html>'
+        html='<!doctype html><html lang="en-US"><head><meta charset="utf-8"><title>Synthetic</title><style>body{font-family:Lato}</style></head><body><h1>Synthetic</h1><p>Body</p></body></html>'
         pdf=_render_pdf(html,hashlib.sha256(html.encode()).hexdigest())
         result=validate_pdf_accessibility_structure(pdf_bytes=pdf,expected_language="en-US")
         self.assertTrue(result.passed,result.errors)

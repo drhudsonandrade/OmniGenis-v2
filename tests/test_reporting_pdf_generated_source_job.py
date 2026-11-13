@@ -371,6 +371,7 @@ class GeneratedSourceJobTests(unittest.TestCase):
         self.assertEqual(set(manifest['reused_source_sha256']), {
             'LICENSE', 'THIRD-PARTY-NOTICES.txt', 'requirements-reporting.lock',
             'reporting/adapters.py', 'reporting/_pdf_render_worker.py',
+            'reporting/pdf_font_selection.py', 'reporting/pdf-font-style.v1.json',
             'reporting/_pdf_process_lifecycle.py', 'reporting/_pdf_process_sandbox.py',
             'reporting/_pdf_native_launch_budget.py', 'reporting/pdf_native_source_job.py',
             'reporting/pdf-native-source-job.v1.json', 'reporting/pdf_generated_source_job.py',

@@ -1,0 +1,138 @@
+{
+  "bundled_font_programs_modified": false,
+  "default_pipeline_activated": false,
+  "embedded_font_programs": "Renderer-generated subsets of the exact admitted source programs",
+  "execution": {
+    "font_parser": "fonttools:4.66.0",
+    "legacy_max_pages": 32,
+    "legacy_max_pdf_bytes": 8388608,
+    "optional_max_pages": 64,
+    "optional_max_pdf_bytes": 16777216,
+    "protocols": [
+      1,
+      2,
+      3
+    ],
+    "protocols_or_result_shapes_changed": false,
+    "renderer": "weasyprint:70.0",
+    "sandbox_or_resource_limits_changed": false
+  },
+  "fontlog": {
+    "bytes": 3102,
+    "classification": "LEGAL_COPY",
+    "modified": false,
+    "path": "reporting/assets/fonts/lato/FONTLOG.txt",
+    "sha256": "d14d78932391e0a2f47b24319aa4e74ddcb448b13701d9673b6523259d558560",
+    "source_url": "https://raw.githubusercontent.com/google/fonts/f3b885d5590e307e02542f1a724cec55d567fdaa/ofl/lato/FONTLOG.txt"
+  },
+  "fonts": [
+    {
+      "bytes": 656568,
+      "classification": "LEGAL_COPY",
+      "family": "Lato",
+      "modified": false,
+      "path": "reporting/assets/fonts/lato/Lato-Regular.ttf",
+      "postscript_name": "Lato-Regular",
+      "sha256": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+      "source_url": "https://raw.githubusercontent.com/google/fonts/f3b885d5590e307e02542f1a724cec55d567fdaa/ofl/lato/Lato-Regular.ttf",
+      "style": "normal",
+      "variable": false,
+      "version": "2.015",
+      "weight": 400
+    },
+    {
+      "bytes": 656544,
+      "classification": "LEGAL_COPY",
+      "family": "Lato",
+      "modified": false,
+      "path": "reporting/assets/fonts/lato/Lato-Bold.ttf",
+      "postscript_name": "Lato-Bold",
+      "sha256": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+      "source_url": "https://raw.githubusercontent.com/google/fonts/f3b885d5590e307e02542f1a724cec55d567fdaa/ofl/lato/Lato-Bold.ttf",
+      "style": "normal",
+      "variable": false,
+      "version": "2.015",
+      "weight": 700
+    }
+  ],
+  "global_font_installation": false,
+  "known_limits": [
+    "Codepoint coverage and exact source face identity do not prove glyph meaning or the readability of every final artifact.",
+    "Layout depends on current source and fixed fonts. Historical HTML/PDF identities and receipts are not transferred to changed output.",
+    "Semantic reading order, full PDF/UA conformance, branding and complete visual qualification require their own artifact-specific evidence."
+  ],
+  "license": {
+    "bytes": 4407,
+    "classification": "LEGAL_COPY",
+    "modified": false,
+    "path": "reporting/assets/fonts/lato/OFL.txt",
+    "reserved_font_name": "Lato",
+    "sha256": "74ba064d03f1f1c4a952da936c3eb71866c34404916734de3cae73b34357e59e",
+    "source_url": "https://raw.githubusercontent.com/google/fonts/f3b885d5590e307e02542f1a724cec55d567fdaa/ofl/lato/OFL.txt",
+    "spdx": "OFL-1.1"
+  },
+  "pdf_ua_qualified": false,
+  "python_package_lock_changed": false,
+  "reading_order_verified": false,
+  "release_authorized": false,
+  "schema_version": "1.0.0",
+  "scope": "Fixed fonts and style for the existing semantic-section renderer; no report, locale or scientific capability is activated.",
+  "selection": {
+    "actual_source_faces_verified_before_return": true,
+    "application_font_count": 2,
+    "caller_font_selector": false,
+    "capture_lifetime": "One-use child process; kernel closes descriptors at process exit",
+    "configuration_alias": "/dev/stdin",
+    "configuration_source": "Fixed sealed XML held on the disposable worker standard-input descriptor",
+    "font_face_rules": "REFUSE",
+    "font_source": "Exact bounded bytes held in content-sealed descriptors",
+    "foreign_or_synthesized_face": "REFUSE",
+    "initial_standard_input": "Exact read/write null device supplied by the existing launcher",
+    "missing_visible_codepoint": "REFUSE",
+    "required_alias_target": "/proc/self/fd/0",
+    "system_font_count": 0,
+    "url_fetcher_policies_changed": false
+  },
+  "source_repository": "https://github.com/google/fonts",
+  "source_revision": "f3b885d5590e307e02542f1a724cec55d567fdaa",
+  "source_sha256": {
+    "reporting/_pdf_render_worker.py": "2a411f7549b0e072c2fd03d5740cf954975098eddf7532fd2e0ee8ab34771aa9",
+    "reporting/adapters.py": "a4be1711489ab44621f410039e461d6f192b18b677a130fc6320880aead1bce9",
+    "reporting/pdf_font_selection.py": "215c21a2aad54b048c76b9d98ab98cf862a0c677a0d81d4b71988a072496071d",
+    "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
+  },
+  "style": {
+    "body": {
+      "color": "#455D73",
+      "line_height_pt": 15.3,
+      "size_pt": 10.7,
+      "weight": 400
+    },
+    "brand_artwork_activated": false,
+    "font_family": "Lato",
+    "page": {
+      "height_pt": 841.88976,
+      "margin_pt": 44,
+      "width_pt": 595.27559
+    },
+    "preformatted_content": {
+      "color": "#0B1F33",
+      "font": "inherit",
+      "overflow_wrap": "anywhere",
+      "white_space": "pre-wrap"
+    },
+    "risk_semantics_added": false,
+    "titles": {
+      "color": "#003890",
+      "elements": [
+        "h1",
+        "h2"
+      ],
+      "line_height_pt": 30,
+      "size_pt": 25,
+      "weight": 700
+    },
+    "visible_content_or_order_changed": false
+  },
+  "style_id": "fixed-lato-2.015-v1"
+}

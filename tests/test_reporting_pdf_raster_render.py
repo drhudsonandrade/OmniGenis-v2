@@ -48,6 +48,7 @@ class RasterNativeTests(unittest.TestCase):
         resource = self.bundle.assets[0].uri if uri is None else uri
         return ('<!doctype html><html lang="en-US"><head><meta charset="utf-8">'
                 '<title>OmniGenis</title><meta name="author" content="Hudson Silva Andrade">'
+                '<style>body{font-family:Lato}</style>'
                 '</head><body><h1>Synthetic resource qualification</h1><p>Exact source text.</p>'
                 + (f'<img src="{resource}" alt="" role="presentation" width="64" height="64">' if image else '')
                 + '</body></html>')
@@ -352,22 +353,130 @@ class RasterFailureProtocolTests(unittest.TestCase):
 
     def test_legacy_fatal_fetch_propagation_is_preserved(self):
         """The opt-in failure record fix does not change legacy URL-refusal behavior."""
-        from reporting import _pdf_render_worker as worker
-        from weasyprint.urls import FatalURLFetchingError
-        html = self.html(uri='file:///etc/passwd')
-        with self.assertRaises(FatalURLFetchingError):
-            worker._render(html, sha256(html.encode()).hexdigest())
+        record = self.isolated_exception('FatalURLFetchingError', resources=False)
+        self.assertEqual(record, {
+            'schema': 'renderer-exception-test-v1',
+            'exception': 'FatalURLFetchingError', 'write_pdf_calls': 1,
+        })
 
     def test_process_control_base_exceptions_are_not_swallowed(self):
         """Only the named fetch failure is handled; interrupts and process exits still escape."""
-        from reporting import _pdf_render_worker as worker
-        from weasyprint import HTML
-        html = self.html()
-        for resources in (None, self.bundle):
-            for exception in (KeyboardInterrupt, SystemExit):
-                with self.subTest(resources=resources is not None, exception=exception.__name__), \
-                        patch.object(HTML, 'write_pdf', side_effect=exception), self.assertRaises(exception):
-                    worker._render(html, sha256(html.encode()).hexdigest(), resources=resources)
+        for resources in (False, True):
+            for exception in ('KeyboardInterrupt', 'SystemExit'):
+                with self.subTest(resources=resources, exception=exception):
+                    record = self.isolated_exception(exception, resources=resources)
+                    self.assertEqual(record, {
+                        'schema': 'renderer-exception-test-v1',
+                        'exception': exception, 'write_pdf_calls': 1,
+                    })
+
+    def isolated_exception(self, exception, *, resources):
+        """Observe the exact exception outside main in a fresh fully guarded child."""
+        import json
+        import os
+        from pathlib import Path
+        import sys
+        import tempfile
+        from reporting import adapters, _pdf_render_worker as worker
+
+        child_code = r'''
+import builtins
+import os
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(sys.argv[1]).resolve()))
+from reporting import _pdf_render_worker as worker
+
+expected = sys.argv[2]
+has_resources = sys.argv[3] == '1'
+fds = tuple(map(int, sys.argv[4:-1]))
+parent = int(sys.argv[-1])
+assert len(fds) == (4 if has_resources else 3)
+assert not any(name == 'weasyprint' or name.startswith('weasyprint.')
+               for name in sys.modules)
+injected = {'KeyboardInterrupt': KeyboardInterrupt(), 'SystemExit': SystemExit(17)}.get(expected)
+original_import = builtins.__import__
+patched = False
+calls = 0
+original_write_pdf = None
+
+def observed_write_pdf(*args, **kwargs):
+    global calls
+    calls += 1
+    if injected is not None:
+        raise injected
+    return original_write_pdf(*args, **kwargs)
+
+def delayed_observer(name, *args, **kwargs):
+    global patched, original_write_pdf
+    result = original_import(name, *args, **kwargs)
+    module = sys.modules.get('weasyprint')
+    html_type = getattr(module, 'HTML', None)
+    if not patched and html_type is not None:
+        original_write_pdf = html_type.write_pdf
+        html_type.write_pdf = observed_write_pdf
+        patched = True
+    return result
+
+argv = [str(Path(worker.__file__).resolve()),
+        *(str(fd) for fd in fds[:3]), str(parent)]
+if has_resources:
+    argv.extend((worker.RASTER_MODE, str(fds[3])))
+observed = None
+builtins.__import__ = delayed_observer
+try:
+    try:
+        worker.main(argv)
+    except BaseException as error:
+        observed = error
+finally:
+    builtins.__import__ = original_import
+assert patched and calls == 1, 'actual write_pdf boundary was not reached once'
+if injected is not None:
+    assert observed is injected, 'the injected cancellation did not propagate'
+else:
+    urls = sys.modules.get('weasyprint.urls')
+    fatal = getattr(urls, 'FatalURLFetchingError', None)
+    assert fatal is not None and type(observed) is fatal, 'a different failure cannot satisfy URL refusal'
+assert os.fstat(fds[1]).st_size == 0 and os.fstat(fds[2]).st_size == 0
+# This is test observation after an escaped exception, never a product receipt.
+worker._write_result(fds[2], {'schema': 'renderer-exception-test-v1',
+    'exception': type(observed).__name__, 'write_pdf_calls': calls})
+'''
+        html = self.html(uri='file:///etc/passwd' if exception == 'FatalURLFetchingError' else None)
+        encoded = html.encode('utf-8')
+        with (tempfile.TemporaryFile() as request, tempfile.TemporaryFile() as output,
+              tempfile.TemporaryFile() as response, tempfile.TemporaryFile() as resource_file):
+            fds = tuple(f.fileno() for f in (request, output, response))
+            digest = sha256(encoded).hexdigest()
+            if resources:
+                header = f'3 {digest} {self.bundle.bundle_sha256}\n'
+                resource_file.write(self.bundle.to_bytes())
+                resource_file.flush()
+                resource_file.seek(0)
+                fds += (resource_file.fileno(),)
+            else:
+                header = f'1 {digest}\n'
+            request.write(header.encode('ascii') + encoded)
+            request.flush()
+            request.seek(0)
+            env = {key: os.environ[key] for key in (
+                'PATH', 'HOME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TZ',
+                'FONTCONFIG_FILE', 'FONTCONFIG_PATH',
+            ) if key in os.environ}
+            env.update(SOURCE_DATE_EPOCH='0', OMNIGENIS_PDF_QUALIFICATION_RECEIPT_MODE='qualification-only')
+            command = [sys.executable, '-I', '-B', '-c', child_code,
+                       str(Path(worker.__file__).resolve().parents[1]),
+                       exception, '1' if resources else '0',
+                       *(str(fd) for fd in fds), str(os.getpid())]
+            child = adapters._start_pdf_render_worker(command, env=env, pass_fds=fds)
+            code = adapters._wait_pdf_render_worker(child, wall_seconds=worker.WALL_SECONDS)
+            self.assertEqual(code, 0, 'guarded child did not observe the exact requested exception')
+            self.assertEqual(os.fstat(output.fileno()).st_size, 0)
+            self.assertLessEqual(os.fstat(response.fileno()).st_size, worker.RESULT_BYTES)
+            response.seek(0)
+            return json.loads(response.read(worker.RESULT_BYTES + 1))
 
 
 if __name__ == '__main__': unittest.main()

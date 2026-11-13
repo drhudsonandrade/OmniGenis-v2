@@ -170,7 +170,7 @@
     "reporting/_pdf_raster_child_observation.py": "f88121100fc11705fb4b6be38e524740bb3975699de84dfbf0313ae55e47e79c",
     "reporting/_pdf_raster_executor.py": "5062b2cc9740a8063e3fcc2f063b5baaa95b0e3a22bf803f17d20701c2df899e",
     "reporting/_pdf_raster_launch_budget.py": "3cd8cea2696b99e443d558373d05ad8bf72d9e932c8ced68a944516cf23c4367",
-    "reporting/_pdf_render_worker.py": "0d4a7730ce0b212930b7497f443cb6042f5061a19c4173162b420f93ad8555b1",
+    "reporting/_pdf_render_worker.py": "2a411f7549b0e072c2fd03d5740cf954975098eddf7532fd2e0ee8ab34771aa9",
     "reporting/_pdf_text_window_worker.py": "7f2d2600492826d093f09159356158bfb22b3c8fa5c4a5c09e7d740c573ed36e",
     "reporting/_pdf_visual_worker.py": "00564cacfb041488cfc88c36be391b280ab4c77b49f0e5e180d66a8ea70f9c91",
     "reporting/pdf_text_windows.py": "fc913d4e0275039e27da5c43e543fe9453bbf08bfa09d2470836e76e9ba76697"
