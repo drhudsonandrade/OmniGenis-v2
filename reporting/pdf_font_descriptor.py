@@ -29,7 +29,7 @@ from reporting._pdf_font_descriptor_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_FONT_DESCRIPTOR_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "b6e7cd92d13e3eb35d35f683ec22b7213201b83e22f1ab0783503dbf95f81ba3"
+_FIXED_PARENT_PROFILE_SHA256 = "c5998cc56c5552c1dc92e509edd29692b3ccb41af7c46b0898d7ff2e68ecd9d2"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -74,7 +74,7 @@ def font_descriptor_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(font_descriptor_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "995f625b277ada5ce46e4f0fab50180498e39b34de1ed2ccecd105822a5fc8ec"
+_FIXED_PROFILE_SHA256 = "7f1f803cabe275bd2b5923e5966a2a2c3f0b64af15a86da94333e00637117086"
 
 
 def _profile() -> None:
@@ -82,7 +82,7 @@ def _profile() -> None:
     previous._profile()
     if (sys.platform != "linux" or os.environ.get(_DISABLE) == "1"
             or (MAX_DOCUMENT_PAGES, MAX_PDF_BYTES) != _FIXED_ENVELOPE
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or previous.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256
             or sha256(_canonical(font_descriptor_profile())).hexdigest()

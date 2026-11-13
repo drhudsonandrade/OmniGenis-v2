@@ -69,7 +69,7 @@ class PdfObjectGraphTests(unittest.TestCase):
     def response(self):
         """Build synthetic protocol metadata, never actual worker verification evidence."""
         return {"protocol_version": 1, "profile_id": ENGINE,
-                "policy_id": "passive-report-pdf-v1", "parser_version": "6.19.0",
+                "policy_id": "passive-report-pdf-v1", "parser_version": "7.1.0",
                 "identity": self.identity(),
                 "limits": {"memory_bytes": 268435456, "cpu_seconds": 5,
                            "file_bytes": 4096, "open_files": 128},
@@ -400,7 +400,7 @@ class PdfObjectGraphTests(unittest.TestCase):
         """The internal manifest pins actual budgets, policy bytes, provenance and exclusions."""
         record = json.loads((ROOT / "reporting/pdf-object-graph-engine.v1.json").read_text())
         self.assertEqual(record["profile_id"], ENGINE)
-        self.assertEqual(record["parser_version"], "6.19.0")
+        self.assertEqual(record["parser_version"], "7.1.0")
         self.assertEqual(record["policy_source_sha256"], digest((ROOT / "reporting/_pdf_safety_worker.py").read_bytes()))
         self.assertEqual(record["resource_budget"], {"pdf_bytes": 16777216, "pages": 512, "object_visits": 20000, "graph_depth": 64, "memory_bytes": 268435456, "cpu_seconds": 5, "wall_seconds": 10, "open_files": 128, "result_bytes": 4096})
         self.assertFalse(record["default_pipeline_activated"])

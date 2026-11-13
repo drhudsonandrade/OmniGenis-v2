@@ -17,7 +17,7 @@ MAX_TEXT_CHARS = 1024 * 1024
 MEMORY_BYTES = 256 * 1024 * 1024
 CPU_SECONDS = 5
 WALL_SECONDS = 10
-EXTRACTOR_VERSION = "6.19.0"
+EXTRACTOR_VERSION = "7.1.0"
 ERRORS = frozenset({
     "encrypted_pdf_forbidden", "pdf_content_structure_invalid",
     "pdf_content_text_missing", "pdf_content_budget_exceeded",

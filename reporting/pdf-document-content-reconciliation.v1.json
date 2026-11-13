@@ -10,11 +10,11 @@
   "profile": {
     "aggregate_job_resources_qualified": false,
     "default_pipeline_activated": false,
-    "document_inspection_profile_sha256": "8f298b8a6871bd5e1b7c7aa38e0414ff22b8adb622788779bde1d819cd046250",
+    "document_inspection_profile_sha256": "24dfbe7ac19a30849d38d16153bb64502aef28f80a77f8359121266ab38c40d1",
     "language": "en-US",
     "max_bound_pages": 64,
     "max_bound_pdf_bytes": 16777216,
-    "native_content_parser_version": "6.19.0",
+    "native_content_parser_version": "7.1.0",
     "native_content_policy_id": "semantic-section-normalized-whole-text-v1",
     "native_content_profile_id": "generated-pdf-document-content-v1",
     "normalization": "IGNORE_CR_LF_FORM_FEED_ONLY",
@@ -26,7 +26,7 @@
     "worker_results_authenticated": false
   },
   "profile_id": "generated-pdf-document-content-reconciliation-v1",
-  "profile_sha256": "1a1f23ff981c38d5dfa126f5a199bd9b5df0a2288b38015668dfeed384b981be",
+  "profile_sha256": "0b0499eb48da226e9c02276056c95fbfaf96e0631281c61930b827ba8103eadc",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "service_installed": false,

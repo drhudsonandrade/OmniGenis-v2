@@ -17,7 +17,7 @@
     "cleanup_seconds": 2,
     "completion": "CONTEXT_SENT_EOF_ZERO_EXIT_REAP_VALID_FRAME",
     "default_pipeline_activated": false,
-    "frame_profile_sha256": "b59ded160140ce1547b9eeff1af000b43007b23f63beaccc2533238cad5bff07",
+    "frame_profile_sha256": "ec6564b1b3fa41c043f888b0711fba13cf0896779b0d5493083940cde691220c",
     "hard_job_deadline_qualified": false,
     "host_authenticated": false,
     "max_context_bytes": 4096,
@@ -30,9 +30,9 @@
     "service_installed": false,
     "stdout_storage": "BOUNDED_PIPE_FRAME_PLUS_ONE_OVERFLOW_BYTE",
     "unprivileged_caller_required": true,
-    "worker_profile_sha256": "52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b"
+    "worker_profile_sha256": "30dba4e90b1c5ef6a9ef0d8146b52fa26e822cbf2e678c33602699c46f9699b4"
   },
-  "profile_sha256": "d020c676e11207bdfd007dcd90488888bcebd6b1ee1285faa514b116d7c41095",
+  "profile_sha256": "4010f05b0b233a093c380a39c36af2d363d5b06e14862c81df4f85edb119d98c",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "source_sha256": {

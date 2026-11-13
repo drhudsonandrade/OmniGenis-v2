@@ -29,7 +29,7 @@ from reporting._pdf_tounicode_header_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_HEADER_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "dbbe4868be75c8dbb06daf12e3806974d858f15de1a4c6cab845fce644f1e509"
+_FIXED_PARENT_PROFILE_SHA256 = "b99c05455b586198113da36fe1d49bfde951a7c377abfaed9ca5fc799ccf50c3"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -72,7 +72,7 @@ def tounicode_header_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_header_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "029a88bf6c37d243a156589cca44d77d76a64bec5c78867382357935768aebbe"
+_FIXED_PROFILE_SHA256 = "6341c52e8f124bd106892d6d62e1daa426c62a05b10ada1f7c0ba2344a4e021c"
 
 
 def _profile() -> None:
@@ -81,7 +81,7 @@ def _profile() -> None:
     if (sys.platform != "linux" or os.environ.get(_DISABLE) == "1"
             or (MAX_DOCUMENT_PAGES, MAX_PDF_BYTES) != _FIXED_ENVELOPE
             or MAX_RAW_CMAP_BYTES != LEGACY_MAX_PDF_BYTES
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or previous.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256
             or sha256(_canonical(tounicode_header_profile())).hexdigest()

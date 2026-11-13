@@ -192,7 +192,7 @@ def _pdf_stack_readiness() -> tuple[bool, str | None]:
         from pypdf import PdfReader  # noqa: F401
     except (ImportError, OSError):
         return False, "pdf_validator_unavailable"
-    if version("pypdf") != "6.19.0":
+    if version("pypdf") != "7.1.0":
         return False, "pdf_validator_version_mismatch"
 
     try:
@@ -480,7 +480,7 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
         "pdf_sha256": pdf_sha256,
         "pdf_adapter_status": "READY",
         "pdf_engine_id": "weasyprint:70.0",
-        "pdf_validator_id": "pypdf:6.19.0",
+        "pdf_validator_id": "pypdf:7.1.0",
         "pdf_metadata_profile": GENERATED_PDF_METADATA_PROFILE,
         "pdf_metadata_status": "PASS",
         "presentation_ir_sha256": ir_digest,

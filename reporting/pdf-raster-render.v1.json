@@ -24,7 +24,7 @@
     "mode": "native-preloaded-png-v1",
     "open_files": 128,
     "page_discovery": "STRICT_COMPLETE_GENERATED_BYTES_IN_RENDER_CHILD",
-    "page_parser": "pypdf:6.19.0",
+    "page_parser": "pypdf:7.1.0",
     "pdf_bytes": 16777216,
     "profile_id": "preloaded-png-render-v1",
     "protocol_version": 3,
@@ -40,7 +40,7 @@
     "wall_seconds": 30
   },
   "profile_id": "preloaded-png-render-v1",
-  "profile_sha256": "0ea42861783822c1c6c343ec0688a401fbd262045402c34d1aad429162778419",
+  "profile_sha256": "5391bdae627341ce95c351093bfc2a6dc2575e48203f9ee4bd4581c6ec1eb0de",
   "release_authorized": false,
   "resource_profile": {
     "default_pipeline_activated": false,
@@ -70,7 +70,7 @@
   },
   "supported_execution": false,
   "versions": {
-    "page_parser": "pypdf:6.19.0",
+    "page_parser": "pypdf:7.1.0",
     "png_decoder": "pillow:12.3.0",
     "renderer": "weasyprint:70.0"
   }

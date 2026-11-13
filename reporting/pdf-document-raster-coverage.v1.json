@@ -10,12 +10,12 @@
     "max_raster_pixels_per_page": 4000000,
     "max_raster_pixels_per_window": 16000000,
     "min_edge_margin_px": 2,
-    "native_raster_parser_version": "6.19.0",
+    "native_raster_parser_version": "7.1.0",
     "native_raster_pillow_version": "12.3.0",
     "native_raster_profile_id": "generated-pdf-raster-window-v1",
     "native_raster_tool_sha256": "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d",
     "ordered_digest_kind": "RASTER_WINDOW_METADATA_ONLY_NOT_FULL_IMAGE",
-    "parent_content_profile_sha256": "1a1f23ff981c38d5dfa126f5a199bd9b5df0a2288b38015668dfeed384b981be",
+    "parent_content_profile_sha256": "0b0499eb48da226e9c02276056c95fbfaf96e0631281c61930b827ba8103eadc",
     "profile_id": "generated-pdf-document-raster-coverage-v1",
     "raster_window_pages": 4,
     "release_authorized": false,
@@ -24,6 +24,6 @@
     "whole_document_visual_equivalence_verified": false,
     "worker_results_authenticated": false
   },
-  "profile_sha256": "f154c47bb80a9af1b5c8f97fecca16a4a4e8cb463bcf57b6c1b3f25b6afc2017",
+  "profile_sha256": "a1de6c93c542600a2385948d7200396051e3759f1a94904ad14919b96066db14",
   "release_authorized": false
 }

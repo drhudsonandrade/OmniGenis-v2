@@ -84,7 +84,7 @@ class PdfMcidCoverageTests(unittest.TestCase):
 
     def good_response(self):
         return {"protocol_version":1,"profile_id":PROFILE,
-                "policy_id":POLICY,"parser_version":"6.19.0",
+                "policy_id":POLICY,"parser_version":"7.1.0",
                 "identity":self.identity(),
                 "limits":{"memory_bytes":268435456,"cpu_seconds":5,
                           "file_bytes":4096,"open_files":128},
@@ -247,7 +247,7 @@ class PdfMcidCoverageTests(unittest.TestCase):
         from reporting._pdf_safety_worker import MAX_PAGES
         manifest=json.loads((ROOT/"reporting/pdf-mcid-coverage-engine.v1.json").read_text())
         self.assertEqual(MAX_PAGES,32)
-        self.assertEqual(manifest["parser_version"],"6.19.0")
+        self.assertEqual(manifest["parser_version"],"7.1.0")
         self.assertEqual(manifest["resource_budget"]["pages"],512)
         self.assertEqual(manifest["resource_budget"]["decoded_bytes"],8388608)
         self.assertFalse(manifest["default_pipeline_activated"])

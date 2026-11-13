@@ -29,7 +29,7 @@ from reporting._pdf_cid_widths_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_CID_WIDTHS_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "995f625b277ada5ce46e4f0fab50180498e39b34de1ed2ccecd105822a5fc8ec"
+_FIXED_PARENT_PROFILE_SHA256 = "7f1f803cabe275bd2b5923e5966a2a2c3f0b64af15a86da94333e00637117086"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -75,7 +75,7 @@ def cid_widths_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(cid_widths_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "dbbe4868be75c8dbb06daf12e3806974d858f15de1a4c6cab845fce644f1e509"
+_FIXED_PROFILE_SHA256 = "b99c05455b586198113da36fe1d49bfde951a7c377abfaed9ca5fc799ccf50c3"
 
 
 def _profile() -> None:
@@ -83,7 +83,7 @@ def _profile() -> None:
     previous._profile()
     if (sys.platform != "linux" or os.environ.get(_DISABLE) == "1"
             or (MAX_DOCUMENT_PAGES, MAX_PDF_BYTES) != _FIXED_ENVELOPE
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or (MAX_CID, MAX_WIDTH_ARRAY_ENTRIES, MAX_NATIVE_WIDTH)
                != (65535, 4096, 16384)
             or previous.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256

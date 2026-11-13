@@ -46,7 +46,7 @@ def native_render_profile() -> dict:
         "max_pages": NATIVE_MAX_PAGES, "result_bytes": RESULT_BYTES,
         "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
         "wall_seconds": WALL_SECONDS, "open_files": OPEN_FILES,
-        "renderer": "weasyprint:70.0", "page_parser": "pypdf:6.19.0",
+        "renderer": "weasyprint:70.0", "page_parser": "pypdf:7.1.0",
         "page_discovery": "STRICT_COMPLETE_GENERATED_BYTES_IN_RENDER_CHILD",
         "default_pipeline_activated": False, "release_authorized": False,
         "aggregate_job_resources_qualified": False,
@@ -235,7 +235,7 @@ def _discover_page_count(pdf: bytes) -> tuple[int | None, str | None]:
         from io import BytesIO
         from pypdf import PdfReader
 
-        if version("pypdf") != "6.19.0":
+        if version("pypdf") != "7.1.0":
             return None, "pdf_page_discovery_failed"
         if type(pdf) is not bytes or not 1 <= len(pdf) <= NATIVE_PDF_BYTES:
             return None, "pdf_page_discovery_failed"

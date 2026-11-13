@@ -357,7 +357,7 @@ class PdfStructureTreeTests(unittest.TestCase):
         self.assertEqual(MAX_PAGES, 32); self.assertEqual(JOB_PAGES, 64)
         self.assertEqual(manifest['resource_budget']['pages'], 64)
         self.assertEqual(manifest['resource_budget']['tree_depth'], 64)
-        self.assertEqual(manifest['parser_version'], '6.19.0')
+        self.assertEqual(manifest['parser_version'], '7.1.0')
         self.assertFalse(manifest['default_pipeline_activated'])
         self.assertFalse(manifest['source_job_changed'])
         for name, digest in manifest['reused_source_sha256'].items():

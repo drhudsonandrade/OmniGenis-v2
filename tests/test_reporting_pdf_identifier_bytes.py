@@ -16,12 +16,13 @@ class PdfIdentifierByteTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Generate the original one-observation regression without changing its data."""
+        """Generate the fixed binary-ID source without rewriting its PDF bytes."""
         cls.ir = source(1)
+        cls.ir['report_id'] = 'SYNTHETIC-GENERATED-SOURCE-JOB-BINARY-ID-01'
         cls.source_bytes = canonical(cls.ir)
         candidate = adapters.build_html_css_and_pdf_adapter(presentation_ir=cls.ir)
         if not candidate.passed or candidate.pdf_status != 'READY':
-            raise AssertionError('unchanged default fixture did not render')
+            raise AssertionError('fixed binary-ID fixture did not render')
         cls.pdf = candidate.pdf_bytes
 
     def reader(self):

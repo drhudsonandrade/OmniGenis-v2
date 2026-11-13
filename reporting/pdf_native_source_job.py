@@ -33,8 +33,8 @@ from reporting.page_windows import plan_pdf_page_windows
 from reporting.pdf_inspection_bundle import _pin
 
 PROFILE_ID = "native-source-pdf-inspection-job-v1"
-NATIVE_PROFILE_SHA256 = "00cddbc4c08dcefc39b27e46fe3ff4198fc4dd32f743c484b534913b6cad6d8e"
-STRUCTURED_PROFILE_SHA256 = "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
+NATIVE_PROFILE_SHA256 = "3b886428e6e7ca0332e052f6a84a6a33a1cdfc74fe40f55b1e42a631a16d5e3f"
+STRUCTURED_PROFILE_SHA256 = "82c7625959cbcbf82887745271ec913d9de489fcc3f42398b3beca8eb53bcb79"
 MAX_PAGES = 64
 MAX_RESULT_BYTES = 304 * 1024
 MAX_OUTER_STAGES = 2

@@ -356,10 +356,22 @@ class GeneratedSourceJobTests(unittest.TestCase):
 
     def test_natural_out_of_class_source_never_reaches_inspection(self):
         """Natural overflow is an explicit failure, not a truncated 64-page candidate."""
-        with patch.object(self.m, 'execute_pdf_native_source_job') as inspect:
+        ir = source(3500)
+        source_before = canonical(ir)
+        self.assertLess(len(source_before), adapters.MAX_PDF_BYTES)
+        html, _digest, _components = adapters._semantic_html(ir)
+        self.assertLess(len(html.encode('utf-8')), self.m._RENDER_HTML_BYTES)
+        with (patch.object(self.m, 'execute_pdf_native_source_job') as inspect,
+              patch.object(self.m, '_decode_render_result',
+                           wraps=self.m._decode_render_result) as decode):
             with self.assertRaises(self.m.PdfGeneratedSourceJobError):
-                self.run_job(source(2800))
+                self.run_job(ir)
         inspect.assert_not_called()
+        decode.assert_called_once()
+        response = json.loads(decode.call_args.args[0])
+        self.assertEqual(response['status'], 'FAIL')
+        self.assertEqual(response['error'], 'pdf_candidate_page_budget_exceeded')
+        self.assertEqual(canonical(ir), source_before)
 
     def test_manifest_pins_profile_and_only_actual_source_dependencies(self):
         """Declared profile identity and reused-source bytes must describe the running code."""

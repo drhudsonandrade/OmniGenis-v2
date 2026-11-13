@@ -49,10 +49,10 @@
   "license_notice": "Existing THIRD-PARTY-NOTICES.txt and parser dependency notices remain required",
   "new_dependency": false,
   "ocr_performed": false,
-  "package_url": "https://pypi.org/project/pypdf/6.19.0/",
+  "package_url": "https://pypi.org/project/pypdf/7.1.0/",
   "parser": "pypdf",
-  "parser_version": "6.19.0",
-  "parser_wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
+  "parser_version": "7.1.0",
+  "parser_wheel_sha256": "47cca6b24bdcf4c4d65b5f7b8b972535c61710a061261e737688777cfd9a7bfb",
   "process_profile": {
     "aggregate_job_resource_closure_claimed": false,
     "arbitrary_descendant_cleanup_claimed": false,

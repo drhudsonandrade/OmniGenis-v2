@@ -427,12 +427,12 @@ class FontSelectionRefusalTests(unittest.TestCase):
                 self.assertEqual(record["classification"], "LEGAL_COPY")
                 self.assertFalse(record["modified"])
         notices = {
-            "license": ("OFL.txt", 4407,
+            "license": ("LICENSE", "OFL.txt", 4407,
                         "74ba064d03f1f1c4a952da936c3eb71866c34404916734de3cae73b34357e59e"),
-            "fontlog": ("FONTLOG.txt", 3102,
+            "fontlog": ("FONTLOG", "FONTLOG.txt", 3102,
                         "d14d78932391e0a2f47b24319aa4e74ddcb448b13701d9673b6523259d558560"),
         }
-        for key, (name, size, digest) in notices.items():
+        for key, (name, source_name, size, digest) in notices.items():
             record = manifest[key]
             relative = "reporting/assets/fonts/lato/" + name
             with self.subTest(resource=relative):
@@ -440,7 +440,7 @@ class FontSelectionRefusalTests(unittest.TestCase):
                 raw = (ROOT / relative).read_bytes()
                 self.assertEqual((len(raw), hashlib.sha256(raw).hexdigest()), (size, digest))
                 self.assertEqual((record["bytes"], record["sha256"]), (size, digest))
-                self.assertEqual(record["source_url"], source_base + name)
+                self.assertEqual(record["source_url"], source_base + source_name)
                 self.assertFalse(record["modified"])
         self.assertEqual(manifest["license"]["spdx"], "OFL-1.1")
         self.assertEqual(set(manifest["source_sha256"]), {

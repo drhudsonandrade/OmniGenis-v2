@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import builtins
 import importlib
 import importlib.util
 import json
 import os
+import sys
+import tempfile
 import time
 from pathlib import Path
 import hashlib
@@ -73,7 +74,7 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         self.assertFalse(manifest["source_code_copied"])
         validator = manifest["structural_validator"]
         self.assertEqual(validator["validator_id"], "pypdf")
-        self.assertEqual(validator["validator_version"], "6.19.0")
+        self.assertEqual(validator["validator_version"], "7.1.0")
         self.assertEqual(validator["license"], "BSD-3-Clause")
         self.assertEqual(validator["integration_mode"], "USE_VIA_ADAPTER")
         self.assertFalse(validator["source_code_copied"])
@@ -139,18 +140,66 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
 
     def test_pdf_native_library_import_error_fails_closed(self):
         module = importlib.import_module("reporting.adapters")
-        original_import = builtins.__import__
+        # The real worker applies its existing guards before font admission.
+        # Injection stays inside that fresh, one-use process.
+        child = r"""
+import builtins
+import sys
 
-        def fail_weasyprint_import(name, globals=None, locals=None, fromlist=(), level=0):
-            if name == "weasyprint":
-                raise OSError("synthetic native library load failure")
-            return original_import(name, globals, locals, fromlist, level)
+sys.path.insert(0, sys.argv[1])
+from reporting import _pdf_render_worker as worker
 
+original_import = builtins.__import__
+injected = 0
+
+
+def fail_weasyprint_import(name, globals=None, locals=None, fromlist=(), level=0):
+    global injected
+    if name == "weasyprint":
+        injected += 1
+        raise OSError("synthetic native library load failure")
+    return original_import(name, globals, locals, fromlist, level)
+
+
+builtins.__import__ = fail_weasyprint_import
+try:
+    code = worker.main([str(worker.__file__), *sys.argv[2:]])
+finally:
+    builtins.__import__ = original_import
+if injected != 1:
+    raise AssertionError("native import refusal injection was not reached exactly once")
+raise SystemExit(code)
+"""
         html = "<!doctype html><html></html>"
         digest = hashlib.sha256(html.encode("utf-8")).hexdigest()
-        from reporting import _pdf_render_worker as worker
-        with patch("builtins.__import__", side_effect=fail_weasyprint_import):
-            pdf, error = worker._render(html, digest)
+        with (module._PDF_RENDER_ENV_LOCK, tempfile.TemporaryFile() as request,
+              tempfile.TemporaryFile() as candidate, tempfile.TemporaryFile() as result):
+            handles = (request, candidate, result)
+            fds = tuple(handle.fileno() for handle in handles)
+            self.assertTrue(all(os.fstat(fd).st_nlink == 0 for fd in fds))
+            request.write(f"{module.PDF_RENDER_PROTOCOL_VERSION} {digest}\n".encode("ascii"))
+            request.write(html.encode("utf-8"))
+            request.flush()
+            request.seek(0)
+            env = {key: os.environ[key] for key in (
+                "PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "TZ",
+                "FONTCONFIG_FILE", "FONTCONFIG_PATH",
+            ) if key in os.environ}
+            env["SOURCE_DATE_EPOCH"] = "0"
+            process = module._start_pdf_render_worker([
+                sys.executable, "-I", "-B", "-c", child, str(ROOT),
+                *(str(fd) for fd in fds), str(os.getpid()),
+            ], env=env, pass_fds=fds)
+            code = module._wait_pdf_render_worker(
+                process, wall_seconds=module.PDF_RENDER_WALL_SECONDS)
+            self.assertEqual(code, 0)
+            self.assertLessEqual(os.fstat(result.fileno()).st_size,
+                                 module.PDF_RENDER_RESULT_BYTES)
+            result.seek(0)
+            pdf, error = module._decode_pdf_render_result(
+                result.read(module.PDF_RENDER_RESULT_BYTES + 1),
+                expected_pdf_path=candidate.fileno())
+            self.assertEqual(os.fstat(candidate.fileno()).st_size, 0)
         self.assertIsNone(pdf)
         self.assertEqual(error, "pdf_engine_unavailable")
 
@@ -158,7 +207,7 @@ class Rpt08HtmlPdfConformanceTests(unittest.TestCase):
         try:
             from importlib.metadata import version
 
-            if version("pypdf") != "6.19.0":
+            if version("pypdf") != "7.1.0":
                 self.skipTest("pinned PDF validator not installed")
         except importlib.metadata.PackageNotFoundError:
             self.skipTest("pinned PDF validator not installed")

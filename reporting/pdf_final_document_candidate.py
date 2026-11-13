@@ -36,7 +36,7 @@ from reporting import pdf_raster_resources as resource_module
 from reporting.requests import BoundReportRequest
 
 PROFILE_ID = 'source-bound-final-document-candidate-v1'
-PARENT_PROFILE_SHA256 = '1e9f841f6303920c5142c7f6abf4a5990a518dc8970a7a2060483c511af97b67'
+PARENT_PROFILE_SHA256 = '298ae124f78eaa74976993d662e81b5ffb07996a49ab0e608e4d065056a50949'
 MAX_LAYOUT_PASSES = 4
 MAX_FINDINGS = 128
 MAX_COMPONENTS = 9
@@ -103,7 +103,7 @@ def final_document_profile() -> dict:
         **_NONCLAIMS}
 
 
-PROFILE_SHA256 = '1af6e60d9409bd9c8fb635a01b05e7d60715340f6f421332b3137f841c010dc7'
+PROFILE_SHA256 = '93b440c41d025cc39645ddc66764577fad414fbb3b471662afb89d2763f39ab7'
 STORAGE_SCHEMA = 'source-bound-final-document-private-store/v1'
 STORAGE_PROFILE_ID = 'source-bound-final-document-private-store-v1'
 
@@ -120,7 +120,7 @@ def final_document_storage_profile() -> dict:
         **_NONCLAIMS}
 
 
-STORAGE_PROFILE_SHA256 = '42ade56489d026cd3b87581115dae6da19efb26d6fd0a0a77c6d8748f028b767'
+STORAGE_PROFILE_SHA256 = 'bc9c3fb920cc2ab6ce8f784ff54f1cf544b999fda082f4edac99979d1d315368'
 
 
 def _profile(expected: str) -> None:

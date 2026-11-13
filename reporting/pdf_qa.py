@@ -351,7 +351,7 @@ def _validate_pdf_candidate(
     try:
         from importlib.metadata import version
         from pypdf import PdfReader
-        if profile and version("pypdf") != "6.19.0":
+        if profile and version("pypdf") != "7.1.0":
             return _result(digest=digest,errors=("pdf_validator_unavailable",),profile=profile)
         reader=PdfReader(BytesIO(pdf_bytes),strict=True)
         if reader.is_encrypted:

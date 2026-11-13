@@ -21,7 +21,7 @@
     "bytes": 3102,
     "classification": "LEGAL_COPY",
     "modified": false,
-    "path": "reporting/assets/fonts/lato/FONTLOG.txt",
+    "path": "reporting/assets/fonts/lato/FONTLOG",
     "sha256": "d14d78932391e0a2f47b24319aa4e74ddcb448b13701d9673b6523259d558560",
     "source_url": "https://raw.githubusercontent.com/google/fonts/f3b885d5590e307e02542f1a724cec55d567fdaa/ofl/lato/FONTLOG.txt"
   },
@@ -65,14 +65,14 @@
     "bytes": 4407,
     "classification": "LEGAL_COPY",
     "modified": false,
-    "path": "reporting/assets/fonts/lato/OFL.txt",
+    "path": "reporting/assets/fonts/lato/LICENSE",
     "reserved_font_name": "Lato",
     "sha256": "74ba064d03f1f1c4a952da936c3eb71866c34404916734de3cae73b34357e59e",
     "source_url": "https://raw.githubusercontent.com/google/fonts/f3b885d5590e307e02542f1a724cec55d567fdaa/ofl/lato/OFL.txt",
     "spdx": "OFL-1.1"
   },
   "pdf_ua_qualified": false,
-  "python_package_lock_changed": false,
+  "python_package_lock_changed": true,
   "reading_order_verified": false,
   "release_authorized": false,
   "schema_version": "1.0.0",
@@ -96,10 +96,10 @@
   "source_repository": "https://github.com/google/fonts",
   "source_revision": "f3b885d5590e307e02542f1a724cec55d567fdaa",
   "source_sha256": {
-    "reporting/_pdf_render_worker.py": "2a411f7549b0e072c2fd03d5740cf954975098eddf7532fd2e0ee8ab34771aa9",
-    "reporting/adapters.py": "a4be1711489ab44621f410039e461d6f192b18b677a130fc6320880aead1bce9",
+    "reporting/_pdf_render_worker.py": "30b6454c7cd9b1b83d5713c406e135de91ccf127116a8bd42a13d17036cbd5ce",
+    "reporting/adapters.py": "a9cb893ae64200adbe211802fafa97ed2b08575f0195ab8e8f3303f8b3cba76f",
     "reporting/pdf_font_selection.py": "5c5771d1d6b86aa1695e5d6f3abc42f8d7599deb5dd9f65215488e1e705be034",
-    "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
+    "requirements-reporting.lock": "bc2c6d8e66ace82ca442e7931ea44b608ea037e1adddddc7a5dbebeb56008671"
   },
   "style": {
     "body": {

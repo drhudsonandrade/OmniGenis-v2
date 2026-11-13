@@ -277,8 +277,8 @@ class FinalProcessBindingTests(Inputs, unittest.TestCase):
         self.assertEqual(document['max_observation_bytes'],160*1024)
         for name,expected in document['source_sha256'].items():
             self.assertEqual(sha256((root/name).read_bytes()).hexdigest(),expected,name)
-        self.assertEqual(final.PROFILE_SHA256,'1af6e60d9409bd9c8fb635a01b05e7d60715340f6f421332b3137f841c010dc7')
-        self.assertEqual(final.STORAGE_PROFILE_SHA256,'42ade56489d026cd3b87581115dae6da19efb26d6fd0a0a77c6d8748f028b767')
+        self.assertEqual(final.PROFILE_SHA256,'93b440c41d025cc39645ddc66764577fad414fbb3b471662afb89d2763f39ab7')
+        self.assertEqual(final.STORAGE_PROFILE_SHA256,'bc9c3fb920cc2ab6ce8f784ff54f1cf544b999fda082f4edac99979d1d315368')
         for key in ('release_authorized','supported_execution','aggregate_job_resources_qualified','scientific_activation'):
             self.assertIs(document[key],False)
 

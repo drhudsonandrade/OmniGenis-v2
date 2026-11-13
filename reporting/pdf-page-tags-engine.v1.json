@@ -35,8 +35,8 @@
   "license": "BSD-3-Clause",
   "output_scope": "PAGE_STRUCTPARENTS_PARENTTREE_REFERENCE_COHERENCE_ONLY",
   "parser_id": "pypdf",
-  "parser_version": "6.19.0",
-  "parser_wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
+  "parser_version": "7.1.0",
+  "parser_wheel_sha256": "47cca6b24bdcf4c4d65b5f7b8b972535c61710a061261e737688777cfd9a7bfb",
   "pdf_version": "1.7",
   "policy_id": "page-tag-parenttree-references-v1",
   "process_profile": {
@@ -69,10 +69,10 @@
     "wall_seconds": 10
   },
   "reused_source_sha256": {
-    "reporting/_pdf_object_graph_worker.py": "484184af8da15084d05e6e66e275aa8b781962a1b1c1c0fe5e3edc4bee263838",
+    "reporting/_pdf_object_graph_worker.py": "827be34ee3772fc3e95dbd341891f82586f9dbd5a3d6aa8ecd2ffefefed1c59c",
     "reporting/_pdf_process_lifecycle.py": "6f7e39dd83d5f1d2f3726527c83d282b11f064222e3d1c46cbf0c369d297f465",
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
-    "reporting/_pdf_render_worker.py": "2a411f7549b0e072c2fd03d5740cf954975098eddf7532fd2e0ee8ab34771aa9",
+    "reporting/_pdf_render_worker.py": "30b6454c7cd9b1b83d5713c406e135de91ccf127116a8bd42a13d17036cbd5ce",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf_accessibility.py": "7881e15720b406d60a59dce799d8907b0de1b166d721d5ce638c6e9bd74c40af",
     "reporting/pdf_object_graph.py": "ca478e51cb7ee78ac9066dff923dc188f568671222ee5fd0f81f0414e6c90710"
