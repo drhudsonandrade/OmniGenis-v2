@@ -106,6 +106,279 @@ finally:
 '''
 
 
+# Native image residency is irreversible within one process. Each condition
+# gets a fresh child, and no FontConfiguration or native font thread is created.
+RESIDENCY_PROBE = r"""
+import json
+import os
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+
+sys.path.insert(0, sys.argv[1])
+from reporting import _pdf_render_worker as worker
+from reporting import pdf_font_selection as fonts
+from reporting._pdf_process_sandbox import (
+    enforce_pdf_landlock, enforce_pdf_network_filter,
+)
+
+worker._apply_resource_limits()
+worker._arm_worker_lifetime(os.getppid())
+enforce_pdf_landlock(Path(worker.__file__))
+enforce_pdf_network_filter()
+
+from cffi import FFI
+ffi = FFI()
+backend = ffi._backend
+names = ("libpangoft2-1.0.so.0", "libfontconfig.so.1")
+mode = sys.argv[2]
+if mode not in ("baseline", "promoted", "unloaded_refusal"):
+    raise AssertionError("unknown residency condition")
+
+
+def public_dlopen_forbidden(*args, **kwargs):
+    raise AssertionError("public ffi.dlopen fallback is not admitted")
+
+
+ffi.dlopen = public_dlopen_forbidden
+
+
+def presence():
+    observed = []
+    for name in names:
+        # A NOLOAD miss can return NULL without setting dlerror. Inspect that
+        # raw result instead of entering CFFI's error-formatting wrapper.
+        probe = raw_dlopen(name.encode("ascii"), ffi.RTLD_NOW | ffi.RTLD_NOLOAD)
+        if probe == ffi.NULL:
+            observed.append(False)
+        else:
+            try:
+                observed.append(True)
+            finally:
+                if raw_dlclose(probe) != 0:
+                    raise AssertionError("native residency probe handle was not released")
+    return observed
+
+
+def close_all(handles):
+    while handles:
+        handles.pop().close_lib()
+
+
+ordinary, promoted = [], []
+process = backend.load_library(None, ffi.RTLD_NOW)
+try:
+    raw_dlopen = process.load_function(
+        ffi.typeof("void *(*)(const char *, int)"), "dlopen")
+    raw_dlclose = process.load_function(
+        ffi.typeof("int(*)(void *)"), "dlclose")
+    initial = presence()
+    if initial != [False, False]:
+        raise AssertionError("fresh residency child already contains a font root")
+    for name in names:
+        ordinary.append(backend.load_library(name, ffi.RTLD_NOW))
+    # These typed addresses are never called. Only loader residency is tested;
+    # no FontMap, renderer, callback, compiler or asynchronous worker is started.
+    pangoft2 = SimpleNamespace(pango_ft2_font_map_new=ordinary[0].load_function(
+        ffi.typeof("void *(*)(void)"), "pango_ft2_font_map_new"))
+    fontconfig = SimpleNamespace(FcConfigAppFontAddFile=ordinary[1].load_function(
+        ffi.typeof("int(*)(void *, unsigned char const *)"),
+        "FcConfigAppFontAddFile"))
+    loaded = presence()
+    if loaded != [True, True]:
+        raise AssertionError("ordinary font roots were not present")
+    refusal = None
+    if mode == "promoted":
+        promoted = list(fonts._retain_native_font_libraries(ffi, fontconfig, pangoft2))
+    elif mode == "unloaded_refusal":
+        close_all(ordinary)
+        if presence() != [False, False]:
+            raise AssertionError("ordinary closure did not remove both font roots")
+        # Existing typed function addresses are retained as inert values only.
+        # NOLOAD must refuse their now absent images without loading replacements.
+        try:
+            promoted = list(fonts._retain_native_font_libraries(ffi, fontconfig, pangoft2))
+        except fonts.FontSelectionError as error:
+            refusal = str(error)
+            if refusal != "font_native_library_unavailable":
+                raise
+        else:
+            raise AssertionError("absent native image was admitted")
+    close_all(promoted)
+    close_all(ordinary)
+    after = presence()
+    expected = [True, True] if mode == "promoted" else [False, False]
+    if after != expected:
+        raise AssertionError("native residency after all handle closures differs")
+    print(json.dumps({"schema": "font-residency-probe-v1", "mode": mode,
+                      "initial": initial, "loaded": loaded, "after_close": after,
+                      "refusal": refusal}, sort_keys=True))
+finally:
+    try:
+        close_all(promoted)
+    finally:
+        try:
+            close_all(ordinary)
+        finally:
+            process.close_lib()
+"""
+
+
+# Admission failures and successful ordering are checked at the real selection
+# boundary. The constructor trap prevents every condition from creating a map.
+RESIDENCY_ADMISSION_PROBE = r"""
+import builtins
+import hashlib
+import json
+import os
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+from unittest import mock
+import warnings
+
+sys.path.insert(0, sys.argv[1])
+from reporting import _pdf_render_worker as worker
+from reporting import pdf_font_selection as fonts
+from reporting._pdf_process_sandbox import (
+    enforce_pdf_landlock, enforce_pdf_network_filter,
+)
+
+worker._apply_resource_limits()
+worker._arm_worker_lifetime(os.getppid())
+enforce_pdf_landlock(Path(worker.__file__))
+enforce_pdf_network_filter()
+
+mode = sys.argv[2]
+if mode not in ("unsupported_flags", "wrong_image", "order"):
+    raise AssertionError("unknown residency admission condition")
+events = []
+real_import = builtins.__import__
+real_retain = fonts._retain_native_font_libraries
+constructor_trapped = False
+
+
+class ConstructorReached(Exception):
+    pass
+
+
+def intercept_import(name, globals=None, locals=None, fromlist=(), level=0):
+    global constructor_trapped
+    module = real_import(name, globals, locals, fromlist, level)
+    if (not constructor_trapped
+            and getattr(module, "__name__", None) == "weasyprint.text.fonts"
+            and hasattr(module, "FontConfiguration")):
+        class NoFontMap:
+            def __init__(self):
+                events.append("font_configuration")
+                raise ConstructorReached()
+        module.FontConfiguration = NoFontMap
+        constructor_trapped = True
+    return module
+
+
+def public_dlopen_forbidden(*args, **kwargs):
+    raise AssertionError("public ffi.dlopen fallback is not admitted")
+
+
+def retain(ffi, fontconfig, pangoft2):
+    events.append("residency_enter")
+    with mock.patch.object(ffi, "dlopen", public_dlopen_forbidden):
+        if mode == "unsupported_flags":
+            with mock.patch.object(ffi, "RTLD_NODELETE", None):
+                owners = real_retain(ffi, fontconfig, pangoft2)
+        elif mode == "wrong_image":
+            # Supply an actual address from the other font DSO with the expected
+            # callable type, without calling it. A same-name promotion must not
+            # accept that different loaded image as the renderer's Pango root.
+            wrong = SimpleNamespace(pango_ft2_font_map_new=ffi.cast(
+                ffi.typeof(pangoft2.pango_ft2_font_map_new),
+                ffi.cast("void *", fontconfig.FcConfigAppFontAddFile)))
+            owners = real_retain(ffi, fontconfig, wrong)
+        else:
+            owners = real_retain(ffi, fontconfig, pangoft2)
+    events.append("residency_verified")
+    return owners
+
+
+html = '<html><body><p style="font-family:Lato">Residency</p></body></html>'
+selector = fonts.LatoFontSelection(
+    font_directory=Path(sys.argv[1]) / "reporting/assets/fonts/lato",
+    html=html, html_sha256=hashlib.sha256(html.encode("utf-8")).hexdigest(),
+)
+builtins.__import__ = intercept_import
+fonts._retain_native_font_libraries = retain
+outcome = None
+try:
+    with warnings.catch_warnings(record=True) as captured_warnings:
+        warnings.simplefilter("always")
+        try:
+            selector.__enter__()
+        except ConstructorReached:
+            if mode != "order":
+                raise AssertionError("font map construction preceded required refusal")
+            outcome = "constructor_reached_after_residency"
+            if events != ["residency_enter", "residency_verified", "font_configuration"]:
+                raise AssertionError("native residency was not verified first")
+            if len(selector._native_library_owners) != 2:
+                raise AssertionError("verified native owners were not held at construction")
+        except fonts.FontSelectionError as error:
+            expected = {"unsupported_flags": "font_native_loader_flags",
+                        "wrong_image": "font_native_library_identity"}.get(mode)
+            if str(error) != expected or events != ["residency_enter"]:
+                raise
+            outcome = str(error)
+        else:
+            raise AssertionError("constructor trap or admission refusal was bypassed")
+    observed_warnings = [{
+        "category": item.category.__name__,
+        "message": str(item.message),
+        "source": "/".join(Path(item.filename).parts[-3:]),
+    } for item in captured_warnings]
+    imported_ffi = sys.modules.get("weasyprint.text.ffi")
+    if imported_ffi is None or not hasattr(imported_ffi, "harfbuzz_subset"):
+        raise AssertionError("missing admission warning availability: " + json.dumps({
+            "warning_count": len(observed_warnings), "warnings": observed_warnings,
+        }, sort_keys=True))
+    subset_available = imported_ffi.harfbuzz_subset is not None
+    font_warning = {
+        "category": "UserWarning",
+        "message": "No fonts configured in FontConfig. Expect ugly output.",
+        "source": "weasyprint/text/fonts.py",
+    }
+    subset_warning = {
+        "category": "DeprecationWarning",
+        "message": ("HarfBuzz-Subset will be required by future versions of WeasyPrint. "
+                    "Please install this library with your package manager."),
+        "source": "weasyprint/text/ffi.py",
+    }
+    # ffi.py emits its conditional warning before fonts.py checks the empty
+    # bootstrap. No other warning, missing warning or duplicate is admitted.
+    expected_warnings = ([font_warning] if subset_available
+                         else [subset_warning, font_warning])
+    expected_categories = ([UserWarning] if subset_available
+                           else [DeprecationWarning, UserWarning])
+    if (observed_warnings != expected_warnings
+            or not all(item.category is category for item, category in
+                       zip(captured_warnings, expected_categories))):
+        raise AssertionError("unexpected admission warnings: " + json.dumps({
+            "harfbuzz_subset_available": subset_available,
+            "warning_count": len(observed_warnings), "warnings": observed_warnings,
+            "expected_warning_count": len(expected_warnings),
+            "expected_warnings": expected_warnings,
+        }, sort_keys=True))
+    if not constructor_trapped or selector.font_config is not None:
+        raise AssertionError("font map constructor was not isolated")
+    print(json.dumps({"schema": "font-residency-admission-probe-v1",
+                      "mode": mode, "outcome": outcome, "events": events,
+                      "harfbuzz_subset_available": subset_available,
+                      "warning_count": len(observed_warnings),
+                      "warnings": observed_warnings}, sort_keys=True))
+finally:
+    builtins.__import__ = real_import
+    fonts._retain_native_font_libraries = real_retain
+"""
+
 class FontSelectionRefusalTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -268,6 +541,83 @@ class FontSelectionRefusalTests(unittest.TestCase):
             self._run_cohort_probe("stdin_not_devnull", standard_input=standard_input)
             self.assertEqual(standard_input.tell(), 0)
 
+
+class NativeFontResidencyTests(unittest.TestCase):
+    def _run_probe(self, source, mode):
+        result = subprocess.run(
+            [sys.executable, "-I", "-B", "-c", source, str(ROOT), mode],
+            stdin=subprocess.DEVNULL, capture_output=True, text=True,
+            timeout=worker_timeout_seconds(), check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "")
+        return json.loads(result.stdout)
+
+    def test_native_images_survive_all_handle_closures(self):
+        # A fresh negative control proves that held Python/CFFI handles alone
+        # do not provide the required process lifetime for these exact images.
+        for mode, expected in (("baseline", [False, False]),
+                               ("promoted", [True, True])):
+            with self.subTest(condition=mode):
+                self.assertEqual(self._run_probe(RESIDENCY_PROBE, mode), {
+                    "schema": "font-residency-probe-v1", "mode": mode,
+                    "initial": [False, False], "loaded": [True, True],
+                    "after_close": expected, "refusal": None,
+                })
+
+    def test_noload_refuses_unloaded_images_without_public_dlopen(self):
+        self.assertEqual(self._run_probe(RESIDENCY_PROBE, "unloaded_refusal"), {
+            "schema": "font-residency-probe-v1", "mode": "unloaded_refusal",
+            "initial": [False, False], "loaded": [True, True],
+            "after_close": [False, False],
+            "refusal": "font_native_library_unavailable",
+        })
+
+    def _admission_warning_expectation(self, observed):
+        available = observed.get("harfbuzz_subset_available")
+        self.assertIs(type(available), bool, observed)
+        font_warning = {
+            "category": "UserWarning",
+            "message": "No fonts configured in FontConfig. Expect ugly output.",
+            "source": "weasyprint/text/fonts.py",
+        }
+        subset_warning = {
+            "category": "DeprecationWarning",
+            "message": ("HarfBuzz-Subset will be required by future versions of WeasyPrint. "
+                        "Please install this library with your package manager."),
+            "source": "weasyprint/text/ffi.py",
+        }
+        expected = ([font_warning] if available
+                    else [subset_warning, font_warning])
+        return {"harfbuzz_subset_available": available,
+                "warning_count": len(expected), "warnings": expected}
+
+    def test_unsupported_residency_flags_refuse_before_font_map(self):
+        observed = self._run_probe(RESIDENCY_ADMISSION_PROBE, "unsupported_flags")
+        self.assertEqual(observed, {
+            "schema": "font-residency-admission-probe-v1",
+            "mode": "unsupported_flags", "outcome": "font_native_loader_flags",
+            "events": ["residency_enter"],
+            **self._admission_warning_expectation(observed),
+        })
+
+    def test_wrong_image_refuses_before_font_map(self):
+        observed = self._run_probe(RESIDENCY_ADMISSION_PROBE, "wrong_image")
+        self.assertEqual(observed, {
+            "schema": "font-residency-admission-probe-v1",
+            "mode": "wrong_image", "outcome": "font_native_library_identity",
+            "events": ["residency_enter"],
+            **self._admission_warning_expectation(observed),
+        })
+
+    def test_font_map_constructor_follows_residency_verification(self):
+        observed = self._run_probe(RESIDENCY_ADMISSION_PROBE, "order")
+        self.assertEqual(observed, {
+            "schema": "font-residency-admission-probe-v1",
+            "mode": "order", "outcome": "constructor_reached_after_residency",
+            "events": ["residency_enter", "residency_verified", "font_configuration"],
+            **self._admission_warning_expectation(observed),
+        })
 
 def worker_timeout_seconds():
     """Let the existing worker alarm expire before the test harness deadline."""

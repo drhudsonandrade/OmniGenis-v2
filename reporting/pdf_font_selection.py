@@ -2,8 +2,10 @@
 
 The caller applies its existing lifetime, resource, filesystem and network
 guards before admission and withholds all output until finish() succeeds.
-The fixed bootstrap, font descriptors and native font configuration remain
-owned by this one-use worker until process exit, including after a refusal.
+The fixed bootstrap and font descriptors remain owned by this one-use worker
+until process exit, including after a refusal. Fixed native library mappings
+remain resident through Python owner cleanup; native objects retain the
+renderer's existing ownership.
 """
 from __future__ import annotations
 
@@ -177,6 +179,65 @@ def _check_text(text: str, coverage: frozenset[int]) -> None:
         _require(scalar in coverage, "font_text_unmapped")
 
 
+def _retain_native_font_libraries(ffi, fontconfig, pangoft2) -> tuple:
+    """Keep the two loaded font roots resident across Python owner cleanup.
+
+    The raw loader handles NOLOAD absence without CFFI's error formatter.
+    The direct backend then supplies ordinary owners without find_library.
+    This does not join native threads or replace native-object ownership.
+    """
+    _require(version("cffi") == "2.1.1", "font_cffi_version")
+    backend = getattr(ffi, "_backend", None)
+    _require(getattr(backend, "__name__", None) == "_cffi_backend"
+             and getattr(backend, "__version__", None) == "2.1.1"
+             and callable(getattr(backend, "load_library", None)),
+             "font_native_loader_backend")
+    names = ("RTLD_NOW", "RTLD_NOLOAD", "RTLD_NODELETE")
+    flags = tuple(getattr(ffi, name, None) for name in names)
+    _require(all(type(flag) is int and flag > 0 and flag & (flag - 1) == 0
+                 and flag == getattr(backend, name, None)
+                 for name, flag in zip(names, flags))
+             and len(set(flags)) == len(names), "font_native_loader_flags")
+    probe_mode = flags[0] | flags[1]
+    mode = probe_mode | flags[2]
+    owners = []
+    process = None
+    try:
+        process = backend.load_library(None, flags[0])
+        native_open = process.load_function(
+            ffi.typeof("void *(*)(const char *, int)"), "dlopen")
+        native_close = process.load_function(
+            ffi.typeof("int(*)(void *)"), "dlclose")
+        for name, symbol, library in (
+            ("libpangoft2-1.0.so.0", "pango_ft2_font_map_new", pangoft2),
+            ("libfontconfig.so.1", "FcConfigAppFontAddFile", fontconfig),
+        ):
+            expected = getattr(library, symbol)
+            ctype = ffi.typeof(expected)
+            _require(ctype.kind == "function", "font_native_library_identity")
+            # An absent NOLOAD result need not set dlerror(). CFFI 2.1.1's
+            # string formatter cannot accept that NULL error. Keep a raw
+            # anchor so its owning backend call can only see a resident root.
+            anchor = native_open(name.encode("ascii"), probe_mode)
+            _require(anchor != ffi.NULL, "font_native_library_unavailable")
+            try:
+                owner = backend.load_library(name, mode)
+                observed = owner.load_function(ctype, symbol)
+                _require(ffi.cast("void *", observed) == ffi.cast("void *", expected),
+                         "font_native_library_identity")
+                owners.append(owner)
+            finally:
+                _require(native_close(anchor) == 0, "font_native_loader_release")
+    except (AttributeError, OSError, TypeError) as error:
+        raise FontSelectionError("font_native_library_unavailable") from error
+    finally:
+        if process is not None:
+            process.close_lib()
+    # Promotion is process-local and irreversible. A later failure refuses
+    # admission before a font map exists; it cannot undo an earlier promotion.
+    return tuple(owners)
+
+
 class LatoFontSelection:
     """One-use selection retained through the disposable worker's process exit.
 
@@ -202,6 +263,7 @@ class LatoFontSelection:
         self._observed: dict | None = None
         self._active = False
         self.font_config = None
+        self._native_library_owners: tuple = ()
 
     def __enter__(self) -> "LatoFontSelection":
         global _PROCESS_USED
@@ -266,6 +328,8 @@ class LatoFontSelection:
                     raise FontSelectionError("font_face_rule_not_admitted")
 
             self._ffi, self._fc, self._pangoft2 = ffi, fontconfig, pangoft2
+            self._native_library_owners = _retain_native_font_libraries(
+                ffi, fontconfig, pangoft2)
             self.font_config = ClosedFontConfiguration()
             self._verify_font_sets(expected_application=0)
             for path in self._face_paths:
