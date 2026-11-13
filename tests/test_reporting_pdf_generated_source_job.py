@@ -132,11 +132,12 @@ class GeneratedSourceJobTests(unittest.TestCase):
         self.assertEqual(default.html_sha256, result.to_dict()['html_sha256'])
 
     def test_default_ready_binary_identifier_candidate_keeps_exact_bytes(self):
-        """The original valid binary-ID fixture passes without changing source or PDF."""
+        """Fixed synthetic source exercises a binary first ID without rewriting the PDF."""
         from io import BytesIO
         from pypdf import PdfReader
         from pypdf.generic import ByteStringObject, TextStringObject
         ir = source(1)
+        ir['report_id'] = 'SYNTHETIC-GENERATED-SOURCE-JOB-BINARY-ID-01'
         source_before = canonical(ir)
         default = adapters.build_html_css_and_pdf_adapter(presentation_ir=ir)
         self.assertTrue(default.passed, default.errors)
@@ -145,10 +146,12 @@ class GeneratedSourceJobTests(unittest.TestCase):
         self.assertIs(type(ids[0]), ByteStringObject)
         self.assertIs(type(ids[1]), TextStringObject)
         self.assertEqual([len(value.original_bytes) for value in ids], [32, 32])
+        self.assertEqual(ids[0].original_bytes,
+                         sha256(default.html.encode('utf-8')).digest())
         try:
             result = self.run_job(ir)
         except self.m.PdfGeneratedSourceJobError as exc:
-            self.fail('valid original binary-ID candidate refused: ' + str(exc))
+            self.fail('valid binary-ID candidate refused: ' + str(exc))
         self.assertEqual(result.pdf_bytes, default.pdf_bytes)
         self.assertEqual(result.pdf_sha256, sha256(default.pdf_bytes).hexdigest())
         self.assertEqual(canonical(ir), source_before)
