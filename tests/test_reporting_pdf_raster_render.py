@@ -17,6 +17,21 @@ class RasterRenderAdmissionTests(unittest.TestCase):
         self.assertEqual(w.PROTOCOL_VERSION, 1); self.assertEqual(w.NATIVE_PROTOCOL_VERSION, 2)
         self.assertEqual(w.PDF_BYTES, 8 * 1024 * 1024); self.assertEqual(w.NATIVE_PDF_BYTES, 16 * 1024 * 1024)
         self.assertEqual(w.CPU_SECONDS, 20); self.assertEqual(w.WALL_SECONDS, 30)
+        import json
+        from pathlib import Path
+        directory = Path(self.m.__file__).resolve().parent
+        manifest = json.loads((directory / 'pdf-raster-render.v1.json').read_text())
+        self.assertEqual(manifest['profile'], self.m.raster_render_profile())
+        self.assertEqual(manifest['profile_sha256'], self.m.profile_sha256())
+        expected_sources = {
+            '_pdf_process_lifecycle.py', '_pdf_process_sandbox.py', '_pdf_render_worker.py',
+            'adapters.py', 'pdf_raster_render.py', 'pdf_raster_resources.py', 'png_inspection.py',
+        }
+        self.assertEqual(set(manifest['source_sha256']), expected_sources)
+        for name in sorted(expected_sources):
+            with self.subTest(source=name):
+                self.assertEqual(manifest['source_sha256'][name],
+                                 sha256((directory / name).read_bytes()).hexdigest())
 
     def test_disabled_mode_rejects_before_launch(self):
         """Absent qualification selection consumes no renderer process."""
