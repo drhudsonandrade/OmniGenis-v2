@@ -87,7 +87,7 @@ class GeneratedSourceJobTests(unittest.TestCase):
 
     def test_natural_long_candidate_uses_same_bytes_and_all_pages(self):
         """Real generation, not a patched renderer or PDF fixture, must cross the page boundary."""
-        ir, result = self.real_case(1200)
+        ir, result = self.real_case(1680)
         record = result.to_dict()
         self.assertEqual(record['status'], 'GENERATED_CANDIDATE_AND_NATIVE_SOURCE_BOUND')
         self.assertGreater(result.page_count, 32)
@@ -108,14 +108,14 @@ class GeneratedSourceJobTests(unittest.TestCase):
             pages = [page for item in stream['receipts']
                      for page in range(item['first_page'], item['last_page'] + 1)]
             self.assertEqual(pages, list(range(1, result.page_count + 1)))
-        self.assertEqual(len(ir['components'][0]['content']['observations']), 1200)
-        self.assertTrue(ir['components'][0]['content']['observations'][-1].startswith('Observation 1200:'))
+        self.assertEqual(len(ir['components'][0]['content']['observations']), 1680)
+        self.assertTrue(ir['components'][0]['content']['observations'][-1].startswith('Observation 1680:'))
         self.assertLess(len(result.pdf_bytes), 8 * 1024 * 1024,
                         'This case is page integration evidence, not an above-8-MiB qualification')
 
     def test_default_still_withholds_same_natural_long_source(self):
         """Adding the opt-in bridge cannot widen default 32-page readiness."""
-        ir, _result = self.real_case(1200)
+        ir, _result = self.real_case(1680)
         default = adapters.build_html_css_and_pdf_adapter(presentation_ir=ir)
         self.assertFalse(default.passed)
         self.assertEqual(default.pdf_status, 'DISABLED')

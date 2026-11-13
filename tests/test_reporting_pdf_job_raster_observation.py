@@ -72,7 +72,7 @@ class JobRasterObservationTests(unittest.TestCase):
 
     def test_real_short_and_35_page_jobs_account_for_nested_children(self):
         """One real generation binds each probe and page child to its direct worker."""
-        for count in (2, 1200):
+        for count in (2, 1680):
             result, record = self.positive(count)
             pages = result.page_count; windows = (pages+3)//4
             direct_count = 22 + (pages+15)//16 + windows
@@ -88,7 +88,7 @@ class JobRasterObservationTests(unittest.TestCase):
             self.assertEqual(sum(row['kind']=='version_probe' for row in rows), windows)
             self.assertEqual([row['page'] for row in rows if row['kind']=='raster_page'], list(range(1,pages+1)))
             self.assertEqual(len({row['pid'] for row in rows}),len(rows))
-            if count == 1200:
+            if count == 1680:
                 self.assertEqual(pages,35); self.assertEqual(len(rows),44)
                 self.assertEqual(record['observed_total_spawns'],78)
             self.assertEqual(self.m.validate_generated(result,record), record)
@@ -149,7 +149,7 @@ class JobRasterObservationTests(unittest.TestCase):
 
     def test_canonical_byte_caps_and_detached_exports(self):
         """Bounded new envelopes do not alter the existing per-window wire limit."""
-        result,record=self.positive(1200)
+        result,record=self.positive(1680)
         self.assertLessEqual(len(canonical(record)),self.m.MAX_ENVELOPE_BYTES)
         self.assertLessEqual(len(canonical(record['raster_child_ledger'])),self.m.MAX_LEDGER_BYTES)
         self.assertEqual(self.m.MAX_ENVELOPE_BYTES,128*1024)
@@ -162,7 +162,7 @@ class JobRasterObservationTests(unittest.TestCase):
 
     def test_missing_extra_or_reordered_windows_refuse(self):
         """Every admitted raster interval has exactly one matching record in order."""
-        result,original=self.positive(1200)
+        result,original=self.positive(1680)
         for op in ('missing','extra','reorder'):
             record=deepcopy(original);rows=record['raster_child_ledger']['windows']
             if op=='missing':rows.pop()

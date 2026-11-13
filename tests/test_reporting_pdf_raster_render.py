@@ -111,7 +111,7 @@ class LargeRasterGenerationTests(unittest.TestCase):
                 sha256(raw).hexdigest(), size, size, sha256(specification).hexdigest(),
                 sha256(b'OWNED_DETERMINISTIC_SYNTHETIC_QUALIFICATION_DATA_NO_THIRD_PARTY_CONTENT').hexdigest()))
         bundle = resources.RasterBundle(tuple(assets))
-        ir = source(1200)
+        ir = source(1680)
         ir['qualification_resource_bundle_sha256'] = bundle.bundle_sha256
         for index, asset in enumerate(assets):
             ir['components'].append({'component_id': 'raster-qualification-' + str(index),

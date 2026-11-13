@@ -82,7 +82,7 @@ class ObservedQualificationJobTests(unittest.TestCase):
 
     def test_actual_short_and_long_attempts_bind_processes_and_durable_result(self):
         """Real generation and inspection produce matching result/observation/receipt."""
-        for count in (2, 1200):
+        for count in (2, 1680):
             rid = sha256(str(count).encode()).hexdigest()[:32]
             with self.subTest(count=count):
                 result, observation, outcome = self.execute(count=count, run_id=rid)
