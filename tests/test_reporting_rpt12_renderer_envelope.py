@@ -146,7 +146,7 @@ class RendererEnvelopeTests(unittest.TestCase):
             completed = subprocess.run([
                 sys.executable, "-I", str(ROOT / "reporting" / "_pdf_render_worker.py"),
                 *(str(fd) for fd in fds), str(os.getpid()),
-            ], pass_fds=fds, cwd=ROOT, stdout=subprocess.DEVNULL,
+            ], pass_fds=fds, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL, timeout=10, check=False)
             self.assertEqual(completed.returncode, 0)
             result.seek(0)
