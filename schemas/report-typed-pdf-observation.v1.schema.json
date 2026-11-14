@@ -1,0 +1,983 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:report-typed-pdf-observation:v1",
+  "title": "Private physical typed PDF observation",
+  "description": "Exact native structure and declared same-font text. No source equivalence, rendered glyph, accessibility or release qualification.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "const": "typed-pdf-physical-observation-v1"
+    },
+    "status": {
+      "const": "PHYSICAL_TEXT_OBSERVED"
+    },
+    "source_association": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "pdf_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "pdf_byte_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16777216
+    },
+    "page_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "parser_version": {
+      "const": "7.1.0"
+    },
+    "profile_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "memory_bytes": {
+          "const": 268435456
+        },
+        "cpu_seconds": {
+          "const": 5
+        },
+        "file_bytes": {
+          "const": 4194304
+        },
+        "open_files": {
+          "const": 128
+        }
+      },
+      "required": [
+        "memory_bytes",
+        "cpu_seconds",
+        "file_bytes",
+        "open_files"
+      ],
+      "additionalProperties": false
+    },
+    "counts": {
+      "type": "object",
+      "properties": {
+        "structure_nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "mcids": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "structure_visits": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "fonts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "cmap_records": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384
+        },
+        "cmap_decoded_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 524288
+        },
+        "decoded_stream_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "operations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "decoded_text_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2097152
+        },
+        "glyph_codes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        },
+        "text_scalars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2097152
+        }
+      },
+      "required": [
+        "structure_nodes",
+        "mcids",
+        "structure_visits",
+        "fonts",
+        "cmap_records",
+        "cmap_decoded_bytes",
+        "decoded_stream_bytes",
+        "operations",
+        "decoded_text_bytes",
+        "glyph_codes",
+        "text_scalars"
+      ],
+      "additionalProperties": false
+    },
+    "trace": {
+      "$ref": "#/$defs/trace"
+    },
+    "source_text_equivalence_verified": {
+      "type": "boolean",
+      "const": false
+    },
+    "rendered_glyphs_verified": {
+      "type": "boolean",
+      "const": false
+    },
+    "reading_order_verified": {
+      "type": "boolean",
+      "const": false
+    },
+    "accessibility_qualified": {
+      "type": "boolean",
+      "const": false
+    },
+    "scientific_equivalence_verified": {
+      "type": "boolean",
+      "const": false
+    },
+    "aggregate_job_resources_qualified": {
+      "type": "boolean",
+      "const": false
+    },
+    "worker_results_authenticated": {
+      "type": "boolean",
+      "const": false
+    },
+    "release_authorized": {
+      "type": "boolean",
+      "const": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "source_association",
+    "pdf_sha256",
+    "pdf_byte_count",
+    "page_count",
+    "parser_version",
+    "profile_sha256",
+    "limits",
+    "counts",
+    "trace",
+    "source_text_equivalence_verified",
+    "rendered_glyphs_verified",
+    "reading_order_verified",
+    "accessibility_qualified",
+    "scientific_equivalence_verified",
+    "aggregate_job_resources_qualified",
+    "worker_results_authenticated",
+    "release_authorized"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "reference": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2,
+      "items": false
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+      "maxLength": 64,
+      "minLength": 64
+    },
+    "number": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?![\\s\\S])"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 128,
+      "pattern": "^/[^\\s]+(?![\\s\\S])"
+    },
+    "native_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "part": {
+      "oneOf": [
+        {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "codes"
+            },
+            {
+              "type": "string",
+              "maxLength": 4194304,
+              "pattern": "^(?:[0-9a-f]{4})*(?![\\s\\S])"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "items": false
+        },
+        {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": "adjust"
+            },
+            {
+              "$ref": "#/$defs/number"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "items": false
+        }
+      ]
+    },
+    "child": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "kind": {
+              "const": "node"
+            },
+            "reference": {
+              "$ref": "#/$defs/reference"
+            }
+          },
+          "required": [
+            "ordinal",
+            "kind",
+            "reference"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "kind": {
+              "const": "mcid"
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            }
+          },
+          "required": [
+            "ordinal",
+            "kind",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "parent": {
+          "$ref": "#/$defs/reference"
+        },
+        "role": {
+          "enum": [
+            "/Document",
+            "/H1",
+            "/H2",
+            "/P",
+            "/Table",
+            "/Caption",
+            "/THead",
+            "/TBody",
+            "/TR",
+            "/TH",
+            "/TD",
+            "/Span"
+          ]
+        },
+        "page_reference": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "children_form": {
+          "enum": [
+            "array",
+            "reference",
+            "mcid"
+          ]
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/child"
+          },
+          "maxItems": 20000,
+          "minItems": 0
+        },
+        "table_attribute": {
+          "type": "boolean"
+        },
+        "native_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/native_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/native_id"
+          },
+          "maxItems": 1,
+          "minItems": 0
+        }
+      },
+      "required": [
+        "reference",
+        "parent",
+        "role",
+        "page_reference",
+        "children_form",
+        "children",
+        "table_attribute",
+        "native_id",
+        "headers"
+      ],
+      "additionalProperties": false
+    },
+    "event": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "operator": {
+              "enum": [
+                "q",
+                "Q",
+                "BT",
+                "ET",
+                "EMC"
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "items": {},
+              "maxItems": 0,
+              "minItems": 0
+            }
+          },
+          "required": [
+            "ordinal",
+            "operator",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "operator": {
+              "enum": [
+                "cm",
+                "Tm"
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/number"
+              },
+              "maxItems": 6,
+              "minItems": 6
+            }
+          },
+          "required": [
+            "ordinal",
+            "operator",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "operator": {
+              "enum": [
+                "rg"
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/number"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            }
+          },
+          "required": [
+            "ordinal",
+            "operator",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "operator": {
+              "enum": [
+                "gs"
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/name"
+                }
+              ],
+              "minItems": 1,
+              "maxItems": 1,
+              "items": false
+            }
+          },
+          "required": [
+            "ordinal",
+            "operator",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "operator": {
+              "enum": [
+                "BDC"
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 19999
+                }
+              ],
+              "minItems": 1,
+              "maxItems": 1,
+              "items": false
+            }
+          },
+          "required": [
+            "ordinal",
+            "operator",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "operator": {
+              "enum": [
+                "Tf"
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/name"
+                },
+                {
+                  "$ref": "#/$defs/number"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "ordinal",
+            "operator",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ordinal": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19999
+            },
+            "operator": {
+              "enum": [
+                "TJ"
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/part"
+              },
+              "maxItems": 20000,
+              "minItems": 1
+            }
+          },
+          "required": [
+            "ordinal",
+            "operator",
+            "operands"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "run": {
+      "type": "object",
+      "properties": {
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "text_object": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "operator_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "mcid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "structure_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "font_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "font_resource": {
+          "$ref": "#/$defs/name"
+        },
+        "font_size": {
+          "$ref": "#/$defs/number"
+        },
+        "text_matrix": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/number"
+          },
+          "maxItems": 6,
+          "minItems": 6
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/part"
+          },
+          "maxItems": 20000,
+          "minItems": 1
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 2097152
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2097152
+        },
+        "scalars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2097152
+        },
+        "glyph_codes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        }
+      },
+      "required": [
+        "ordinal",
+        "text_object",
+        "operator_ordinal",
+        "mcid",
+        "structure_reference",
+        "font_reference",
+        "font_resource",
+        "font_size",
+        "text_matrix",
+        "parts",
+        "text",
+        "utf8_bytes",
+        "scalars",
+        "glyph_codes"
+      ],
+      "additionalProperties": false
+    },
+    "font": {
+      "type": "object",
+      "properties": {
+        "reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "base_font": {
+          "$ref": "#/$defs/name"
+        },
+        "cid_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "cmap_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "cmap_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "cmap_decoded_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 262144
+        },
+        "explicit_cid_width_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "mapping": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{4}(?![\\s\\S])",
+                "maxLength": 4,
+                "minLength": 4
+              },
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2,
+            "items": false
+          },
+          "maxItems": 16384,
+          "minItems": 1
+        }
+      },
+      "required": [
+        "reference",
+        "base_font",
+        "cid_reference",
+        "cmap_reference",
+        "cmap_sha256",
+        "cmap_decoded_bytes",
+        "explicit_cid_width_count",
+        "mapping"
+      ],
+      "additionalProperties": false
+    },
+    "page": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "struct_parents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "contents_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "decoded_stream_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "mcid_owners": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mcid": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 19999
+              },
+              "structure_reference": {
+                "$ref": "#/$defs/reference"
+              }
+            },
+            "required": [
+              "mcid",
+              "structure_reference"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 20000,
+          "minItems": 1
+        },
+        "font_resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/name"
+              },
+              "reference": {
+                "$ref": "#/$defs/reference"
+              }
+            },
+            "required": [
+              "name",
+              "reference"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 32,
+          "minItems": 1
+        },
+        "graphics_states": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/name"
+              },
+              "fill_alpha": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "stroke_alpha": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "fill_alpha",
+              "stroke_alpha"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 20000,
+          "minItems": 0
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/event"
+          },
+          "maxItems": 20000,
+          "minItems": 1
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/run"
+          },
+          "maxItems": 20000,
+          "minItems": 1
+        }
+      },
+      "required": [
+        "index",
+        "reference",
+        "struct_parents",
+        "contents_reference",
+        "content_sha256",
+        "decoded_stream_bytes",
+        "mcid_owners",
+        "font_resources",
+        "graphics_states",
+        "events",
+        "runs"
+      ],
+      "additionalProperties": false
+    },
+    "trace": {
+      "type": "object",
+      "properties": {
+        "root_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "root_children_form": {
+          "enum": [
+            "array",
+            "reference"
+          ]
+        },
+        "root_children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          },
+          "maxItems": 1,
+          "minItems": 1
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "maxItems": 20000,
+          "minItems": 1
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/page"
+          },
+          "maxItems": 64,
+          "minItems": 1
+        },
+        "fonts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/font"
+          },
+          "maxItems": 32,
+          "minItems": 1
+        }
+      },
+      "required": [
+        "root_reference",
+        "root_children_form",
+        "root_children",
+        "nodes",
+        "pages",
+        "fonts"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
