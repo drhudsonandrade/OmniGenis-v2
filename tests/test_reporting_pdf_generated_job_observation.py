@@ -98,7 +98,7 @@ class GeneratedJobObservationTests(unittest.TestCase):
 
     def test_actual_render_and_native_children_are_observed_for_short_and_long_source(self):
         """Natural generation must observe the renderer plus every direct inspector."""
-        for count in (2, 1200):
+        for count in (2, 1680):
             with self.subTest(count=count):
                 result, record = self.positive(count)
                 if count == 2:
@@ -154,7 +154,7 @@ class GeneratedJobObservationTests(unittest.TestCase):
 
     def test_complete_page_window_coverage_agrees_with_final_document(self):
         """Every observed text/raster window retains its exact final-artifact range."""
-        result, record = self.positive(1200)
+        result, record = self.positive(1680)
         rows = record["native_observation"]["direct_process_ledger"]["processes"]
         for kind, width in (("text_windows", 16), ("raster_windows", 4)):
             selected = [row for row in rows if row["kind"] == kind]
@@ -313,7 +313,7 @@ class GeneratedJobObservationTests(unittest.TestCase):
         with patch.object(job, "MAX_OBSERVATION_BYTES", 1):
             with self.assertRaises(job.PdfGeneratedSourceJobError):
                 self.run_job()
-        result, record = self.positive(1200)
+        result, record = self.positive(1680)
         self.assertLessEqual(len(canonical(record)), 98304)
         self.assertLessEqual(len(result.to_bytes()), 327680)
 
@@ -331,7 +331,7 @@ class GeneratedJobObservationTests(unittest.TestCase):
 
     def test_direct_observation_does_not_claim_descendant_or_host_qualification(self):
         """Observed renderer/direct inspectors do not certify all helpers or release."""
-        result, record = self.positive(1200)
+        result, record = self.positive(1680)
         self.assertTrue(record["render_direct_child_observed"])
         for key in ("nested_processes_observed", "external_observer_measured", "whole_graph_observed",
                     "authenticated_worker_execution", "aggregate_job_resources_qualified",

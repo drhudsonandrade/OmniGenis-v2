@@ -1,13 +1,13 @@
 {
   "legacy_profile_sha256": {
-    "descriptor": "2fa39db5bc10127fde65920f14eac86fb3abf4777d075ffae58b61d15cfdc9d8",
-    "execution": "173877055fd11abba7740f582ec3c348a51e0dfb76de52c0545f76b85a438ad4",
-    "frame": "b59ded160140ce1547b9eeff1af000b43007b23f63beaccc2533238cad5bff07",
+    "descriptor": "360bae67710acb24a3d4911173b61ec3023a8c1d57c0973c6f4661769f924caf",
+    "execution": "f3c9757f8ffd52e21fc3ba86885a32422e9441cd7cfc6ae6ff59a995072727df",
+    "frame": "ec6564b1b3fa41c043f888b0711fba13cf0896779b0d5493083940cde691220c",
     "kernel_admission": "4684c54f07c27aedd39113323d3fb9e0e8297d5958025f015d04031080006d01",
-    "request": "9c87fd0083aa1d45a0d81a83d68421a0fbf46640b0f9b8ae3cc8f9a8a7f2a625",
-    "snapshot": "d1a7925d842c644e3fb165dfac538d4baa12c7bf9ddaca10697f237e5def9a87",
-    "supervisor": "d020c676e11207bdfd007dcd90488888bcebd6b1ee1285faa514b116d7c41095",
-    "worker": "52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b"
+    "request": "1c40b21897dba69b3997afbc55fa5553f44b9001a9bceb73ca90c7289f40dccd",
+    "snapshot": "8109e1e9006589d7bc4f0d8a06f7fb4ab808c5db7b6c23484d5cd084c6b6c1eb",
+    "supervisor": "4010f05b0b233a093c380a39c36af2d363d5b06e14862c81df4f85edb119d98c",
+    "worker": "30dba4e90b1c5ef6a9ef0d8146b52fa26e822cbf2e678c33602699c46f9699b4"
   },
   "limitations": [
     "Independent expected profile pins select exactly one complete transport family; mixed profiles fail closed.",
@@ -23,7 +23,7 @@
     "descriptor": {
       "profile": {
         "aggregate_job_resources_qualified": false,
-        "codec_profile_sha256": "31da55d5c8309a0ac1eb5f63c9171ff55e94a6351e8576376da88f9d0aaf171b",
+        "codec_profile_sha256": "9358f490899a6890a6a54e4a01651ce6291fbdbcf953df5bb864c46334f340bc",
         "duplicate_revocation_qualified": false,
         "executor_activated": false,
         "file_mode": 384,
@@ -49,14 +49,14 @@
         "source_and_pdf_semantics_validated": false,
         "transport_authenticated": false
       },
-      "profile_sha256": "bebf1c5b79c668ff91d006eb93e18d5d77e76b88aadc425d11a90a45904331b8"
+      "profile_sha256": "edbabc3f94ac06e8626eb3d4e1aecfa29189a563f571d9ba349f425949e13b83"
     },
     "execution": {
       "profile": {
         "aggregate_job_resources_qualified": false,
         "capture": "ONCE_TO_IMMUTABLE_BYTES_THROUGH_EXISTING_SEALED_DESCRIPTOR_READER",
         "default_pipeline_activated": false,
-        "descriptor_profile_sha256": "bebf1c5b79c668ff91d006eb93e18d5d77e76b88aadc425d11a90a45904331b8",
+        "descriptor_profile_sha256": "edbabc3f94ac06e8626eb3d4e1aecfa29189a563f571d9ba349f425949e13b83",
         "duplicate_revocation_qualified": false,
         "hard_job_deadline_enforced": false,
         "language": "en-US",
@@ -69,17 +69,17 @@
         "native_source_job_calls": 1,
         "new_executor_activated": false,
         "profile_id": "sealed-request-pdf-inspection-v2",
-        "protocol_profile_sha256": "31da55d5c8309a0ac1eb5f63c9171ff55e94a6351e8576376da88f9d0aaf171b",
+        "protocol_profile_sha256": "9358f490899a6890a6a54e4a01651ce6291fbdbcf953df5bb864c46334f340bc",
         "release_authorized": false,
-        "resource_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
+        "resource_profile_sha256": "ff0bdfd9cbaa75651dddcf0aa72e1d72e4b5282dde15973558b4ff258e6e39da",
         "result_wrapper_added": false,
         "returned_result_type": "PdfNativeSourceResult",
         "schema_version": "2.0.0",
         "snapshot_job_calls": 1,
-        "source_profile_sha256": "1f726c0cb0400cd4ff6c779003d28bc9ebea977821e8731855a4d41e458e973d",
+        "source_profile_sha256": "1f2af9432cbbb23f40fdc03461d06e705427ec7fb0f4f05eeda83c62bd9d2512",
         "transport_authenticated": false
       },
-      "profile_sha256": "7f5c679354e57add89091adc2004258af2787fc19ade4b1af96f7f1b627ba47b"
+      "profile_sha256": "22d49e193ab898aaaabdd721c038b9a03207e548029fa97f9b8550d391bb4aab"
     },
     "frame": {
       "profile": {
@@ -92,19 +92,19 @@
         "magic": "OGPDFRS2",
         "max_frame_bytes": 311340,
         "max_result_bytes": 311296,
-        "native_width_profile_sha256": "00cddbc4c08dcefc39b27e46fe3ff4198fc4dd32f743c484b534913b6cad6d8e",
+        "native_width_profile_sha256": "3b886428e6e7ca0332e052f6a84a6a33a1cdfc74fe40f55b1e42a631a16d5e3f",
         "new_executor_activated": false,
         "original_result_type": "PdfNativeSourceResult",
         "profile_id": "complete-pdf-inspection-result-frame-v2",
         "reconstructed_typed_result": false,
         "release_authorized": false,
         "result_encoding": "EXACT_ORIGINAL_CANONICAL_JSON_BYTES",
-        "result_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
+        "result_profile_sha256": "ff0bdfd9cbaa75651dddcf0aa72e1d72e4b5282dde15973558b4ff258e6e39da",
         "schema_version": "2.0.0",
         "sender_authenticated": false,
-        "structured_source_job_profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
+        "structured_source_job_profile_sha256": "82c7625959cbcbf82887745271ec913d9de489fcc3f42398b3beca8eb53bcb79"
       },
-      "profile_sha256": "424737bb7a7b8aca9a342d61117ae1c881e04296766b721f64cf7bee575e8db7"
+      "profile_sha256": "7d8ad35686366de58e76ae7148a9cfe9bd771ef8252648abff88f377fc4605d5"
     },
     "request": {
       "profile": {
@@ -134,7 +134,7 @@
         ],
         "profile_id": "immutable-pdf-inspection-request-v2",
         "release_authorized": false,
-        "resource_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
+        "resource_profile_sha256": "ff0bdfd9cbaa75651dddcf0aa72e1d72e4b5282dde15973558b4ff258e6e39da",
         "schema_version": "2.0.0",
         "segment_order": [
           "metadata",
@@ -142,10 +142,10 @@
           "pdf"
         ],
         "source_and_pdf_semantics_validated": false,
-        "source_profile_sha256": "1f726c0cb0400cd4ff6c779003d28bc9ebea977821e8731855a4d41e458e973d",
+        "source_profile_sha256": "1f2af9432cbbb23f40fdc03461d06e705427ec7fb0f4f05eeda83c62bd9d2512",
         "transport_authenticated": false
       },
-      "profile_sha256": "31da55d5c8309a0ac1eb5f63c9171ff55e94a6351e8576376da88f9d0aaf171b"
+      "profile_sha256": "9358f490899a6890a6a54e4a01651ce6291fbdbcf953df5bb864c46334f340bc"
     },
     "snapshot": {
       "profile": {
@@ -156,7 +156,7 @@
         "max_json_depth": 64,
         "max_json_nodes": 100000,
         "max_source_bytes": 8388608,
-        "native_source_job_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
+        "native_source_job_profile_sha256": "ff0bdfd9cbaa75651dddcf0aa72e1d72e4b5282dde15973558b4ff258e6e39da",
         "profile_id": "immutable-presentation-source-v2",
         "release_authorized": false,
         "returned_result_type": "PdfNativeSourceResult",
@@ -165,7 +165,7 @@
         "source_storage_authenticated": false,
         "source_type": "EXACT_IMMUTABLE_BYTES"
       },
-      "profile_sha256": "1f726c0cb0400cd4ff6c779003d28bc9ebea977821e8731855a4d41e458e973d"
+      "profile_sha256": "1f2af9432cbbb23f40fdc03461d06e705427ec7fb0f4f05eeda83c62bd9d2512"
     },
     "supervisor": {
       "profile": {
@@ -177,7 +177,7 @@
         "cleanup_seconds": 2,
         "completion": "CONTEXT_SENT_EOF_ZERO_EXIT_REAP_VALID_FRAME",
         "default_pipeline_activated": false,
-        "frame_profile_sha256": "424737bb7a7b8aca9a342d61117ae1c881e04296766b721f64cf7bee575e8db7",
+        "frame_profile_sha256": "7d8ad35686366de58e76ae7148a9cfe9bd771ef8252648abff88f377fc4605d5",
         "hard_job_deadline_qualified": false,
         "host_authenticated": false,
         "max_context_bytes": 4096,
@@ -190,9 +190,9 @@
         "service_installed": false,
         "stdout_storage": "BOUNDED_PIPE_FRAME_PLUS_ONE_OVERFLOW_BYTE",
         "unprivileged_caller_required": true,
-        "worker_profile_sha256": "7b00490a9a735f0bb146a440458f175658e19139f2e036dbcd54a597e963535d"
+        "worker_profile_sha256": "6c17f55418dcca7c5eabf406c3dcbd1b8a009e69fbaf13b437ac18ddb42cafc1"
       },
-      "profile_sha256": "87103abeaff9b1720c01ccb713fe503c0b82bd8bd02dbf1ae2a2a67843e6c680"
+      "profile_sha256": "c26a5f4906b3c0b0e4f2e804ac6f5c1d80b7d492243fc80b9c460370a2f1ecca"
     },
     "worker": {
       "profile": {
@@ -217,54 +217,54 @@
         ],
         "default_pipeline_activated": false,
         "descendant_cleanup_qualified": false,
-        "descriptor_profile_sha256": "bebf1c5b79c668ff91d006eb93e18d5d77e76b88aadc425d11a90a45904331b8",
+        "descriptor_profile_sha256": "edbabc3f94ac06e8626eb3d4e1aecfa29189a563f571d9ba349f425949e13b83",
         "hard_job_deadline_enforced": false,
         "independent_expectations_required": true,
-        "inspection_profile_sha256": "7f5c679354e57add89091adc2004258af2787fc19ade4b1af96f7f1b627ba47b",
+        "inspection_profile_sha256": "22d49e193ab898aaaabdd721c038b9a03207e548029fa97f9b8550d391bb4aab",
         "max_context_bytes": 4096,
         "max_result_frame_bytes": 311340,
         "origin_authenticated": false,
         "parent_death_signal_for_this_worker": true,
         "profile_id": "fixed-sealed-request-result-worker-v2",
         "release_authorized": false,
-        "request_profile_sha256": "31da55d5c8309a0ac1eb5f63c9171ff55e94a6351e8576376da88f9d0aaf171b",
-        "resource_profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
-        "result_frame_profile_sha256": "424737bb7a7b8aca9a342d61117ae1c881e04296766b721f64cf7bee575e8db7",
+        "request_profile_sha256": "9358f490899a6890a6a54e4a01651ce6291fbdbcf953df5bb864c46334f340bc",
+        "resource_profile_sha256": "ff0bdfd9cbaa75651dddcf0aa72e1d72e4b5282dde15973558b4ff258e6e39da",
+        "result_frame_profile_sha256": "7d8ad35686366de58e76ae7148a9cfe9bd771ef8252648abff88f377fc4605d5",
         "schema_version": "2.0.0",
         "service_installed": false,
         "stdin_pipe_required": true,
         "stdout_pipe_required": true
       },
-      "profile_sha256": "7b00490a9a735f0bb146a440458f175658e19139f2e036dbcd54a597e963535d"
+      "profile_sha256": "6c17f55418dcca7c5eabf406c3dcbd1b8a009e69fbaf13b437ac18ddb42cafc1"
     }
   },
   "reused_source_sha256": {
     "reporting/_pdf_fixed_inspection_worker.py": "75d34914b92c188e8ad2ad1e6e5a378b2019d8da7b8b74d67d82c4e4c338bb38",
     "reporting/_pdf_process_lifecycle.py": "6f7e39dd83d5f1d2f3726527c83d282b11f064222e3d1c46cbf0c369d297f465",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-bounded-scratch.v1.json": "05816bd09f263cf3991741ebd2ceb4122a050763a48f10827f0cce83a46cf3a5",
-    "reporting/pdf-fixed-inspection-worker.v1.json": "0acb941c1c349595bb0aac0041a82eebc7a2e71032b15eb713551760cc29cbf0",
-    "reporting/pdf-fixed-worker-admission.v1.json": "99cb5043c6ca2e67ca44c4fc1fce69c54663e922f34e9de791d843cc60739089",
-    "reporting/pdf-inspection-request.v1.json": "b7fa9ff5cf8b3a8dae089cecbf87826f89ee8758ea7a7e5609dd72db3f1f8664",
-    "reporting/pdf-inspection-result-frame.v1.json": "935fa722c72d183b4f3b6bc95b1c9c036116aa1589b1638397e6ebdccdb65c0a",
-    "reporting/pdf-native-source-job.v1.json": "b1a6204b727ad7c4b58c91099609b7c56c98224c7808371338db1a054cdf23bf",
-    "reporting/pdf-request-descriptor.v1.json": "2febdc8054dd33f11d228dadb274a8fe28f5c19f2d9091889ec9dbf478709f18",
-    "reporting/pdf-sealed-inspection.v1.json": "1f7c1ba12e0dce31ff37e2f04bbdc0659249f791f571a4de6951711c919ae015",
-    "reporting/pdf-snapshot-inspection.v1.json": "264d61d234e8c5da8a81006e4d208a2133af29f98275b29d2376073091111261",
-    "reporting/pdf-structured-source-job.v1.json": "252d3de39621125e8e3d8798cc082cd8029cf137bda6e1cecadf4719540bb02b",
-    "reporting/pdf-supervised-inspection.v1.json": "ef74db3a817f434a23944c6e9eac64f3c11056ade8524250e523ebfdf5c351e4",
-    "reporting/pdf-supervisor-resource-scope.v1.json": "4c97eec959969e6ab8f01c0182484c2ebd742b7e94ad733da7b4228870554437",
-    "reporting/pdf-tounicode-width-coverage.v1.json": "579a084359fe7fb3aee1d4c6af91a3693b28349e517089fb7cf2704424d2eeff",
+    "reporting/pdf-bounded-scratch.v1.json": "2ba3f75958ffd260ce2fa4d44591700e76829cdf9650b9c6f27664f15a89f83a",
+    "reporting/pdf-fixed-inspection-worker.v1.json": "d0d3298e4e2e943d9d1e590600b91d35401c91ff6b356811b91ff3b52e6ba6a9",
+    "reporting/pdf-fixed-worker-admission.v1.json": "d6b9cde0571786317d2e62557013b1a7dd9dbb4668e41a39db472e112e4eb8c6",
+    "reporting/pdf-inspection-request.v1.json": "79892ed12a94c32bcb61d6238908bcbfe2f9e2682d677d20c7ac833df071dc9c",
+    "reporting/pdf-inspection-result-frame.v1.json": "b956e90fc570b1c6e8a206b71ef07c09db177706acb6d1d0183421383aad2c9c",
+    "reporting/pdf-native-source-job.v1.json": "20fbc3d625ce5b3636f73b12c4852f5144ca9815f80050ba79dff65d50a64922",
+    "reporting/pdf-request-descriptor.v1.json": "32bfdadfd7985ee7d0453adc88d1a672b641a147b596d64e8d991d7de41904ae",
+    "reporting/pdf-sealed-inspection.v1.json": "69f4a4d187975f8f80ef9ea66d45468c095dea64c7da2723686246f3dcda1cea",
+    "reporting/pdf-snapshot-inspection.v1.json": "0deec6ccb5fce44d7fb7ae8b210b0322f9829c0c9c17debbb239e03189de966a",
+    "reporting/pdf-structured-source-job.v1.json": "69a953f75c664d01aecb694dd6a6c36ed5d7bf3d8b0a29e610847effdb11102c",
+    "reporting/pdf-supervised-inspection.v1.json": "a8bd3c435cd1507a35dd0971d9286a78740b5f579ecc8d39679a6ab63a6bda66",
+    "reporting/pdf-supervisor-resource-scope.v1.json": "77679fcccbd7034fae6417890c6d7a36318eba1d1d45e30ec58f0ed077517485",
+    "reporting/pdf-tounicode-width-coverage.v1.json": "7311d219ca229910e65e2b9fd16c147533206330a4bed05ab3aabcd45b0900c6",
     "reporting/pdf_inspection_request.py": "f9e72d162992debe09f081dc945edd1bc6740730682e4de4a5f1c80d43113dd3",
     "reporting/pdf_inspection_result_frame.py": "105d904ef1fa904342fb733a2a64bcdb8028d1a575c0299bd8cf935abf64f95d",
-    "reporting/pdf_native_source_job.py": "3feba56b00b80139112fcf4abadc39d6d95554417cc6d89adb8b37eb09bb64b3",
+    "reporting/pdf_native_source_job.py": "11e0badab17eb723a8575838b293d15de263d38e43089d2395f084de41c4b4c7",
     "reporting/pdf_request_descriptor.py": "3bc2dcbd6d2b28a3d9a92fefb84568fa45bc1b220f5bbdced4da707eb98e2d5f",
     "reporting/pdf_sealed_inspection.py": "8193ba835f3036104cdcadbf4d16f8b21803e46852935bb20f3af0b4e45ecd2f",
     "reporting/pdf_snapshot_inspection.py": "833069a527d554ce09c1dba165de47cdfda4178b07ce674724c80d5c5e7856b5",
     "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
     "reporting/pdf_supervised_inspection.py": "92157fce0d61ae0baa99f7fc5db9f1424597452075128b6c5d35b848f7d64a41",
     "reporting/pdf_text_windows.py": "fc913d4e0275039e27da5c43e543fe9453bbf08bfa09d2470836e76e9ba76697",
-    "reporting/pdf_tounicode_width_coverage.py": "5ea3bd58089b6c3d944204ea023ca0c425caf67f29a5df0f95f9d79906eb8f69"
+    "reporting/pdf_tounicode_width_coverage.py": "c071b95cfe024cbce4abeacaac117b421ce792bc4a072698a4c7a28642ec1189"
   },
   "schema_version": "2.0.0"
 }

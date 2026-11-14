@@ -25,7 +25,7 @@ def html_pages(count):
     return ('<!doctype html><html lang="en-US"><head><title>OmniGenis</title>'
             '<meta name="author" content="Hudson Silva Andrade">'
             '<meta name="generator" content="OmniGenis">'
-            '<style>section+section{break-before:page}</style></head><body>'
+            '<style>body{font-family:Lato}section+section{break-before:page}</style></head><body>'
             + ''.join(f'<section>Physical page {number:03d}</section>'
                       for number in range(1, count + 1)) + '</body></html>')
 

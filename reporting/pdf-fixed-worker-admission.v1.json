@@ -6,7 +6,7 @@
   "descendant_cleanup_qualified": false,
   "hard_job_deadline_enforced": false,
   "host_authenticated": false,
-  "legacy_worker_profile_sha256": "52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b",
+  "legacy_worker_profile_sha256": "30dba4e90b1c5ef6a9ef0d8146b52fa26e822cbf2e678c33602699c46f9699b4",
   "native_profile_qualified": false,
   "observation_limitations": [
     "Namespace-local paths do not authenticate the global host.",

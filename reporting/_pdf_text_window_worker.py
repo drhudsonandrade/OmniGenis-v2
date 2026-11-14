@@ -29,7 +29,7 @@ from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
 
 PROFILE_ID = "generated-pdf-text-window-v1"
 PROTOCOL_VERSION = 1
-EXTRACTOR_VERSION = "6.19.0"
+EXTRACTOR_VERSION = "7.1.0"
 MAX_DOCUMENT_PAGES = 512
 MAX_WINDOW_PAGES = 16
 MAX_DECODED_BYTES = 8 * 1024 * 1024

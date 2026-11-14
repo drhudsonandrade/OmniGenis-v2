@@ -278,7 +278,7 @@ class NativeJobObservationTests(unittest.TestCase):
     def test_existing_profile_and_limits_remain_unchanged(self):
         """Pin the current native dependency identity without activating or expanding resources."""
         self.assertEqual(job.PROFILE_SHA256,
-                         "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c")
+                         "ff0bdfd9cbaa75651dddcf0aa72e1d72e4b5282dde15973558b4ff258e6e39da")
         self.assertEqual(job.MAX_PAGES, 64)
         self.assertEqual(job.MAX_PDF_BYTES, 16 * 1024 * 1024)
         self.assertEqual(job.ACCEPTANCE_NS, 300_000_000_000)

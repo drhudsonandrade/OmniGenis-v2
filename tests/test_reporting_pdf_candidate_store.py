@@ -114,10 +114,10 @@ class CandidateStoreTests(unittest.TestCase):
 
     def test_actual_long_candidate_recovers_all_original_bytes(self):
         """A real generated document beyond 32 pages is stored without truncation."""
-        result = self.candidate(1200)
+        result = self.candidate(1680)
         self.assertGreater(result.page_count, 32)
-        self.persist(1200)
-        pdf, manifest = self.recover(1200)
+        self.persist(1680)
+        pdf, manifest = self.recover(1680)
         self.assertEqual(pdf, result.pdf_bytes)
         self.assertEqual(manifest['result'], result.to_dict())
         self.assertEqual(manifest['page_count'], result.page_count)

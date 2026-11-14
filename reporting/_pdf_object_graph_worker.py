@@ -30,7 +30,7 @@ from reporting._pdf_render_worker import _arm_worker_lifetime, _write_bytes
 
 PROFILE_ID = "generated-pdf-effective-object-graph-v1"
 POLICY_ID = "passive-report-pdf-v1"
-PARSER_VERSION = "6.19.0"
+PARSER_VERSION = "7.1.0"
 PROTOCOL_VERSION = 1
 MAX_DOCUMENT_PAGES = 512
 MAX_VISITS = 20000

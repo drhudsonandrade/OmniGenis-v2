@@ -83,13 +83,13 @@
     ],
     "integration_mode": "USE_VIA_ADAPTER",
     "license": "BSD-3-Clause",
-    "package_url": "https://pypi.org/project/pypdf/6.19.0/",
+    "package_url": "https://pypi.org/project/pypdf/7.1.0/",
     "source_code_copied": false,
     "source_repository": "py-pdf/pypdf",
     "strict_mode": true,
     "validator_id": "pypdf",
-    "validator_version": "6.19.0",
-    "wheel_sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14"
+    "validator_version": "7.1.0",
+    "wheel_sha256": "47cca6b24bdcf4c4d65b5f7b8b972535c61710a061261e737688777cfd9a7bfb"
   },
   "wheel_sha256": "5043e55e38d2a2af2b2b871e869697b1f65dad5f8b4a3677961d04ceacf9c5fe",
   "postvalidation_envelope": {

@@ -31,7 +31,7 @@ from reporting._pdf_tounicode_cmap_frame_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_CMAP_FRAME_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "688cc49703afb7fae20b1b854da97c399abe00880176f9e2c19d69d29ed75d8a"
+_FIXED_PARENT_PROFILE_SHA256 = "a3e9def2e18d08ca5608f49781509b33d89862b9218a91dc38787660d012528b"
 _FIXED_ENVELOPE = (
     64, 16 * 1024 * 1024, 256 * 1024, 512 * 1024, 256, 16384, 100,
 )
@@ -81,7 +81,7 @@ def tounicode_cmap_frame_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_cmap_frame_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "ed917214c2e0ad182e02fca14005441ed9004fdc5849a15f0b0e495a666cc562"
+_FIXED_PROFILE_SHA256 = "cf281fb8034589a40657c89232476c06efbd179253835aa50f2370b1ad3bd75c"
 
 
 def _profile() -> None:
@@ -91,7 +91,7 @@ def _profile() -> None:
             or (MAX_DOCUMENT_PAGES, MAX_PDF_BYTES, MAX_DECODED_CMAP_BYTES,
                 MAX_TOTAL_DECODED_BYTES, MAX_BFCHAR_BLOCKS,
                 MAX_BFCHAR_RECORDS, MAX_BFCHAR_PER_BLOCK) != _FIXED_ENVELOPE
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or previous.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256
             or sha256(_canonical(tounicode_cmap_frame_profile())).hexdigest()

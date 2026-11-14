@@ -79,7 +79,7 @@ class QualificationGeneratedJobTests(unittest.TestCase):
 
     def test_actual_short_and_long_generation_has_exact_durable_outcome(self):
         """Both real jobs persist and re-read the digest of the unchanged result."""
-        for count in (2, 1200):
+        for count in (2, 1680):
             rid = sha256(str(count).encode()).hexdigest()[:32]
             result, outcome = self.execute(count=count, run_id=rid)
             self.assertIs(type(result), generated.PdfGeneratedSourceResult)

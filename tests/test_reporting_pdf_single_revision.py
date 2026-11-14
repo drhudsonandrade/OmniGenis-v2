@@ -238,7 +238,7 @@ class PdfSingleRevisionTests(unittest.TestCase):
         self.assertEqual(manifest, profile)
         self.assertEqual(profile["max_pages"], 64)
         self.assertEqual(profile["max_pdf_bytes"], 16 * 1024 * 1024)
-        self.assertEqual(profile["parser_version"], "6.19.0")
+        self.assertEqual(profile["parser_version"], "7.1.0")
         self.assertFalse(profile["all_file_revisions_inspected"])
         self.assertFalse(profile["release_authorized"])
 

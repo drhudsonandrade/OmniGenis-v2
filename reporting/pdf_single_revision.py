@@ -28,7 +28,7 @@ from reporting._pdf_single_revision_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_SINGLE_REVISION_DISABLED"
-_FIXED_PARENT_PROFILE = "c1a94f20313eb3bbfc0744ae14b4d7029f6f753e151e1b6f28fbbb73f711bff9"
+_FIXED_PARENT_PROFILE = "81180c80b0c5e416f88a336a9eeec9ee2f22fe151aa642c76699681c098488e8"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -69,7 +69,7 @@ def single_revision_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(single_revision_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "564a7e609902c3ad8abbe9e7b17b0e5f612931521d6af7017d94bee53873c9f9"
+_FIXED_PROFILE_SHA256 = "da216552c2cf7bce549a3b509ee583f2f3808d9575f93e0806da1dd70da855f0"
 
 
 def _profile() -> None:
@@ -77,7 +77,7 @@ def _profile() -> None:
     prior._profile()
     if (sys.platform != "linux" or os.environ.get(_DISABLE) == "1"
             or (MAX_DOCUMENT_PAGES, MAX_PDF_BYTES) != _FIXED_ENVELOPE
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or prior.PROFILE_SHA256 != _FIXED_PARENT_PROFILE
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256
             or sha256(_canonical(single_revision_profile())).hexdigest()

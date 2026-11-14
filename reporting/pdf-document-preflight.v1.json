@@ -48,7 +48,7 @@
         "memory_bytes": 268435456,
         "metadata_profile_id": "omnigenis-generated-pdf-metadata-v1",
         "open_files": 128,
-        "parser_version": "6.19.0",
+        "parser_version": "7.1.0",
         "profile_id": "generated-pdf-document-metadata-v1",
         "result_bytes": 4096,
         "wall_seconds": 10
@@ -63,7 +63,7 @@
         "max_visits": 20000,
         "memory_bytes": 268435456,
         "open_files": 128,
-        "parser_version": "6.19.0",
+        "parser_version": "7.1.0",
         "policy_id": "page-mcid-parenttree-consistency-v1",
         "profile_id": "generated-pdf-mcid-parenttree-v1",
         "result_bytes": 4096,
@@ -77,7 +77,7 @@
         "max_visits": 20000,
         "memory_bytes": 268435456,
         "open_files": 128,
-        "parser_version": "6.19.0",
+        "parser_version": "7.1.0",
         "policy_id": "passive-report-pdf-v1",
         "profile_id": "generated-pdf-effective-object-graph-v1",
         "result_bytes": 4096,
@@ -92,7 +92,7 @@
         "max_visits": 20000,
         "memory_bytes": 268435456,
         "open_files": 128,
-        "parser_version": "6.19.0",
+        "parser_version": "7.1.0",
         "policy_id": "page-tag-parenttree-references-v1",
         "profile_id": "generated-pdf-page-tag-parenttree-v1",
         "result_bytes": 4096,
@@ -131,7 +131,7 @@
         "min_edge_margin_px": 2,
         "open_files": 128,
         "page_wall_seconds": 8,
-        "parser_version": "6.19.0",
+        "parser_version": "7.1.0",
         "pillow_version": "12.3.0",
         "profile_id": "generated-pdf-raster-window-v1",
         "protocol_version": 1,
@@ -163,7 +163,7 @@
       },
       "text": {
         "cpu_seconds": 5,
-        "extractor_version": "6.19.0",
+        "extractor_version": "7.1.0",
         "header_bytes": 512,
         "identity_fields": [
           "pdf_sha256",
@@ -199,7 +199,7 @@
     "whole_pdf_safety_qualified": false
   },
   "profile_id": "generated-pdf-document-preflight-v1",
-  "profile_sha256": "59a3610892f5ab9a0c17194d99988dfb19f44ffed59ff9401796c88310f1c479",
+  "profile_sha256": "2bc969b4fa918d712315978e77abf79675ddae1a47fa9297d22670caa1fa82c1",
   "release_authorized": false,
   "schema_version": "1.0.0",
   "scope_limits": [

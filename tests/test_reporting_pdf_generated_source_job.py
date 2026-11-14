@@ -87,7 +87,7 @@ class GeneratedSourceJobTests(unittest.TestCase):
 
     def test_natural_long_candidate_uses_same_bytes_and_all_pages(self):
         """Real generation, not a patched renderer or PDF fixture, must cross the page boundary."""
-        ir, result = self.real_case(1200)
+        ir, result = self.real_case(1680)
         record = result.to_dict()
         self.assertEqual(record['status'], 'GENERATED_CANDIDATE_AND_NATIVE_SOURCE_BOUND')
         self.assertGreater(result.page_count, 32)
@@ -108,14 +108,14 @@ class GeneratedSourceJobTests(unittest.TestCase):
             pages = [page for item in stream['receipts']
                      for page in range(item['first_page'], item['last_page'] + 1)]
             self.assertEqual(pages, list(range(1, result.page_count + 1)))
-        self.assertEqual(len(ir['components'][0]['content']['observations']), 1200)
-        self.assertTrue(ir['components'][0]['content']['observations'][-1].startswith('Observation 1200:'))
+        self.assertEqual(len(ir['components'][0]['content']['observations']), 1680)
+        self.assertTrue(ir['components'][0]['content']['observations'][-1].startswith('Observation 1680:'))
         self.assertLess(len(result.pdf_bytes), 8 * 1024 * 1024,
                         'This case is page integration evidence, not an above-8-MiB qualification')
 
     def test_default_still_withholds_same_natural_long_source(self):
         """Adding the opt-in bridge cannot widen default 32-page readiness."""
-        ir, _result = self.real_case(1200)
+        ir, _result = self.real_case(1680)
         default = adapters.build_html_css_and_pdf_adapter(presentation_ir=ir)
         self.assertFalse(default.passed)
         self.assertEqual(default.pdf_status, 'DISABLED')
@@ -132,11 +132,12 @@ class GeneratedSourceJobTests(unittest.TestCase):
         self.assertEqual(default.html_sha256, result.to_dict()['html_sha256'])
 
     def test_default_ready_binary_identifier_candidate_keeps_exact_bytes(self):
-        """The original valid binary-ID fixture passes without changing source or PDF."""
+        """Fixed synthetic source exercises a binary first ID without rewriting the PDF."""
         from io import BytesIO
         from pypdf import PdfReader
         from pypdf.generic import ByteStringObject, TextStringObject
         ir = source(1)
+        ir['report_id'] = 'SYNTHETIC-GENERATED-SOURCE-JOB-BINARY-ID-01'
         source_before = canonical(ir)
         default = adapters.build_html_css_and_pdf_adapter(presentation_ir=ir)
         self.assertTrue(default.passed, default.errors)
@@ -145,10 +146,12 @@ class GeneratedSourceJobTests(unittest.TestCase):
         self.assertIs(type(ids[0]), ByteStringObject)
         self.assertIs(type(ids[1]), TextStringObject)
         self.assertEqual([len(value.original_bytes) for value in ids], [32, 32])
+        self.assertEqual(ids[0].original_bytes,
+                         sha256(default.html.encode('utf-8')).digest())
         try:
             result = self.run_job(ir)
         except self.m.PdfGeneratedSourceJobError as exc:
-            self.fail('valid original binary-ID candidate refused: ' + str(exc))
+            self.fail('valid binary-ID candidate refused: ' + str(exc))
         self.assertEqual(result.pdf_bytes, default.pdf_bytes)
         self.assertEqual(result.pdf_sha256, sha256(default.pdf_bytes).hexdigest())
         self.assertEqual(canonical(ir), source_before)
@@ -353,10 +356,22 @@ class GeneratedSourceJobTests(unittest.TestCase):
 
     def test_natural_out_of_class_source_never_reaches_inspection(self):
         """Natural overflow is an explicit failure, not a truncated 64-page candidate."""
-        with patch.object(self.m, 'execute_pdf_native_source_job') as inspect:
+        ir = source(3500)
+        source_before = canonical(ir)
+        self.assertLess(len(source_before), adapters.MAX_PDF_BYTES)
+        html, _digest, _components = adapters._semantic_html(ir)
+        self.assertLess(len(html.encode('utf-8')), self.m._RENDER_HTML_BYTES)
+        with (patch.object(self.m, 'execute_pdf_native_source_job') as inspect,
+              patch.object(self.m, '_decode_render_result',
+                           wraps=self.m._decode_render_result) as decode):
             with self.assertRaises(self.m.PdfGeneratedSourceJobError):
-                self.run_job(source(2800))
+                self.run_job(ir)
         inspect.assert_not_called()
+        decode.assert_called_once()
+        response = json.loads(decode.call_args.args[0])
+        self.assertEqual(response['status'], 'FAIL')
+        self.assertEqual(response['error'], 'pdf_candidate_page_budget_exceeded')
+        self.assertEqual(canonical(ir), source_before)
 
     def test_manifest_pins_profile_and_only_actual_source_dependencies(self):
         """Declared profile identity and reused-source bytes must describe the running code."""
@@ -371,6 +386,7 @@ class GeneratedSourceJobTests(unittest.TestCase):
         self.assertEqual(set(manifest['reused_source_sha256']), {
             'LICENSE', 'THIRD-PARTY-NOTICES.txt', 'requirements-reporting.lock',
             'reporting/adapters.py', 'reporting/_pdf_render_worker.py',
+            'reporting/pdf_font_selection.py', 'reporting/pdf-font-style.v1.json',
             'reporting/_pdf_process_lifecycle.py', 'reporting/_pdf_process_sandbox.py',
             'reporting/_pdf_native_launch_budget.py', 'reporting/pdf_native_source_job.py',
             'reporting/pdf-native-source-job.v1.json', 'reporting/pdf_generated_source_job.py',

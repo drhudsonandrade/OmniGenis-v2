@@ -39,6 +39,16 @@ from reporting.pdf_qa import (
 from reporting.pdf_validation import validate_native_structure
 
 ROADMAP_ID = "RPT-08"
+FIXED_FONT_STYLE_ID = "fixed-lato-2.015-v1"
+_FIXED_SEMANTIC_CSS = (
+    "@page{size:595.27559pt 841.88976pt;margin:44pt}"
+    "html,body{font-family:Lato;font-style:normal;font-stretch:normal;"
+    "font-variant:normal;font-weight:400}"
+    "body{margin:0;font-size:10.7pt;line-height:15.3pt;color:#455D73}"
+    "h1,h2{margin:0;font-size:25pt;line-height:30pt;font-weight:700;color:#003890}"
+    "section{margin-block:1rem}"
+    "pre{font:inherit;color:#0B1F33;white-space:pre-wrap;overflow-wrap:anywhere}"
+)
 _PDF_RENDER_ENV_LOCK = threading.Lock()
 _PDF_RENDER_ERRORS = frozenset({
     "pdf_engine_unavailable", "pdf_engine_version_mismatch",
@@ -182,7 +192,7 @@ def _pdf_stack_readiness() -> tuple[bool, str | None]:
         from pypdf import PdfReader  # noqa: F401
     except (ImportError, OSError):
         return False, "pdf_validator_unavailable"
-    if version("pypdf") != "6.19.0":
+    if version("pypdf") != "7.1.0":
         return False, "pdf_validator_version_mismatch"
 
     try:
@@ -366,7 +376,8 @@ def _semantic_html(presentation_ir: dict) -> tuple[str, str, list[str]]:
         f"<title>{GENERATED_PDF_PRODUCT}</title>",
         f'<meta name="author" content="{GENERATED_PDF_AUTHOR}">',
         f'<meta name="generator" content="{GENERATED_PDF_PRODUCT}">',
-        "<style>body{font-family:sans-serif}section{margin-block:1rem}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>",
+        f'<meta name="omnigenis-font-style" content="{FIXED_FONT_STYLE_ID}">',
+        f"<style>{_FIXED_SEMANTIC_CSS}</style>",
         "</head><body>",
         f"<h1>{escape(presentation_ir['report_id'])}</h1>",
     ]
@@ -469,7 +480,7 @@ def build_html_css_and_pdf_adapter(*, presentation_ir: object) -> AdapterResult:
         "pdf_sha256": pdf_sha256,
         "pdf_adapter_status": "READY",
         "pdf_engine_id": "weasyprint:70.0",
-        "pdf_validator_id": "pypdf:6.19.0",
+        "pdf_validator_id": "pypdf:7.1.0",
         "pdf_metadata_profile": GENERATED_PDF_METADATA_PROFILE,
         "pdf_metadata_status": "PASS",
         "presentation_ir_sha256": ir_digest,

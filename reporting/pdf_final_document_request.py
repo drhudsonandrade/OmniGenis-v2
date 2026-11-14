@@ -30,8 +30,8 @@ from reporting.requests import BoundReportRequest, ReportRequestSnapshot
 from reporting.workflow import ConsentStatus, ReviewState
 
 SCHEMA = 'source-bound-final-document-request/v1'
-CANDIDATE_PROFILE_SHA256 = '1af6e60d9409bd9c8fb635a01b05e7d60715340f6f421332b3137f841c010dc7'
-STORAGE_PROFILE_SHA256 = '42ade56489d026cd3b87581115dae6da19efb26d6fd0a0a77c6d8748f028b767'
+CANDIDATE_PROFILE_SHA256 = '93b440c41d025cc39645ddc66764577fad414fbb3b471662afb89d2763f39ab7'
+STORAGE_PROFILE_SHA256 = 'bc9c3fb920cc2ab6ce8f784ff54f1cf544b999fda082f4edac99979d1d315368'
 _MAGIC = b'OFD1'
 _HEADER_BYTES = 8
 _VERSION = '1.0.0'

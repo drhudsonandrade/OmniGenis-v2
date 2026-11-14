@@ -24,7 +24,7 @@
     "mode": "native-preloaded-png-v1",
     "open_files": 128,
     "page_discovery": "STRICT_COMPLETE_GENERATED_BYTES_IN_RENDER_CHILD",
-    "page_parser": "pypdf:6.19.0",
+    "page_parser": "pypdf:7.1.0",
     "pdf_bytes": 16777216,
     "profile_id": "preloaded-png-render-v1",
     "protocol_version": 3,
@@ -40,7 +40,7 @@
     "wall_seconds": 30
   },
   "profile_id": "preloaded-png-render-v1",
-  "profile_sha256": "0ea42861783822c1c6c343ec0688a401fbd262045402c34d1aad429162778419",
+  "profile_sha256": "5391bdae627341ce95c351093bfc2a6dc2575e48203f9ee4bd4581c6ec1eb0de",
   "release_authorized": false,
   "resource_profile": {
     "default_pipeline_activated": false,
@@ -62,15 +62,15 @@
   "source_sha256": {
     "_pdf_process_lifecycle.py": "6f7e39dd83d5f1d2f3726527c83d282b11f064222e3d1c46cbf0c369d297f465",
     "_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
-    "_pdf_render_worker.py": "0d4a7730ce0b212930b7497f443cb6042f5061a19c4173162b420f93ad8555b1",
-    "adapters.py": "eaf7db018bc668e2df6dc5f2a365b02571bef75fd47e04986561d9db8a096413",
-    "pdf_raster_render.py": "74bba585a33bcb5591bfd10a1e36a999fe6ae0838c82a95d5fa348c3a508bec7",
+    "_pdf_render_worker.py": "30b6454c7cd9b1b83d5713c406e135de91ccf127116a8bd42a13d17036cbd5ce",
+    "adapters.py": "a9cb893ae64200adbe211802fafa97ed2b08575f0195ab8e8f3303f8b3cba76f",
+    "pdf_raster_render.py": "48883e3d12402cdfb9fdfd086c806b89ca3c331e961698a29ef8916975a1873b",
     "pdf_raster_resources.py": "8356b76112ddbe49ab4f61884b1dcd779157cb527ecf528106999dcc65381caf",
     "png_inspection.py": "189e1e1d77eabaaf829915cd6fcb21611831bb7c3af577e00e423a1b40f5bcec"
   },
   "supported_execution": false,
   "versions": {
-    "page_parser": "pypdf:6.19.0",
+    "page_parser": "pypdf:7.1.0",
     "png_decoder": "pillow:12.3.0",
     "renderer": "weasyprint:70.0"
   }

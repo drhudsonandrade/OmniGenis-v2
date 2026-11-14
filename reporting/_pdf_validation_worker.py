@@ -108,7 +108,7 @@ def _structure(pdf: bytes, digest: str) -> dict:
         from pypdf import PdfReader
     except (ImportError, OSError):
         return {"errors": ["pdf_validator_unavailable"]}
-    if version("pypdf") != "6.19.0":
+    if version("pypdf") != "7.1.0":
         return {"errors": ["pdf_validator_version_mismatch"]}
     result = _metadata(pdf, digest)
     if not result.passed:
@@ -140,7 +140,7 @@ def _evaluate(operation: str, pdf: bytes, digest: str) -> dict:
         return {"errors": list(result.errors),
                 "page_count": result.page_count if result.passed else None}
     from importlib.metadata import version
-    if version("pypdf") != "6.19.0":
+    if version("pypdf") != "7.1.0":
         raise ValueError("validator version mismatch")
     from reporting.pdf_accessibility import validate_pdf_accessibility_structure
     result = validate_pdf_accessibility_structure(pdf_bytes=pdf, expected_language="en-US")

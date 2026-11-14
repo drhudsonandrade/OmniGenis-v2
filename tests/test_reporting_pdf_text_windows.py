@@ -406,7 +406,7 @@ class PdfTextWindowTests(unittest.TestCase):
         """The new internal profile records exact limits without upgrading dependencies."""
         profile = json.loads((ROOT / "reporting/pdf-text-window-engine.v1.json").read_text())
         self.assertEqual(profile["profile_id"], ENGINE)
-        self.assertEqual(profile["parser_version"], "6.19.0")
+        self.assertEqual(profile["parser_version"], "7.1.0")
         self.assertEqual(profile["budget"], {
             "pdf_bytes": self.w.MAX_PDF_BYTES, "document_pages": self.w.MAX_DOCUMENT_PAGES,
             "window_pages": self.w.MAX_WINDOW_PAGES, "decoded_bytes": self.w.MAX_DECODED_BYTES,

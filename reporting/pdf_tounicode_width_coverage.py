@@ -31,7 +31,7 @@ from reporting._pdf_tounicode_width_coverage_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_WIDTH_COVERAGE_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "3128f43c1a9325c1d414ee2cb86c613ededf7f388ae425bd15be3fb6069d551b"
+_FIXED_PARENT_PROFILE_SHA256 = "bb49db32b342d908b9fa2bbe5d0af230a56627d4f48e5d512e9b0ad705e46b7f"
 _FIXED_ENVELOPE = (
     64, 16 * 1024 * 1024, 256 * 1024, 512 * 1024,
     256, 16384, 100, 262144, 4096,
@@ -92,7 +92,7 @@ def tounicode_width_coverage_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_width_coverage_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "00cddbc4c08dcefc39b27e46fe3ff4198fc4dd32f743c484b534913b6cad6d8e"
+_FIXED_PROFILE_SHA256 = "3b886428e6e7ca0332e052f6a84a6a33a1cdfc74fe40f55b1e42a631a16d5e3f"
 
 
 def _profile() -> None:
@@ -103,7 +103,7 @@ def _profile() -> None:
                 MAX_TOTAL_DECODED_BYTES, MAX_BFCHAR_BLOCKS, MAX_BFCHAR_RECORDS,
                 MAX_BFCHAR_PER_BLOCK, MAX_UTF16BE_UNITS,
                 MAX_CID_WIDTH_VALUES_PER_FONT) != _FIXED_ENVELOPE
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or previous.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256
             or sha256(_canonical(tounicode_width_coverage_profile())).hexdigest()

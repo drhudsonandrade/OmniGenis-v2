@@ -39,7 +39,7 @@ def protocol(identity, inspection):
     """Use literal wire values independently of the new worker's encoder."""
     return {'protocol_version': 1, 'profile_id': 'final-document-page-locations-v1',
         'policy_id': 'semantic-section-physical-page-partition-v1',
-        'parser_version': '6.19.0', 'identity': identity,
+        'parser_version': '7.1.0', 'identity': identity,
         'limits': {'memory_bytes': 268435456, 'cpu_seconds': 5,
                    'file_bytes': 4096, 'open_files': 128},
         'inspection': inspection}

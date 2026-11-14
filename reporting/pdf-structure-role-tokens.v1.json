@@ -13,7 +13,7 @@
   "max_tree_depth": 64,
   "max_tree_visits": 20000,
   "parent_structure_policy_id": "forward-k-parent-and-mcid-linkage-v1",
-  "parser_version": "6.19.0",
+  "parser_version": "7.1.0",
   "pdf_ua_qualified": false,
   "policy_id": "generated-pdf-standard-role-token-subset-v1",
   "profile_id": "generated-pdf-structure-role-tokens-v1",

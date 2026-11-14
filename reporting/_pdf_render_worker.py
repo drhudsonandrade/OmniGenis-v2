@@ -46,7 +46,7 @@ def native_render_profile() -> dict:
         "max_pages": NATIVE_MAX_PAGES, "result_bytes": RESULT_BYTES,
         "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
         "wall_seconds": WALL_SECONDS, "open_files": OPEN_FILES,
-        "renderer": "weasyprint:70.0", "page_parser": "pypdf:6.19.0",
+        "renderer": "weasyprint:70.0", "page_parser": "pypdf:7.1.0",
         "page_discovery": "STRICT_COMPLETE_GENERATED_BYTES_IN_RENDER_CHILD",
         "default_pipeline_activated": False, "release_authorized": False,
         "aggregate_job_resources_qualified": False,
@@ -168,40 +168,61 @@ def _read_request(fd: int, *, protocol_version: int = PROTOCOL_VERSION) -> tuple
 
 def _render(html: str, digest: str, *, max_pdf_bytes: int = PDF_BYTES,
             resources: object = None) -> tuple[bytes | None, str | None]:
-    """Invoke only the pinned, offline renderer inside the limited worker."""
+    """Invoke the pinned renderer with only the two admitted offline fonts."""
     if type(max_pdf_bytes) is not int or max_pdf_bytes not in (PDF_BYTES, NATIVE_PDF_BYTES):
         return None, "pdf_render_failed"
     try:
         from importlib.metadata import version
-        from weasyprint import HTML
-        from weasyprint.urls import URLFetcher, FatalURLFetchingError
-    except (ImportError, OSError):
-        return None, "pdf_engine_unavailable"
-    try:
         if version("weasyprint") != "70.0":
             return None, "pdf_engine_version_mismatch"
+        if __name__ == "__main__":
+            from pdf_font_selection import LatoFontSelection, RendererImportUnavailable
+        else:
+            from reporting.pdf_font_selection import LatoFontSelection, RendererImportUnavailable
     except Exception:
         return None, "pdf_engine_unavailable"
+    class RenderRefusal(Exception):
+        """Preserve a fixed engine refusal through context cleanup."""
+
+    fatal_fetch_errors = ()
     try:
-        if resources is None:
-            fetcher = URLFetcher(allowed_protocols=(), allow_redirects=False,
-                                 fail_on_errors=True)
-        else:
-            from reporting.pdf_raster_resources import make_fetcher
-            fetcher = make_fetcher(resources)
-        pdf = HTML(string=html, url_fetcher=fetcher).write_pdf(
-            pdf_identifier=bytes.fromhex(digest), pdf_variant="pdf/ua-1",
-            pdf_version="1.7")
-        if resources is not None:
-            fetcher.require_complete()
-    except FatalURLFetchingError:
+        with LatoFontSelection(
+            font_directory=Path(__file__).resolve().parent / "assets/fonts/lato",
+            html=html, html_sha256=digest,
+        ) as selected_fonts:
+            # Admission installs the closed Fontconfig before the first native
+            # renderer import. Font bytes never pass through either URL fetcher.
+            try:
+                from weasyprint import HTML
+                from weasyprint.urls import URLFetcher, FatalURLFetchingError
+            except (ImportError, OSError) as error:
+                raise RenderRefusal("pdf_engine_unavailable") from error
+            fatal_fetch_errors = (FatalURLFetchingError,)
+            if resources is None:
+                fetcher = URLFetcher(allowed_protocols=(), allow_redirects=False,
+                                     fail_on_errors=True)
+            else:
+                from reporting.pdf_raster_resources import make_fetcher
+                fetcher = make_fetcher(resources)
+            pdf = HTML(string=html, url_fetcher=fetcher).write_pdf(
+                pdf_identifier=bytes.fromhex(digest), pdf_variant="pdf/ua-1",
+                pdf_version="1.7", font_config=selected_fonts.font_config,
+                finisher=selected_fonts.finisher)
+            if resources is not None:
+                fetcher.require_complete()
+            if type(pdf) is not bytes or not pdf.startswith(b"%PDF-1.7"):
+                raise RenderRefusal("pdf_engine_invalid_output")
+            selected_fonts.finish(pdf)
+    except RendererImportUnavailable:
+        return None, "pdf_engine_unavailable"
+    except RenderRefusal as error:
+        return None, str(error)
+    except fatal_fetch_errors:
         if resources is None:
             raise
         return None, "pdf_render_failed"
     except Exception:
         return None, "pdf_render_failed"
-    if type(pdf) is not bytes or not pdf.startswith(b"%PDF-1.7"):
-        return None, "pdf_engine_invalid_output"
     if len(pdf) > max_pdf_bytes:
         return None, "pdf_candidate_budget_exceeded"
     return pdf, None
@@ -214,7 +235,7 @@ def _discover_page_count(pdf: bytes) -> tuple[int | None, str | None]:
         from io import BytesIO
         from pypdf import PdfReader
 
-        if version("pypdf") != "6.19.0":
+        if version("pypdf") != "7.1.0":
             return None, "pdf_page_discovery_failed"
         if type(pdf) is not bytes or not 1 <= len(pdf) <= NATIVE_PDF_BYTES:
             return None, "pdf_page_discovery_failed"

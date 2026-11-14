@@ -31,7 +31,7 @@ from reporting._pdf_tounicode_bfchar_sources_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TOUNICODE_BFCHAR_SOURCES_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "b114df68d374087ac983da6f6771e9e384106f2d07b1b9e5ebad3754797f9054"
+_FIXED_PARENT_PROFILE_SHA256 = "81f4f598d9c1a9f69671174247dd2a0bde14d624555cb4dadbf13270153fb844"
 _FIXED_ENVELOPE = (
     64, 16 * 1024 * 1024, 256 * 1024, 512 * 1024,
     256, 16384, 100, 262144,
@@ -84,7 +84,7 @@ def tounicode_bfchar_sources_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(tounicode_bfchar_sources_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "3128f43c1a9325c1d414ee2cb86c613ededf7f388ae425bd15be3fb6069d551b"
+_FIXED_PROFILE_SHA256 = "bb49db32b342d908b9fa2bbe5d0af230a56627d4f48e5d512e9b0ad705e46b7f"
 
 
 def _profile() -> None:
@@ -95,7 +95,7 @@ def _profile() -> None:
                 MAX_TOTAL_DECODED_BYTES, MAX_BFCHAR_BLOCKS,
                 MAX_BFCHAR_RECORDS, MAX_BFCHAR_PER_BLOCK,
                 MAX_UTF16BE_UNITS) != _FIXED_ENVELOPE
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or previous.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256
             or sha256(_canonical(tounicode_bfchar_sources_profile())).hexdigest()

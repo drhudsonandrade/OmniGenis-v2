@@ -33,13 +33,13 @@ NATIVE_DISABLE = "OMNIGENIS_PDF_NATIVE_SOURCE_JOB_DISABLED"
 REQUEST_HEADER = struct.Struct(">8sIII")
 RESULT_HEADER = struct.Struct(">8sI32s")
 LEGACY_PROFILE_PINS = (
-    (snapshot, "snapshot_source_profile", "d1a7925d842c644e3fb165dfac538d4baa12c7bf9ddaca10697f237e5def9a87"),
-    (codec, "inspection_request_profile", "9c87fd0083aa1d45a0d81a83d68421a0fbf46640b0f9b8ae3cc8f9a8a7f2a625"),
-    (descriptor, "descriptor_profile", "2fa39db5bc10127fde65920f14eac86fb3abf4777d075ffae58b61d15cfdc9d8"),
-    (sealed, "sealed_inspection_profile", "173877055fd11abba7740f582ec3c348a51e0dfb76de52c0545f76b85a438ad4"),
-    (frame, "result_frame_profile", "b59ded160140ce1547b9eeff1af000b43007b23f63beaccc2533238cad5bff07"),
-    (worker, "worker_profile", "52c74294a872a63cd35a7b84bb3733a08855c89f4f26594202d222d269ee3a8b"),
-    (supervisor, "supervisor_profile", "d020c676e11207bdfd007dcd90488888bcebd6b1ee1285faa514b116d7c41095"),
+    (snapshot, "snapshot_source_profile", "8109e1e9006589d7bc4f0d8a06f7fb4ab808c5db7b6c23484d5cd084c6b6c1eb"),
+    (codec, "inspection_request_profile", "1c40b21897dba69b3997afbc55fa5553f44b9001a9bceb73ca90c7289f40dccd"),
+    (descriptor, "descriptor_profile", "360bae67710acb24a3d4911173b61ec3023a8c1d57c0973c6f4661769f924caf"),
+    (sealed, "sealed_inspection_profile", "f3c9757f8ffd52e21fc3ba86885a32422e9441cd7cfc6ae6ff59a995072727df"),
+    (frame, "result_frame_profile", "ec6564b1b3fa41c043f888b0711fba13cf0896779b0d5493083940cde691220c"),
+    (worker, "worker_profile", "30dba4e90b1c5ef6a9ef0d8146b52fa26e822cbf2e678c33602699c46f9699b4"),
+    (supervisor, "supervisor_profile", "4010f05b0b233a093c380a39c36af2d363d5b06e14862c81df4f85edb119d98c"),
 )
 
 

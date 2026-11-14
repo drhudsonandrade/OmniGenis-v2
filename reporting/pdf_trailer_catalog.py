@@ -28,7 +28,7 @@ from reporting._pdf_trailer_catalog_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_TRAILER_CATALOG_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "5f2e1d595ddffa7a04e2feaf5563eae7df07b8b36db45d918dd5e3fa02b1f0e7"
+_FIXED_PARENT_PROFILE_SHA256 = "7330b6bd553ac5fffc5f1a226862426892bdd3ea411df8723b21b3312cd6e643"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -71,7 +71,7 @@ def trailer_catalog_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(trailer_catalog_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "46339262c1b2fba8776dffa591bebc3352be3c4db6d85acfb9361e48b3f1dbeb"
+_FIXED_PROFILE_SHA256 = "d1517b0ba6b859fd098ee8c6c5ed0bffb5b7125f51c6a79362381041f414bdb6"
 
 
 def _profile() -> None:
@@ -79,7 +79,7 @@ def _profile() -> None:
     prior._profile()
     if (sys.platform != "linux" or os.environ.get(_DISABLE) == "1"
             or (MAX_DOCUMENT_PAGES, MAX_PDF_BYTES) != _FIXED_ENVELOPE
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or prior.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256
             or sha256(_canonical(trailer_catalog_profile())).hexdigest()

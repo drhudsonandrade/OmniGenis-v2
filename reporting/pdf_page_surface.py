@@ -29,7 +29,7 @@ from reporting._pdf_page_surface_worker import (
 )
 
 _DISABLE = "OMNIGENIS_PDF_PAGE_SURFACE_DISABLED"
-_FIXED_PARENT_PROFILE_SHA256 = "46339262c1b2fba8776dffa591bebc3352be3c4db6d85acfb9361e48b3f1dbeb"
+_FIXED_PARENT_PROFILE_SHA256 = "d1517b0ba6b859fd098ee8c6c5ed0bffb5b7125f51c6a79362381041f414bdb6"
 _FIXED_ENVELOPE = (64, 16 * 1024 * 1024)
 _LIMITS = {
     "memory_bytes": MEMORY_BYTES, "cpu_seconds": CPU_SECONDS,
@@ -75,7 +75,7 @@ def page_surface_profile() -> dict:
 
 
 PROFILE_SHA256 = sha256(_canonical(page_surface_profile())).hexdigest()
-_FIXED_PROFILE_SHA256 = "befc2bff3bea10962c6f947518cbf42249460f38bef399d595d331c4d6b8940f"
+_FIXED_PROFILE_SHA256 = "3fb7c6d8c472c206c3a76cd2b22980e200a40e66d838c068aaa1b928bab0313e"
 
 
 def _profile() -> None:
@@ -83,7 +83,7 @@ def _profile() -> None:
     prior._profile()
     if (sys.platform != "linux" or os.environ.get(_DISABLE) == "1"
             or (MAX_DOCUMENT_PAGES, MAX_PDF_BYTES) != _FIXED_ENVELOPE
-            or LANGUAGE != "en-US" or PARSER_VERSION != "6.19.0"
+            or LANGUAGE != "en-US" or PARSER_VERSION != "7.1.0"
             or prior.PROFILE_SHA256 != _FIXED_PARENT_PROFILE_SHA256
             or PROFILE_SHA256 != _FIXED_PROFILE_SHA256
             or sha256(_canonical(page_surface_profile())).hexdigest()

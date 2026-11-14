@@ -25,7 +25,7 @@
   "launch_attempt_budget_policy": {
     "path": "reporting/pdf-native-launch-budget.v1.json",
     "policy_id": "native-pdf-cumulative-launch-attempt-budget-v1",
-    "sha256": "6ee801b9b5f4350fdbf56434ae9112f5f3b1477027b1f168abb55b83a5214f44"
+    "sha256": "1e62f61e553244e4725a93852876547f35604916dbf56a3a1c9d7cba5347788e"
   },
   "parent_pdf_parsing": false,
   "profile": {
@@ -39,7 +39,7 @@
     "max_pages": 64,
     "max_pdf_bytes": 16777216,
     "max_result_bytes": 311296,
-    "native_width_profile_sha256": "00cddbc4c08dcefc39b27e46fe3ff4198fc4dd32f743c484b534913b6cad6d8e",
+    "native_width_profile_sha256": "3b886428e6e7ca0332e052f6a84a6a33a1cdfc74fe40f55b1e42a631a16d5e3f",
     "pdf_version": "1.7",
     "persistent_checkpoints": false,
     "profile_id": "native-source-pdf-inspection-job-v1",
@@ -47,9 +47,9 @@
     "retries": 0,
     "schema_version": "1.0.0",
     "source_capture": "EXISTING_BOUNDED_NATIVE_JSON_SNAPSHOT",
-    "structured_source_job_profile_sha256": "d0f72494b6c0b83f17ee925678e53b5359f14e25853b937c010acf9151e13499"
+    "structured_source_job_profile_sha256": "82c7625959cbcbf82887745271ec913d9de489fcc3f42398b3beca8eb53bcb79"
   },
-  "profile_sha256": "dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c",
+  "profile_sha256": "ff0bdfd9cbaa75651dddcf0aa72e1d72e4b5282dde15973558b4ff258e6e39da",
   "release_authorized": false,
   "reused_source_sha256": {
     "LICENSE": "d8e46df8dfae62e6d53648256a72a08d0abd126bba8fdb4a77a53eb8b469aa00",
@@ -57,17 +57,17 @@
     "reporting/_pdf_tounicode_width_coverage_worker.py": "4d0a8efb3506b27cb66bd1da90a928464de480f41ead43b8585b7c1f9166bbb5",
     "reporting/page_checkpoints.py": "4aebcc9b2ae76d734189d286b4fcc17366ab21b2ce85d5210c094dd32995a51f",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
-    "reporting/pdf-native-launch-budget.v1.json": "6ee801b9b5f4350fdbf56434ae9112f5f3b1477027b1f168abb55b83a5214f44",
-    "reporting/pdf-structured-source-job.v1.json": "252d3de39621125e8e3d8798cc082cd8029cf137bda6e1cecadf4719540bb02b",
-    "reporting/pdf-tounicode-width-coverage.v1.json": "579a084359fe7fb3aee1d4c6af91a3693b28349e517089fb7cf2704424d2eeff",
+    "reporting/pdf-native-launch-budget.v1.json": "1e62f61e553244e4725a93852876547f35604916dbf56a3a1c9d7cba5347788e",
+    "reporting/pdf-structured-source-job.v1.json": "69a953f75c664d01aecb694dd6a6c36ed5d7bf3d8b0a29e610847effdb11102c",
+    "reporting/pdf-tounicode-width-coverage.v1.json": "7311d219ca229910e65e2b9fd16c147533206330a4bed05ab3aabcd45b0900c6",
     "reporting/pdf_candidate_qa.py": "40a27ecc9a1f406182fa7b6403abf3d56e8b666dfb8a334846ef5e56f157cb61",
     "reporting/pdf_content.py": "694040deb3dfe24b9c56d93b0161dd4366e3a0e33d4ca5f2eb50c228db4e5b1b",
     "reporting/pdf_inspection_bundle.py": "03d636617653e940cfdcad4951b867d1cadd258bd0bd00cd8c56f4d4a22c0c51",
     "reporting/pdf_inspection_job.py": "8d645d4e189c1fa84345909065ad1b1c2b6f5ff41512aa6ed83ba9c1a43d3b8a",
     "reporting/pdf_source_inspection_job.py": "835c904d151b9e6f6973b00a01fb2fd0ecd4bb6ee11bf656134d91814afc06a1",
     "reporting/pdf_structured_source_job.py": "e1bf6ef907c73d39fe31fb8e4595d0d2633c17fa0dcaefebb7d01544063da25d",
-    "reporting/pdf_tounicode_width_coverage.py": "5ea3bd58089b6c3d944204ea023ca0c425caf67f29a5df0f95f9d79906eb8f69",
-    "requirements-reporting.lock": "3af3d1f28d8c1f6a721a33e28b0c32298638e765c02711b7dba039d37665511f"
+    "reporting/pdf_tounicode_width_coverage.py": "c071b95cfe024cbce4abeacaac117b421ce792bc4a072698a4c7a28642ec1189",
+    "requirements-reporting.lock": "bc2c6d8e66ace82ca442e7931ea44b608ea037e1adddddc7a5dbebeb56008671"
   },
   "schema_version": "1.0.0",
   "source_code_copied": false

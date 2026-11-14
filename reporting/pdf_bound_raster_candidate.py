@@ -35,9 +35,9 @@ from reporting import pdf_raster_resources as resource_module
 from reporting.requests import BoundReportRequest
 
 PROFILE_ID = 'bound-preloaded-raster-candidate-v1'
-GENERATED_PROFILE_SHA256 = '9560a6cf2cfe0c3662a826d8804c0e328d2ccf95ae41fd6328a9143905a7d410'
-NATIVE_PROFILE_SHA256 = 'dd29be3ecc903308a9bbe8b44b1fdbb57e6b5d18e5dde6918738e4bce194038c'
-RENDER_PROFILE_SHA256 = '0ea42861783822c1c6c343ec0688a401fbd262045402c34d1aad429162778419'
+GENERATED_PROFILE_SHA256 = '715565991ace46902d9d969071dda2f5de640a2a67ccf8f8c3460f18e22c53b3'
+NATIVE_PROFILE_SHA256 = 'ff0bdfd9cbaa75651dddcf0aa72e1d72e4b5282dde15973558b4ff258e6e39da'
+RENDER_PROFILE_SHA256 = '5391bdae627341ce95c351093bfc2a6dc2575e48203f9ee4bd4581c6ec1eb0de'
 ACCEPTANCE_NS = 330 * 1000 * 1000 * 1000
 MAX_JSON_LINE_CODEPOINTS = 60
 _DISABLE = 'OMNIGENIS_PDF_BOUND_RASTER_DISABLED'
@@ -75,7 +75,7 @@ def bound_raster_candidate_profile() -> dict:
         'retries': 0, 'hard_job_deadline_enforced': False, **_NONCLAIMS}
 
 
-PROFILE_SHA256 = '1e9f841f6303920c5142c7f6abf4a5990a518dc8970a7a2060483c511af97b67'
+PROFILE_SHA256 = '298ae124f78eaa74976993d662e81b5ffb07996a49ab0e608e4d065056a50949'
 
 
 def _profile(expected: str) -> None:
@@ -289,7 +289,7 @@ def bound_raster_storage_profile() -> dict:
         **_NONCLAIMS}
 
 
-STORAGE_PROFILE_SHA256 = 'c42f3ba56b9562339535c651bf93d8901e5e98b156012dd86193b1b3c547fa5c'
+STORAGE_PROFILE_SHA256 = '4b485b288a1f302d76935643776a8b30e417873afbae5bc45eb4bbd28572ae68'
 
 
 def _storage_profile(expected: str) -> None:

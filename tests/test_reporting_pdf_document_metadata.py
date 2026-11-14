@@ -99,7 +99,7 @@ class PdfDocumentMetadataTests(unittest.TestCase):
 
     def response(self):
         """Construct explicit protocol data only for decoder-negative controls."""
-        return dict(protocol_version=1, profile_id=PROFILE, parser_version="6.19.0",
+        return dict(protocol_version=1, profile_id=PROFILE, parser_version="7.1.0",
             identity=self.identity(), limits=dict(memory_bytes=268435456, cpu_seconds=5,
                 file_bytes=4096, open_files=128), inspection=dict(status="DOCUMENT_METADATA_INSPECTED",
                 metadata_profile_id="omnigenis-generated-pdf-metadata-v1", language="en-US",
@@ -384,7 +384,7 @@ class PdfDocumentMetadataTests(unittest.TestCase):
         """The optional profile identifies the exact existing validators and finite budgets."""
         manifest=json.loads((ROOT/"reporting/pdf-document-metadata-engine.v1.json").read_text())
         self.assertEqual(manifest["profile_id"],PROFILE);self.assertFalse(manifest["default_pipeline_activated"])
-        self.assertEqual(manifest["parser_version"],"6.19.0")
+        self.assertEqual(manifest["parser_version"],"7.1.0")
         self.assertEqual(manifest["resource_budget"]["pages"],512)
         self.assertEqual(manifest["resource_budget"]["pdf_bytes"],16*1024*1024)
         for path,value in manifest["reused_source_sha256"].items():self.assertEqual(digest((ROOT/path).read_bytes()),value)

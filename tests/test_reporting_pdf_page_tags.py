@@ -119,7 +119,7 @@ class PdfPageTagParentTests(unittest.TestCase):
     def response(self):
         """Create a synthetic protocol response for strict decoder-negative tests."""
         return {"protocol_version": 1, "profile_id": PROFILE,
-                "policy_id": POLICY, "parser_version": "6.19.0",
+                "policy_id": POLICY, "parser_version": "7.1.0",
                 "identity": self.identity(),
                 "limits": {"memory_bytes":268435456, "cpu_seconds":5,
                            "file_bytes":4096, "open_files":128},
@@ -435,7 +435,7 @@ class PdfPageTagParentTests(unittest.TestCase):
         """One additive profile retains reviewed parser version, validators and finite limits."""
         manifest=json.loads((ROOT/"reporting/pdf-page-tags-engine.v1.json").read_text())
         self.assertEqual(manifest["profile_id"],PROFILE)
-        self.assertEqual(manifest["parser_version"],"6.19.0")
+        self.assertEqual(manifest["parser_version"],"7.1.0")
         self.assertFalse(manifest["default_pipeline_activated"])
         self.assertEqual(manifest["resource_budget"]["pages"],512)
         self.assertEqual(manifest["resource_budget"]["pdf_bytes"],16777216)
