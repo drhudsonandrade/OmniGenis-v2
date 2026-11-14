@@ -1,0 +1,333 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omnigenis:schema:report-typed-pdf-source:1.0.0",
+  "title": "TypedPdfSourceExpectation",
+  "description": "Shape of a bounded source-only ordered expectation. Admission, exact source identity, contiguous order, counts and digest correctness are established by construction, not by JSON Schema alone. This is not native PDF observation, physical mapping, accessibility, scientific, visual or release evidence. Source locators are private report metadata.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "literal_text_policy",
+    "physical_mapping",
+    "release_authorization",
+    "report_id",
+    "locale_id",
+    "source_semantics_validated",
+    "rendered_content_validated",
+    "visual_layout_validated",
+    "accessibility_validated",
+    "ir_sha256",
+    "section_states_sha256",
+    "request_sha256",
+    "source_binding_sha256",
+    "plan_sha256",
+    "ledger_sha256",
+    "content_sha256",
+    "counts",
+    "units"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "const": "typed-report-pdf-source-v1"
+    },
+    "status": {
+      "const": "PREPARED"
+    },
+    "conformance_scope": {
+      "const": "ORDERED_TYPED_SOURCE_EXPECTATION_ONLY"
+    },
+    "literal_text_policy": {
+      "const": "SOURCE_LITERAL_UTF8_NO_NORMALIZATION"
+    },
+    "physical_mapping": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "report_id": {
+      "const": "e1a-small-variant-report"
+    },
+    "locale_id": {
+      "const": "en-US"
+    },
+    "source_semantics_validated": {
+      "const": false
+    },
+    "rendered_content_validated": {
+      "const": false
+    },
+    "visual_layout_validated": {
+      "const": false
+    },
+    "accessibility_validated": {
+      "const": false
+    },
+    "ir_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "section_states_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "request_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "source_binding_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "plan_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "ledger_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "content_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "components",
+        "represented_findings",
+        "table_rows",
+        "not_present_sections",
+        "source_units",
+        "literal_utf8_bytes",
+        "literal_scalars"
+      ],
+      "properties": {
+        "components": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "represented_findings": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "table_rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "not_present_sections": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "source_units": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "literal_utf8_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "literal_scalars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        }
+      }
+    },
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "items": {
+        "$ref": "#/$defs/unit"
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "not": {
+        "pattern": "[^A-Za-z0-9._:-]"
+      }
+    },
+    "index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999
+    },
+    "unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinal",
+        "kind",
+        "component_ordinal",
+        "component_id",
+        "section_id",
+        "row_ordinal",
+        "column_ordinal",
+        "finding_id",
+        "column_id",
+        "utf8_bytes",
+        "scalars",
+        "text_sha256"
+      ],
+      "properties": {
+        "ordinal": {
+          "$ref": "#/$defs/index"
+        },
+        "kind": {
+          "enum": [
+            "document_title",
+            "section_heading",
+            "paragraph",
+            "table_caption",
+            "table_header",
+            "table_cell"
+          ]
+        },
+        "component_ordinal": {
+          "$ref": "#/$defs/index"
+        },
+        "component_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "section_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "row_ordinal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/index"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "column_ordinal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/index"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finding_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "column_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "scalars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "text_sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "enum": [
+                "document_title",
+                "section_heading",
+                "paragraph",
+                "table_caption"
+              ]
+            },
+            "row_ordinal": {
+              "type": "null"
+            },
+            "column_ordinal": {
+              "type": "null"
+            },
+            "finding_id": {
+              "type": "null"
+            },
+            "column_id": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "table_header"
+            },
+            "row_ordinal": {
+              "type": "null"
+            },
+            "column_ordinal": {
+              "$ref": "#/$defs/index"
+            },
+            "finding_id": {
+              "type": "null"
+            },
+            "column_id": {
+              "$ref": "#/$defs/identifier"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "table_cell"
+            },
+            "row_ordinal": {
+              "$ref": "#/$defs/index"
+            },
+            "column_ordinal": {
+              "$ref": "#/$defs/index"
+            },
+            "finding_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "column_id": {
+              "$ref": "#/$defs/identifier"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
