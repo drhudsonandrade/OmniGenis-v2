@@ -1,0 +1,495 @@
+{
+  "$id": "https://omnigenis.org/schemas/report-typed-pdf-candidate.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Unsigned exact-source association and complete raster-geometry evidence; semantic visuals, accessibility, execution authentication and release are not established.",
+  "properties": {
+    "association_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "claims": {
+      "additionalProperties": false,
+      "properties": {
+        "accessibility_qualified": {
+          "const": false
+        },
+        "aggregate_job_resources_qualified": {
+          "const": false
+        },
+        "all_file_revisions_inspected": {
+          "const": false
+        },
+        "all_pages_raster_geometry_inspected": {
+          "const": true
+        },
+        "default_pipeline_activated": {
+          "const": false
+        },
+        "effective_typed_graph_policy_checked": {
+          "const": true
+        },
+        "literal_source_associated": {
+          "const": true
+        },
+        "opaque_stream_payloads_inspected": {
+          "const": false
+        },
+        "reading_order_verified": {
+          "const": false
+        },
+        "release_authorized": {
+          "const": false
+        },
+        "rendered_glyphs_verified": {
+          "const": false
+        },
+        "scientific_equivalence_verified": {
+          "const": false
+        },
+        "source_authenticity_verified": {
+          "const": false
+        },
+        "visual_semantics_verified": {
+          "const": false
+        },
+        "whole_pdf_safety_qualified": {
+          "const": false
+        },
+        "worker_results_authenticated": {
+          "const": false
+        }
+      },
+      "required": [
+        "literal_source_associated",
+        "effective_typed_graph_policy_checked",
+        "all_pages_raster_geometry_inspected",
+        "source_authenticity_verified",
+        "rendered_glyphs_verified",
+        "visual_semantics_verified",
+        "reading_order_verified",
+        "accessibility_qualified",
+        "scientific_equivalence_verified",
+        "all_file_revisions_inspected",
+        "opaque_stream_payloads_inspected",
+        "whole_pdf_safety_qualified",
+        "aggregate_job_resources_qualified",
+        "worker_results_authenticated",
+        "default_pipeline_activated",
+        "release_authorized"
+      ],
+      "type": "object"
+    },
+    "conformance_scope": {
+      "const": "EXACT_TYPED_TEXT_AND_ALL_PAGE_RASTER_GEOMETRY_ONLY"
+    },
+    "content_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "declared_process_schedule": {
+      "additionalProperties": false,
+      "properties": {
+        "execution_authenticated": {
+          "const": false
+        },
+        "raster_page_executors": {
+          "maximum": 64,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "raster_version_probes": {
+          "maximum": 16,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "raster_workers": {
+          "maximum": 16,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "renderer": {
+          "const": 1
+        },
+        "total": {
+          "maximum": 98,
+          "minimum": 5,
+          "type": "integer"
+        },
+        "typed_observer": {
+          "const": 1
+        }
+      },
+      "required": [
+        "renderer",
+        "typed_observer",
+        "raster_workers",
+        "raster_version_probes",
+        "raster_page_executors",
+        "total",
+        "execution_authenticated"
+      ],
+      "type": "object"
+    },
+    "html_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "ir_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "ledger_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "observation_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "observer_profile_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "page_count": {
+      "maximum": 64,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "passive_policy": {
+      "const": "EFFECTIVE_GRAPH_DENIALS_WITH_VERIFIED_TABLE_ATTRIBUTES_ONLY"
+    },
+    "pdf_byte_count": {
+      "maximum": 16777216,
+      "minimum": 8,
+      "type": "integer"
+    },
+    "pdf_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "plan_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "profile_id": {
+      "const": "typed-pdf-candidate-v1"
+    },
+    "profile_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "raster_inspected_pages": {
+      "maximum": 64,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "raster_ledger_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "raster_window_count": {
+      "maximum": 16,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "raster_window_plan_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "raster_windows": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "aggregate_job_resources_qualified": {
+            "const": false
+          },
+          "first_page": {
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "inspected_pages": {
+            "maximum": 4,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "ir_sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "last_page": {
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "min_edge_margin_px": {
+            "maximum": 1000,
+            "minimum": 2,
+            "type": "integer"
+          },
+          "page_count": {
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "parser_version": {
+            "const": "7.1.0"
+          },
+          "pdf_sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "pillow_version": {
+            "const": "12.3.0"
+          },
+          "plan_sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "profile_id": {
+            "const": "generated-pdf-raster-window-v1"
+          },
+          "raster_digest_profile": {
+            "const": "physical-page-rgb-geometry-framed-v1"
+          },
+          "raster_sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "raster_tool_sha256": {
+            "const": "43a3c46cc7c98ab3741050d805dc35153f9b5d2bbe045fd3cc2701d9bc79387d"
+          },
+          "raster_tool_version": {
+            "const": "24.02.0"
+          },
+          "release_authorization": {
+            "const": "NOT_ESTABLISHED"
+          },
+          "release_authorized": {
+            "const": false
+          },
+          "schema_version": {
+            "const": "1.0.0"
+          },
+          "semantic_visual_equivalence_verified": {
+            "const": false
+          },
+          "status": {
+            "const": "WINDOW_RASTER_INSPECTED"
+          },
+          "total_pixels": {
+            "maximum": 16000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "whole_pdf_safety_qualified": {
+            "const": false
+          },
+          "window_index": {
+            "maximum": 15,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "worker_results_authenticated": {
+            "const": false
+          }
+        },
+        "required": [
+          "schema_version",
+          "profile_id",
+          "status",
+          "pdf_sha256",
+          "ir_sha256",
+          "plan_sha256",
+          "raster_sha256",
+          "page_count",
+          "window_index",
+          "first_page",
+          "last_page",
+          "total_pixels",
+          "min_edge_margin_px",
+          "inspected_pages",
+          "parser_version",
+          "pillow_version",
+          "raster_tool_version",
+          "raster_tool_sha256",
+          "raster_digest_profile",
+          "worker_results_authenticated",
+          "whole_pdf_safety_qualified",
+          "semantic_visual_equivalence_verified",
+          "aggregate_job_resources_qualified",
+          "release_authorized",
+          "release_authorization"
+        ],
+        "type": "object"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    },
+    "release_authorization": {
+      "const": "NOT_ESTABLISHED"
+    },
+    "render_result_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "request_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "section_states_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "source_binding_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "source_counts": {
+      "additionalProperties": false,
+      "properties": {
+        "components": {
+          "maximum": 100000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "literal_scalars": {
+          "maximum": 8388608,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "literal_utf8_bytes": {
+          "maximum": 8388608,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "not_present_sections": {
+          "maximum": 100000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "represented_findings": {
+          "maximum": 100000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_units": {
+          "maximum": 20000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "table_rows": {
+          "maximum": 100000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "components",
+        "represented_findings",
+        "table_rows",
+        "not_present_sections",
+        "source_units",
+        "literal_utf8_bytes",
+        "literal_scalars"
+      ],
+      "type": "object"
+    },
+    "source_expectation_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "status": {
+      "const": "TYPED_CANDIDATE_INSPECTED"
+    },
+    "typed_html_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "profile_sha256",
+    "ir_sha256",
+    "request_sha256",
+    "source_binding_sha256",
+    "plan_sha256",
+    "ledger_sha256",
+    "content_sha256",
+    "section_states_sha256",
+    "source_expectation_sha256",
+    "typed_html_sha256",
+    "html_sha256",
+    "render_result_sha256",
+    "observer_profile_sha256",
+    "observation_sha256",
+    "association_sha256",
+    "pdf_sha256",
+    "raster_window_plan_sha256",
+    "raster_ledger_sha256",
+    "pdf_byte_count",
+    "page_count",
+    "source_counts",
+    "passive_policy",
+    "raster_window_count",
+    "raster_inspected_pages",
+    "raster_windows",
+    "declared_process_schedule",
+    "claims",
+    "release_authorization"
+  ],
+  "title": "Bounded typed PDF candidate evidence",
+  "type": "object"
+}

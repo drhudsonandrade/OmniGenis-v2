@@ -1,0 +1,44 @@
+{
+  "aggregate_job_resources_qualified": false,
+  "association_profile_id": "typed-report-pdf-association-v1",
+  "default_pipeline_activated": false,
+  "disable_flags": [
+    "OMNIGENIS_TYPED_PDF_CANDIDATE_DISABLED",
+    "OMNIGENIS_PDF_RENDERER_DISABLED",
+    "OMNIGENIS_TYPED_PDF_OBSERVATION_DISABLED",
+    "OMNIGENIS_PDF_RASTER_WINDOWS_DISABLED"
+  ],
+  "font_style_id": "fixed-lato-2.015-v1",
+  "html_wrapper_id": "fixed-lato-typed-prewrap-v1",
+  "input_profile_id": "typed-report-projection-v1",
+  "limits": {
+    "evidence_bytes": 65536,
+    "native_retries": 0,
+    "pages": 64,
+    "pdf_bytes": 16777216,
+    "raster_pages_per_window": 4,
+    "raster_windows": 16,
+    "source_units": 20000
+  },
+  "literal_text_policy": "SOURCE_LITERAL_UTF8_NO_NORMALIZATION",
+  "locale_id": "en-US",
+  "observer_profile_sha256": "36c205e0a99c57ba11afeb0663904240746d1ae6cfdb94ad1ce6df8c62637efa",
+  "passive_policy": "EFFECTIVE_GRAPH_DENIALS_WITH_VERIFIED_TABLE_ATTRIBUTES_ONLY",
+  "process_schedule": "DECLARED_2_PLUS_2_WINDOWS_PLUS_PAGES",
+  "profile_id": "typed-pdf-candidate-v1",
+  "raster_profile_id": "generated-pdf-raster-window-v1",
+  "raster_scope": "ALL_PHYSICAL_PAGES_NONBLANK_GEOMETRY_AND_EDGE_MARGIN_ONLY",
+  "release_authorized": false,
+  "render_profile_sha256": "b1f4ffd6731718492612d16526ce147b61e937a26cd0bcce81b20f109f78e3e8",
+  "schema_version": "1.0.0",
+  "source_profile_id": "typed-report-pdf-source-v1",
+  "source_sha256": {
+    "reporting/pdf-typed-observation.v1.json": "483dcef940d7682340826c3f120345bb1a07a6e562bc0650e213e6d301cbecde",
+    "reporting/typed_pdf_association.py": "0b6f4be7d81dc5624aaa3b7e11ed3cfbca0d7d9222272f6c24ba07ee617b3a63",
+    "reporting/typed_pdf_candidate.py": "03c4bf1d7fb7c41793f1a4d2a8cfcc9a48577adada0eeb4a5429164223c74768",
+    "reporting/typed_pdf_source.py": "ace530cd727eaf513bffb9070c1b412db166ca4b966d390e710b853ec8676c59",
+    "schemas/report-typed-pdf-association.v1.schema.json": "143de03db31e6192a2b16b498aac01f97148efbb99f66b7580967cd290c2491b",
+    "schemas/report-typed-pdf-candidate.v1.schema.json": "947d72af6bd3538af541aecca187774b87abf90a25e5fe203dc31bb7563f6c90",
+    "schemas/report-typed-pdf-source.v1.schema.json": "b04c777b47af088b8f5924573658086fb7ee9ee24e5b56be8e7048d61e3a08bc"
+  }
+}
