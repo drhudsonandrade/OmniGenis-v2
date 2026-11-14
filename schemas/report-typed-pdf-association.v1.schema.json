@@ -1,0 +1,606 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "report-typed-pdf-association.v1.schema.json",
+  "title": "Bounded typed PDF literal association evidence",
+  "description": "Complete ordered association of supplied typed source literals and physical declared text. This schema does not authenticate source or worker provenance, qualify visible glyphs or accessibility, or authorize release.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "status",
+    "conformance_scope",
+    "literal_text_policy",
+    "source_expectation_sha256",
+    "observation_sha256",
+    "pdf_sha256",
+    "observer_profile_sha256",
+    "ir_sha256",
+    "request_sha256",
+    "source_binding_sha256",
+    "plan_sha256",
+    "ledger_sha256",
+    "content_sha256",
+    "section_states_sha256",
+    "pdf_byte_count",
+    "page_count",
+    "source_counts",
+    "counts",
+    "claims",
+    "units",
+    "table_segments",
+    "row_segments"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "const": "typed-report-pdf-association-v1"
+    },
+    "status": {
+      "const": "LITERAL_SOURCE_ASSOCIATED"
+    },
+    "conformance_scope": {
+      "const": "ORDERED_TYPED_SOURCE_TO_PHYSICAL_DECLARED_TEXT_ONLY"
+    },
+    "literal_text_policy": {
+      "const": "SOURCE_LITERAL_UTF8_NO_NORMALIZATION"
+    },
+    "source_expectation_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "observation_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "pdf_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "observer_profile_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "ir_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "request_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "source_binding_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "plan_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "ledger_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "content_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "section_states_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "pdf_byte_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16777216
+    },
+    "page_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "source_counts": {
+      "$ref": "#/$defs/source_counts"
+    },
+    "counts": {
+      "$ref": "#/$defs/counts"
+    },
+    "claims": {
+      "$ref": "#/$defs/claims"
+    },
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20000,
+      "items": {
+        "$ref": "#/$defs/unit"
+      }
+    },
+    "table_segments": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 20000,
+      "items": {
+        "$ref": "#/$defs/table_segment"
+      }
+    },
+    "row_segments": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 20000,
+      "items": {
+        "$ref": "#/$defs/row_segment"
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "reference": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        }
+      ],
+      "items": false
+    },
+    "fragment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_ordinal",
+        "operator_ordinal",
+        "mcid",
+        "span_reference"
+      ],
+      "properties": {
+        "run_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "operator_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "mcid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "span_reference": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "page_index",
+        "page_reference",
+        "container_reference",
+        "fragments"
+      ],
+      "properties": {
+        "page_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "page_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "container_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "fragments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20000,
+          "items": {
+            "$ref": "#/$defs/fragment"
+          }
+        }
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinal",
+        "kind",
+        "segments"
+      ],
+      "properties": {
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "kind": {
+          "enum": [
+            "PRIMARY",
+            "REPEATED_TABLE_HEADER"
+          ]
+        },
+        "segments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/segment"
+          }
+        }
+      }
+    },
+    "unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_unit_ordinal",
+        "kind",
+        "utf8_bytes",
+        "scalars",
+        "text_sha256",
+        "occurrences"
+      ],
+      "properties": {
+        "source_unit_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "kind": {
+          "enum": [
+            "document_title",
+            "section_heading",
+            "paragraph",
+            "table_caption",
+            "table_header",
+            "table_cell"
+          ]
+        },
+        "utf8_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "scalars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "text_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "occurrences": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/occurrence"
+          }
+        }
+      }
+    },
+    "table_segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_ordinal",
+        "segment_ordinal",
+        "page_index",
+        "page_reference",
+        "table_reference",
+        "caption_reference",
+        "thead_reference",
+        "header_row_reference",
+        "tbody_reference",
+        "header_unit_ordinals"
+      ],
+      "properties": {
+        "component_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "segment_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "page_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "page_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "table_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "caption_reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "thead_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "header_row_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "tbody_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "header_unit_ordinals": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20000,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 19999
+          }
+        }
+      }
+    },
+    "row_segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_ordinal",
+        "row_ordinal",
+        "segment_ordinal",
+        "table_segment_ordinal",
+        "page_index",
+        "row_reference",
+        "source_unit_ordinals",
+        "cell_references"
+      ],
+      "properties": {
+        "component_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "row_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "segment_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "table_segment_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "page_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "row_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "source_unit_ordinals": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20000,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 19999
+          }
+        },
+        "cell_references": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20000,
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        }
+      }
+    },
+    "source_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "components",
+        "represented_findings",
+        "table_rows",
+        "not_present_sections",
+        "source_units",
+        "literal_utf8_bytes",
+        "literal_scalars"
+      ],
+      "properties": {
+        "components": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "represented_findings": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "table_rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "not_present_sections": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "source_units": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "literal_utf8_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "literal_scalars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_units",
+        "components",
+        "represented_findings",
+        "table_rows",
+        "table_segments",
+        "row_segments",
+        "header_repetitions",
+        "physical_fragments",
+        "physical_nodes",
+        "container_segments",
+        "mapping_items"
+      ],
+      "properties": {
+        "source_units": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "components": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "represented_findings": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "table_rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "table_segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "row_segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "header_repetitions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "physical_fragments": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "physical_nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "container_segments": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "mapping_items": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "literal_hashes_matched",
+        "complete_physical_coverage",
+        "unique_mapping_within_profile",
+        "source_authenticity_verified",
+        "historical_source_origin_verified",
+        "rendered_glyphs_verified",
+        "visual_layout_verified",
+        "reading_order_verified",
+        "accessibility_qualified",
+        "scientific_equivalence_verified",
+        "aggregate_job_resources_qualified",
+        "worker_results_authenticated",
+        "release_authorized"
+      ],
+      "properties": {
+        "literal_hashes_matched": {
+          "const": true
+        },
+        "complete_physical_coverage": {
+          "const": true
+        },
+        "unique_mapping_within_profile": {
+          "const": true
+        },
+        "source_authenticity_verified": {
+          "const": false
+        },
+        "historical_source_origin_verified": {
+          "const": false
+        },
+        "rendered_glyphs_verified": {
+          "const": false
+        },
+        "visual_layout_verified": {
+          "const": false
+        },
+        "reading_order_verified": {
+          "const": false
+        },
+        "accessibility_qualified": {
+          "const": false
+        },
+        "scientific_equivalence_verified": {
+          "const": false
+        },
+        "aggregate_job_resources_qualified": {
+          "const": false
+        },
+        "worker_results_authenticated": {
+          "const": false
+        },
+        "release_authorized": {
+          "const": false
+        }
+      }
+    }
+  }
+}
