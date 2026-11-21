@@ -3,9 +3,19 @@
   "default_pipeline_activated": false,
   "engine_sources": {
     "pydyf/__init__.py": "f0cdb619c0de7cd40e04fce1927411d98fc2186b509db6cfa93a142c755a08fd",
+    "weasyprint/css/targets.py": "dc7a175f80bbca473564d4462cc60a240c6f4a45456e83165de73dd2c5d574b8",
     "weasyprint/document.py": "f08f91af64563f5fb27596828891fb326262511a56e4ace714e5a960898024c8",
+    "weasyprint/draw/__init__.py": "fb6fcee79a80059c72a3142ef941d4968e3aeeddc8fbbcac2e8519e8be55e348",
+    "weasyprint/draw/text.py": "c9a450aa209277e760227e1fed2da492647bd28e5a5ebc4c9d8aaedecc400d77",
+    "weasyprint/formatting_structure/boxes.py": "8ffd28ab74a149f0097208fcba6a80df0c8bb01e8fd4f9ced95d11b7e9807e23",
+    "weasyprint/formatting_structure/build.py": "335ad8b541295d6b9c5b71830d5184cd692f730d7b83ba5bac39fdb5aea23c87",
+    "weasyprint/layout/absolute.py": "240e268cec1e66dda1f87aec6bdd671e7bf36439c5fa09de32965f717893ba07",
+    "weasyprint/layout/block.py": "9457dca0528c378f3ff6dd2ca5126d04ca017542de2fb77b1db48c3073401085",
     "weasyprint/pdf/__init__.py": "426e0855db0473121bf70666b3c6c5fbd9ebfe832741d31a3689e8b10a14281f",
-    "weasyprint/pdf/tags.py": "fae488b773686ea7fb685967c78a5b011854b88b61377f426ffb4e9ec00d76d2"
+    "weasyprint/pdf/stream.py": "4faf9169d1970d4688b9cf41f733659ca6b1c4c098707c64f67c47a07309e81e",
+    "weasyprint/pdf/tags.py": "fae488b773686ea7fb685967c78a5b011854b88b61377f426ffb4e9ec00d76d2",
+    "weasyprint/text/ffi.py": "530e83118f7841d2791678ece23d5e43a7a24150ee1ea64bb4ba70c70b3eb5da",
+    "weasyprint/text/line_break.py": "1f5a855ad992e0bebaf5512d2b806fd991090e0e91bf79d3d5a3a0176b22af97"
   },
   "inherited_profile_sha256": "5391bdae627341ce95c351093bfc2a6dc2575e48203f9ee4bd4581c6ec1eb0de",
   "limits": {
@@ -36,11 +46,13 @@
     "reporting/_pdf_process_lifecycle.py": "e3da8ad54736b891ff2c2eb1c9a65e384114307e775da49b42518c07768f7b2f",
     "reporting/_pdf_process_sandbox.py": "76a4648556ecd3d3c39c1ac33122c027ab90769b5e5e9c244b79657454635a3f",
     "reporting/_pdf_render_worker.py": "30b6454c7cd9b1b83d5713c406e135de91ccf127116a8bd42a13d17036cbd5ce",
-    "reporting/_pdf_typed_brand_emission.py": "a0f3591c05a388845b5a30a7511bb93bc309585a81e98a6978a95438615c2309",
+    "reporting/_pdf_typed_brand_emission.py": "194bcb8b6788888ef4e0fb3afd455b56bc39f581ed5ff96b37ae3b6df6ccbe5d",
     "reporting/_pdf_typed_brand_render_worker.py": "6054dab7dc6c8e2d342ef7ce4a313bf2d39dc8f9472b16e25a2c9622e1abf4d5",
     "reporting/adapters.py": "4617038aea9465db76aa0f4049f458dc6b7de7686f56addc21a45f5f2bf6bba0",
     "reporting/bindings.py": "bdbc232cb0cfd507001731075ea9856cd421b60202f2871511d406aead09eb38",
     "reporting/contracts.py": "51c8e6481451f3de936cba8e1e3af059869fc0c46da630270d04c2b1fef3bb1a",
+    "reporting/editorial_typed_pdf.py": "0e2a2266b49f18e4742850b484227dceebc90f6ffdaeea98cd33eea2cb037dc8",
+    "reporting/internal_navigation.py": "f8e6edd6847a456eb9e8d6c0b1cfbad50fbe05eb1d74028a4693a4e425884c28",
     "reporting/page_windows.py": "c8d6cb86f7876f7c02f878ecead5b93b09ee1024d68f7e68d020bdc62c843833",
     "reporting/pdf-raster-render.v1.json": "da6551ba35327e3f904681d1b4e096b5a6a349c4b26fab92d97c254b40955b05",
     "reporting/pdf_font_selection.py": "5c5771d1d6b86aa1695e5d6f3abc42f8d7599deb5dd9f65215488e1e705be034",
@@ -48,7 +60,8 @@
     "reporting/pdf_raster_resources.py": "00b6f0c7ee15b0b069863511a1e02418b666aa644b63163c3119e7a3bbf7fb10",
     "reporting/pdf_typed_brand_render.py": "280f66326f4c12e4c9fc739f55e4e3f5a0d91aa99bb380def85bd5f68fe719da",
     "reporting/png_inspection.py": "189e1e1d77eabaaf829915cd6fcb21611831bb7c3af577e00e423a1b40f5bcec",
-    "reporting/typed_original_brand_pdf.py": "a5ec0009c716c47897c51941b100a5c51498373e5ae69fe25ffbccdbd1b03ff5",
+    "reporting/typed_html.py": "9b0dcd5dd6220302eaf1dcb101fedbed767b80b29fcc33c7fc19fc46a6e6f9fb",
+    "reporting/typed_original_brand_pdf.py": "98c90bf1c63bcd5924115df4ebf754744f21a1c899376305d6ca1834d9b3f648",
     "requirements-reporting.lock": "bc2c6d8e66ace82ca442e7931ea44b608ea037e1adddddc7a5dbebeb56008671"
   },
   "versions": {

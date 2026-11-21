@@ -4,12 +4,28 @@ Composes only the exact source-approved original assets and mandatory owner cred
 over the already validated en-US typed editorial HTML. The existing confined
 preloaded-raster worker performs the only rendering. No default delivery,
 clinical/scientific claims, new executor, PDF/UA or visual parity is established.
+
+This original-brand editorial profile requires at least one section heading with
+an unambiguous source section anchor for its printed contents. Carriage returns and line feeds in section headings are refused before staging:
+the exact literal association profile does not represent those explicit breaks.
+Natural line wrapping remains supported. The generic typed component contract
+remains unchanged. The complete source title must fit the
+cover area beside the DNA and below the logo in the actual fixed-font layout.
+Title boxes or glyph ink outside that area refuse rendering before the first
+page is painted. The existing gaps allow safe ink overhang. Text is never shortened.
+
+Each generated contents entry, including its printed page suffix, must occupy one
+complete paragraph box inside a physical page's content area. Entries may wrap
+within that page and the contents section may continue between entries. The
+worker refuses fragmented or out-of-page entry boxes before painting that page
+or returning a PDF candidate. Staging establishes source identity, not layout fit.
 """
 from __future__ import annotations
 
 from hashlib import sha256
 from html import escape
 from html.parser import HTMLParser
+import json
 import os
 
 from reporting._pdf_render_worker import HTML_BYTES
@@ -25,12 +41,60 @@ from reporting.pdf_typed_brand_render import (
 from reporting._pdf_native_launch_budget import require_no_active_scope
 from reporting import _pdf_typed_brand_emission as emission
 from reporting.pdf_raster_resources import RasterAsset, RasterBundle
+from reporting.internal_navigation import NavigationIntent, bind_internal_navigation
+from reporting.typed_html import capture_typed_document
 
 PROFILE_ID = "typed-original-logo-dna-candidate-v1"
 _BUNDLE_SHA256 = "c4332907b19ae45524534ad352c1b521db08ec9fc8fd88ae73fa2ec4ba8c0eeb"
 _DISABLE = "OMNIGENIS_TYPED_ORIGINAL_BRAND_PDF_DISABLED"
 _QUALIFICATION = "OMNIGENIS_PDF_QUALIFICATION_RECEIPT_MODE"
 _END = "</body></html>"
+_COVER_CSS = (
+    'h1,h2,p,caption,th,td{white-space:pre-wrap}'
+    'section[data-editorial-ir-sha256]{position:relative;height:753.88976pt;'
+    'margin:0;padding:0;break-after:page}'
+    'div[data-brand=original-dna]{position:absolute;left:0;top:0;'
+    'width:211.664022738302pt;height:753.88976pt;background-color:#003890;'
+    'border-right:3pt solid #00D0F0;background-repeat:no-repeat;'
+    'background-position:center;background-size:100% 100%}'
+    'section[data-editorial-ir-sha256]>div[data-brand=original-logo]{'
+    'position:absolute;left:228pt;top:220pt;width:230pt!important;margin:0!important}'
+    'section[data-editorial-ir-sha256]>h1{position:absolute;left:228pt;top:340pt;'
+    'width:279.27559pt;margin:0;overflow-wrap:anywhere}'
+    'section[data-editorial-navigation]{margin:0 0 18pt;break-inside:avoid}'
+    'p[data-editorial-nav-target]{margin:5pt 0;break-inside:avoid}'
+    'p[data-editorial-nav-target]::after{white-space:pre;content:" | " '
+    'target-counter(attr(data-editorial-nav-target),page)}'
+)
+
+
+def _canonical(value: object) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=False, allow_nan=False).encode("utf-8")
+
+
+def _navigation(doc: dict, ir_sha256: str) -> tuple[str, dict]:
+    """Bind plain section labels to existing source anchors before final layout."""
+    headings = [component for component in doc["components"]
+                if component["component_type"] == "section_heading"]
+    _require(bool(headings) and all("\n" not in heading["text"]
+             and "\r" not in heading["text"] and "\t" not in heading["text"]
+             for heading in headings))
+    intents = tuple(NavigationIntent(doc["components"][0]["component_id"],
+                                    "section", heading["section_id"])
+                    for heading in headings)
+    plan_sha256 = sha256(_canonical([item.to_dict() for item in intents])).hexdigest()
+    binding = bind_internal_navigation(
+        projection_ir=doc, expected_projection_sha256=ir_sha256,
+        intents=intents, expected_intents_sha256=plan_sha256).to_dict()
+    entries = []
+    for heading, target in zip(headings, binding["intents"], strict=True):
+        _require(target["target_component_id"] == heading["component_id"])
+        label = escape(heading["text"], quote=True).replace("\r", "&#13;")
+        anchor = escape("#" + target["target_component_id"], quote=True)
+        entries.append('<p data-editorial-nav-target="' + anchor + '">' + label + '</p>')
+    return ('<section data-editorial-navigation="sections"><h2>Contents</h2>'
+            + "".join(entries) + '</section>'), binding
 
 
 class TypedOriginalBrandError(ValueError):
@@ -43,11 +107,24 @@ def _require(ok: bool) -> None:
 
 
 class _VisibleBodyText(HTMLParser):
-    """Collect decoded text without interpreting markup-like source values."""
+    """Collect decoded text and the generated contents row's literal separator."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
+        self.navigation_row = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "p":
+            self.navigation_row = any(name == "data-editorial-nav-target" for name, _ in attrs)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "p" and self.navigation_row:
+            # CSS adds this separator before the page counter. HTMLParser does
+            # not see generated content, but adjacent labels are not contiguous
+            # visible source text. Ordinary source paragraphs remain contiguous.
+            self.parts.append(" | ")
+            self.navigation_row = False
 
     def handle_data(self, value: str) -> None:
         self.parts.append(value)
@@ -85,11 +162,17 @@ def prepare_typed_original_brand_pdf(
     *, presentation_ir: object, expected_ir_sha256: object,
     assets: BoundBrandAssets, expected_brand_bundle_sha256: object,
 ) -> tuple[str, RasterBundle, dict]:
-    """Combine source-bound typed HTML and reviewed originals without reinterpreting either."""
+    """Stage this profile's exact source, including one or more section headings.
+
+    Title and contents-entry fit are decided from the actual layout in the
+    existing render worker. Preparation alone establishes neither cover fit nor
+    the one-page admission of a complete navigation paragraph.
+    """
     try:
         _ready(assets, expected_brand_bundle_sha256)
         source, source_record = prepare_editorial_typed_html(
             presentation_ir=presentation_ir, expected_ir_sha256=expected_ir_sha256)
+        doc = capture_typed_document(presentation_ir, expected_ir_sha256)
         _require(source.count("<body>") == 1 and source.endswith(_END)
                  and _credit_count(source) == 0
                  and 'data-brand="original-logo"' not in source
@@ -101,25 +184,31 @@ def prepare_typed_original_brand_pdf(
         resources = RasterBundle((dna,))
         resource_uri = dna.uri
         _require(resource_uri.startswith("omnigenis-raster:"))
-        original_body = source.split("<body>", 1)[1]
-        _require(original_body.endswith(_END))
+        original_body = source.split("<body>", 1)[1][:-len(_END)]
+        _require(original_body.startswith("<h1 ") and original_body.count("</h1>") == 1)
+        title, remaining_body = original_body.split("</h1>", 1)
+        title += "</h1>"
+        navigation, navigation_binding = _navigation(doc, expected_ir_sha256)
         figure = (
-            '<section data-brand="original-dna" '
-            'style="break-before:page;min-height:560px">'
-            '<h2>Original DNA illustration</h2>'
-            '<div role="img" aria-label="Original decorative OmniGenis DNA illustration" '
-            'style="width:160px;height:530px;background-repeat:no-repeat;'
-            'background-position:left top;background-size:contain;'
-            "background-image:url('" + resource_uri + "')"
-            '"></div></section>'
+            '<div data-brand="original-dna" role="img" '
+            'aria-label="Original decorative OmniGenis DNA illustration" '
+            'style="background-image:url(\'' + resource_uri + '\')"></div>'
         )
+        cover = ('<section data-editorial-ir-sha256="' + expected_ir_sha256 + '">'
+                 + figure + logo + title + '</section>')
         credit = ('<section data-brand-credit-section="original" '
                   'style="break-inside:avoid">'
                   '<h2>Visual asset credits</h2>'
                   '<p data-brand-credit="original" role="note">' + escape(
                       REQUIRED_CREDIT_EN, quote=True) + '</p></section>')
-        html = source.replace("<body>", "<body>" + logo, 1)
-        html = html[:-len(_END)] + figure + credit + _END
+        folio_css = ('@page{@bottom-right{content:"OmniGenis | '
+                     + expected_ir_sha256[:12] + ' | " counter(page);'
+                     'font-family:Lato;font-size:8.6pt;line-height:10pt;color:#455D73}}')
+        style = _COVER_CSS + folio_css
+        head = source.split("<body>", 1)[0]
+        _require(head.count("</style>") == 1)
+        html = (head.replace("</style>", style + "</style>", 1) + "<body>"
+                + cover + navigation + remaining_body + credit + _END)
         raw = html.encode("utf-8")
         _require(0 < len(raw) <= HTML_BYTES
                  and html.count(logo) == 1
@@ -133,6 +222,10 @@ def prepare_typed_original_brand_pdf(
             "status": "STAGED_TYPED_ORIGINAL_BRAND_CANDIDATE",
             "source_ir_sha256": expected_ir_sha256,
             "typed_editorial_html_sha256": source_record["html_sha256"],
+            "editorial_style_sha256": sha256(style.encode("ascii")).hexdigest(),
+            "navigation_binding_sha256": sha256(_canonical(navigation_binding)).hexdigest(),
+            "navigation_plan_sha256": navigation_binding["plan_sha256"],
+            "navigation_entry_count": navigation_binding["intent_count"],
             "html_sha256": sha256(raw).hexdigest(),
             "resources_sha256": resources.bundle_sha256,
             "brand_bundle_sha256": _BUNDLE_SHA256,

@@ -115,6 +115,58 @@ class BrandPaginationCompositeTests(unittest.TestCase):
         self.assertFalse(raster["semantic_visual_equivalence_verified"])
         self.assertFalse(raster["aggregate_job_resources_qualified"])
 
+    def test_reused_page_parse_preserves_text_and_restores_exact_content(self):
+        from reporting import _pdf_original_brand_pagination_observer_worker as worker
+        from reporting._pdf_content_worker import normalize_stream
+
+        candidate = self.render()
+        reader = PdfReader(BytesIO(candidate.pdf_bytes), strict=True)
+        for number, page in enumerate(reader.pages, start=1):
+            with self.subTest(page=number):
+                original = page.raw_get("/Contents")
+                expected_text = normalize_stream(page.extract_text())
+                parsed = ContentStream(page.get_contents(), reader, forced_encoding="bytes")
+                expected_count = len(parsed.operations)
+                serialized = ContentStream(None, reader, forced_encoding="bytes")
+                serialized.operations = deepcopy(parsed.operations)
+                serialized_data = serialized.get_data()
+                page_payloads = {page.get_contents().get_data(), serialized_data}
+                # A second page parse may see pypdf's serialization of the same
+                # operators. Neither top-level payload may identify a Form parse.
+                for ref in page["/Resources"].get("/XObject", {}).values():
+                    form = ref.get_object()
+                    if form.get("/Subtype") == "/Form":
+                        self.assertNotIn(form.get_data(), page_payloads)
+                parses = []
+                original_parse = ContentStream._parse_content_stream
+
+                def count_page_parse(content, data, *, payloads=page_payloads,
+                                     observed=parses, parse=original_parse):
+                    if data.getvalue() in payloads:
+                        observed.append(content)
+                    return parse(content, data)
+
+                with patch.object(ContentStream, "_parse_content_stream", new=count_page_parse):
+                    found, count, decorated, text = worker._page_observation(
+                        page, reader, str(number))
+                self.assertEqual(len(parses), 1)
+                self.assertEqual(found, str(number))
+                self.assertEqual(count, expected_count)
+                self.assertIn(decorated, (0, 1))
+                self.assertEqual(text, expected_text)
+                self.assertIs(page.raw_get("/Contents"), original)
+                # Demonstrate that a fresh parse of the independently serialized
+                # top-level operators is observable as a second page parse.
+                replay = ContentStream(None, reader, forced_encoding="bytes")
+                replay.set_data(serialized_data)
+                with patch.object(ContentStream, "_parse_content_stream", new=count_page_parse):
+                    self.assertEqual(len(replay.operations), expected_count)
+                self.assertEqual(len(parses), 2)
+                with patch.object(page, "extract_text", side_effect=ValueError("extraction refused")):
+                    with self.assertRaisesRegex(ValueError, "extraction refused"):
+                        worker._page_observation(page, reader, str(number))
+                self.assertIs(page.raw_get("/Contents"), original)
+
     def test_wrong_asset_identity_and_disable_are_fail_closed(self):
         with self.assertRaises(CompositeCandidateError):
             self.render(expected_brand_bundle_sha256="0" * 64)

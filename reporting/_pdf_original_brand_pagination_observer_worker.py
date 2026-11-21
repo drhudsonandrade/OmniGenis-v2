@@ -117,16 +117,15 @@ def _footer_mapping(ref: object, reader: object) -> dict[str, str]:
     return mapping
 
 
-def _one_folio(page: object, reader: object, expected: str) -> tuple[str, int, int]:
+def _one_folio(page: object, reader: object, expected: str, stream: object) -> tuple[str, int, int]:
     """Verify the literal marked graphic artifact and its pinned ToUnicode text."""
     from pypdf.generic import (
         ArrayObject, ByteStringObject, ContentStream, DictionaryObject,
         FloatObject, NameObject, NumberObject,
     )
 
-    content = page.get_contents()
-    _require(content is not None)
-    stream = ContentStream(content, reader, forced_encoding="bytes")
+    _require(type(stream) is ContentStream and stream.pdf is reader
+             and stream.forced_encoding == "bytes")
     ops = list(stream.operations)
     _require(0 < len(ops) <= contract.MAX_OPERATIONS)
     found = []
@@ -220,6 +219,23 @@ def _one_folio(page: object, reader: object, expected: str) -> tuple[str, int, i
     return decoded, len(ops), decorative_artifacts
 
 
+def _page_observation(page: object, reader: object, expected: str) -> tuple[str, int, int, str]:
+    """Reuse one bytes-encoded parse; restore the exact raw content reference."""
+    from pypdf.generic import ContentStream, NameObject
+
+    content = page.get_contents()
+    _require(content is not None)
+    stream = ContentStream(content, reader, forced_encoding="bytes")
+    found, count, decorated = _one_folio(page, reader, expected, stream)
+    original = page.raw_get("/Contents")
+    page[NameObject("/Contents")] = stream
+    try:
+        text = normalize_stream(page.extract_text())
+    finally:
+        page[NameObject("/Contents")] = original
+    return found, count, decorated, text
+
+
 def inspect(pdf: bytes, digest: str) -> dict:
     """Inspect the same bytes without post-render modification or 32-page cap."""
     from pypdf import PdfReader
@@ -256,11 +272,10 @@ def inspect(pdf: bytes, digest: str) -> dict:
     text_characters = 0
     decorations = 0
     for number, page in enumerate(reader.pages, start=1):
-        found, count, decorated = _one_folio(page, reader, str(number))
+        found, count, decorated, text = _page_observation(page, reader, str(number))
         numbers.append(found)
         operations += count
         decorations += decorated
-        text = normalize_stream(page.extract_text())
         _require(type(text) is str and text.endswith(str(number)))
         exact_content = text[:-len(str(number))]
         _require(bool(exact_content.strip()))

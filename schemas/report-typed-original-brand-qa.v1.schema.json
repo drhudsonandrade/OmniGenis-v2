@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:omnigenis:report-typed-original-brand-qa:v1",
   "title": "Typed original-brand same-PDF candidate QA",
-  "description": "Complete admitted literal source, native structure, original brand geometry and pixel accounting on unchanged bytes, with controlled metadata and all-page raster inspection. No visual, human assistive, whole-job resource, cryptographic worker, scientific or release qualification.",
+  "description": "Complete admitted literal source, fixed editorial cover/navigation/pagination, native structure, original brand geometry and pixel accounting on unchanged bytes, with controlled metadata and all-page raster inspection. No visual, human assistive, whole-job resource, cryptographic worker, scientific or release qualification.",
   "type": "object",
   "properties": {
     "schema_version": {
@@ -83,11 +83,11 @@
     "source_units": {
       "type": "integer",
       "minimum": 1,
-      "maximum": 19997
+      "maximum": 19996
     },
     "brand_text_units": {
       "type": "integer",
-      "const": 3
+      "const": 2
     },
     "figure_count": {
       "type": "integer",
@@ -126,7 +126,8 @@
         },
         "accounted_brand_wrapper_nodes": {
           "type": "integer",
-          "const": 5
+          "minimum": 6,
+          "maximum": 68
         },
         "native_mcids": {
           "type": "integer",
@@ -146,6 +147,16 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 20000
+        },
+        "accounted_navigation_wrapper_nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 19996
+        },
+        "pagination_blocks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
         }
       },
       "required": [
@@ -155,7 +166,9 @@
         "native_mcids",
         "text_mcids",
         "figure_count",
-        "operations"
+        "operations",
+        "accounted_navigation_wrapper_nodes",
+        "pagination_blocks"
       ],
       "additionalProperties": false
     },
@@ -179,6 +192,9 @@
         },
         "postflight_identity": {
           "const": "PASS"
+        },
+        "editorial_cover_navigation_pagination": {
+          "const": "PASS"
         }
       },
       "required": [
@@ -187,7 +203,8 @@
         "literal_source_association",
         "controlled_metadata_and_catalog",
         "all_page_raster",
-        "postflight_identity"
+        "postflight_identity",
+        "editorial_cover_navigation_pagination"
       ],
       "additionalProperties": false
     },
@@ -246,6 +263,22 @@
     "default_pipeline_activated": {
       "type": "boolean",
       "const": false
+    },
+    "navigation_entries": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 19996
+    },
+    "navigation_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "pagination_pages": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "pagination_sha256": {
+      "$ref": "#/$defs/digest"
     }
   },
   "required": [
@@ -294,7 +327,11 @@
     "worker_results_authenticated",
     "scientific_equivalence_verified",
     "all_file_revisions_inspected",
-    "default_pipeline_activated"
+    "default_pipeline_activated",
+    "navigation_entries",
+    "navigation_sha256",
+    "pagination_pages",
+    "pagination_sha256"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -449,7 +486,8 @@
             "/Span",
             "/Div",
             "/Sect",
-            "/Figure"
+            "/Figure",
+            "/NonStruct"
           ]
         },
         "page_reference": {
@@ -1124,6 +1162,14 @@
           },
           "minItems": 0,
           "maxItems": 20000
+        },
+        "pagination_blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pagination_block"
+          },
+          "minItems": 1,
+          "maxItems": 1
         }
       },
       "required": [
@@ -1141,7 +1187,8 @@
         "original_operator_count",
         "projected_operator_ordinals",
         "outside_operator_ordinals",
-        "graphic_blocks"
+        "graphic_blocks",
+        "pagination_blocks"
       ],
       "additionalProperties": false
     },
@@ -1235,7 +1282,7 @@
               "const": 268435456
             },
             "cpu_seconds": {
-              "const": 5
+              "const": 20
             },
             "file_bytes": {
               "const": 11534336
@@ -1293,6 +1340,79 @@
             "form_operations"
           ],
           "additionalProperties": false
+        },
+        "page_labels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "18",
+              "19",
+              "20",
+              "21",
+              "22",
+              "23",
+              "24",
+              "25",
+              "26",
+              "27",
+              "28",
+              "29",
+              "30",
+              "31",
+              "32",
+              "33",
+              "34",
+              "35",
+              "36",
+              "37",
+              "38",
+              "39",
+              "40",
+              "41",
+              "42",
+              "43",
+              "44",
+              "45",
+              "46",
+              "47",
+              "48",
+              "49",
+              "50",
+              "51",
+              "52",
+              "53",
+              "54",
+              "55",
+              "56",
+              "57",
+              "58",
+              "59",
+              "60",
+              "61",
+              "62",
+              "63",
+              "64"
+            ]
+          }
         }
       },
       "required": [
@@ -1305,7 +1425,75 @@
         "page_count",
         "limits",
         "trace",
-        "graphics"
+        "graphics",
+        "page_labels"
+      ],
+      "additionalProperties": false
+    },
+    "pagination_event": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/event"
+        },
+        {
+          "properties": {
+            "operator": {
+              "enum": [
+                "gs",
+                "rg",
+                "BT",
+                "Tm",
+                "Tf",
+                "TJ",
+                "ET"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "pagination_block": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "pagination"
+        },
+        "type": {
+          "const": "Pagination"
+        },
+        "subtype": {
+          "const": "Footer"
+        },
+        "first_operator": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "last_operator": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 19999
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pagination_event"
+          },
+          "minItems": 7,
+          "maxItems": 7
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "required": [
+        "kind",
+        "type",
+        "subtype",
+        "first_operator",
+        "last_operator",
+        "events",
+        "sha256"
       ],
       "additionalProperties": false
     }

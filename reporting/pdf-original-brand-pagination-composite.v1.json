@@ -1,15 +1,15 @@
 {
-  "schema_version": "1.0.0",
-  "profile_id": "original-brand-pagination-composite-v1",
-  "sources": {
-    "reporting/pdf_original_brand_pagination_composite.py": "fe98ad84712f3aaab40c585357798c0dee1111d8422a5e7eebc79466f3802467",
-    "reporting/_pdf_original_brand_pagination_render_worker.py": "c656b6ee35d3e3675a01b5cc45928e85fc18f518a152d1f39677476b24c5739e",
-    "reporting/_pdf_original_brand_pagination_observer_worker.py": "ade035747a32a086a825b303892b5ed58cf8da22885322c21ecdf560be82758d",
-    "schemas/report-original-brand-pagination-composite.v1.schema.json": "e629dd5b2cc91fa8052f8f5565c71e57a5e478773dce0914136ca783b845d9eb",
-    "tests/test_reporting_pdf_original_brand_pagination_composite.py": "b5b673d5e6d4fa27f45f5f5fa66b3ddbc235f8847120775cdaab8a4f23d6b52a"
-  },
   "default_pipeline_activated": false,
-  "release_authorized": false,
   "max_pages": 64,
-  "pdf_bytes": 16777216
+  "pdf_bytes": 16777216,
+  "profile_id": "original-brand-pagination-composite-v1",
+  "release_authorized": false,
+  "schema_version": "1.0.0",
+  "sources": {
+    "reporting/_pdf_original_brand_pagination_observer_worker.py": "d77027b625d162f3d8903848f5040852ade5da6e1b8cf32e05b828a3f3422478",
+    "reporting/_pdf_original_brand_pagination_render_worker.py": "c656b6ee35d3e3675a01b5cc45928e85fc18f518a152d1f39677476b24c5739e",
+    "reporting/pdf_original_brand_pagination_composite.py": "fe98ad84712f3aaab40c585357798c0dee1111d8422a5e7eebc79466f3802467",
+    "schemas/report-original-brand-pagination-composite.v1.schema.json": "e629dd5b2cc91fa8052f8f5565c71e57a5e478773dce0914136ca783b845d9eb",
+    "tests/test_reporting_pdf_original_brand_pagination_composite.py": "da33b7a7b1f729da381a3ef17cb6e2452bd9b2fb108471b08ca9fe70c2d07907"
+  }
 }
